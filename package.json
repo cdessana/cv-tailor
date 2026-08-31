@@ -1,0 +1,22 @@
+{
+  "name": "cv-tailor",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+"scripts": {
+  "validate": "resumed validate data/resumes/base.json",
+  "html": "resumed render data/resumes/base.json --theme jsonresume-theme-even --output output/resume.html",
+  "pdf": "npm run html && \"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\" --headless --disable-gpu --print-to-pdf=output/resume.pdf \"file://$(pwd)/output/resume.html\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "puppeteer": "^24.43.1",
+    "resumed": "^6.1.0"
+  },
+  "dependencies": {
+    "jsonresume-theme-even": "^0.26.1",
+    "jsonresume-theme-stackoverflow": "^3.3.0"
+  }
+}
