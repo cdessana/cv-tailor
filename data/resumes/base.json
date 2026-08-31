@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jsonresume/resume-schema/master/schema.json",
+  "basics": {
+    "name": "Carmina Nascimento",
+    "label": "Full Stack Software Engineer",
+    "location": {
+      "city": "Manaus",
+      "region": "Amazonas",
+      "countryCode": "BR"
+    }
+  },
+  "work": [
+    {
+      "name": "Sidia Instituto de Ciência e Tecnologia",
+      "position": "Full Stack Engineer",
+      "startDate": "2021-04",
+      "endDate": "2024-03",
+      "location": "Manaus, Amazonas, Brazil",
+      "highlights": [
+        "Contributed to backend systems supporting Samsung’s global QA operations.",
+        "Led backend initiatives and participated in architectural decisions to improve scalability and maintainability.",
+        "Migrated legacy APIs to .NET 5, modernizing core services.",
+        "Designed and implemented RESTful services integrated with event-driven components."
+      ]
+    }
+  ],
+  "education": [],
+  "skills": []
+}
