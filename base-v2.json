@@ -13,8 +13,7 @@
     "profiles": [
       {
         "network": "LinkedIn",
-        "username": "Carmina Nascimento",
-        "url": "https://www.linkedin.com/in/carmina-nascimento/"  
+        "username": "Carmina Nascimento"
       }
     ]
   },
@@ -23,6 +22,7 @@
       "name": "Instituto de Pesquisas Eldorado",
       "position": "Senior Full Stack Engineer",
       "startDate": "2024-03",
+      "endDate": "",
       "highlights": [
         "Design, develop, and maintain 4 cloud-native backend services using Kotlin, Java, Spring Boot, Python (Flask), MySQL, and Google Cloud Platform, supporting enterprise-scale applications.",
         "Develop RESTful APIs and event-driven integrations using Google Cloud Pub/Sub and asynchronous messaging, enabling scalable communication between distributed systems.",
@@ -136,8 +136,7 @@
         "Node.js",
         "Python",
         ".NET Core",
-        "RESTful APIs",
-        "gRPC"
+        "RESTful APIs"
       ]
     },
     {

@@ -1,0 +1,193 @@
+{
+  "version": 2,
+
+  "skills": {
+    "Node.js": {
+      "level": "experienced"
+    },
+    "JavaScript": {
+      "level": "experienced"
+    },
+    "MongoDB": {
+      "level": "experienced"
+    },
+    "gRPC": {
+      "level": "experienced"
+    },
+    "REST APIs": {
+      "level": "experienced"
+    },
+    "Angular": {
+      "level": "experienced"
+    },
+    "TypeScript": {
+      "level": "experienced"
+    },
+    ".NET Core": {
+      "level": "experienced"
+    },
+    "PostgreSQL": {
+      "level": "experienced"
+    },
+    "SQL Server": {
+      "level": "experienced"
+    },
+    "Python": {
+      "level": "experienced"
+    },
+    "CI/CD": {
+      "level": "experienced"
+    },
+    "Technical Leadership": {
+      "level": "experienced"
+    },
+    "Mentoring": {
+      "level": "experienced"
+    }
+  },
+
+  "experiences": [
+    {
+      "id": "sidia-node-high-volume",
+      "company": "Sidia Instituto de Ciência e Tecnologia",
+      "position": "Full Stack Engineer",
+      "period": "2023-01 onward",
+      "type": "professional",
+      "facts": [
+        "Worked as team lead.",
+        "Handled client communication, requirements, documentation, sprint organization, deadlines, configuration management and deployments.",
+        "Developed backend components using Node.js and JavaScript.",
+        "Developed frontend components using Angular and TypeScript.",
+        "Worked on a project involving high-volume data processing.",
+        "API availability and request performance were important engineering concerns."
+      ],
+      "skills": [
+        "Node.js",
+        "JavaScript",
+        "Angular",
+        "TypeScript",
+        "Technical Leadership"
+      ]
+    },
+
+    {
+      "id": "sidia-node-mongodb",
+      "company": "Sidia Instituto de Ciência e Tecnologia",
+      "position": "Full Stack Engineer",
+      "period": "2021-04 to 2021-08",
+      "type": "professional",
+      "facts": [
+        "Assumed project leadership after a colleague left the company.",
+        "Worked with two other people to complete remaining sprints, fix defects and make software adjustments.",
+        "Developed new dashboards for a web application.",
+        "Modified an API to meet system requirements.",
+        "Developed frontend components using Angular and TypeScript.",
+        "Developed backend components using Node.js and JavaScript.",
+        "MongoDB was used as the database."
+      ],
+      "skills": [
+        "Node.js",
+        "JavaScript",
+        "MongoDB",
+        "Angular",
+        "TypeScript",
+        "Technical Leadership"
+      ]
+    },
+
+    {
+      "id": "sidia-grpc-dotnet6",
+      "company": "Sidia Instituto de Ciência e Tecnologia",
+      "position": "Full Stack Engineer",
+      "period": "2022-01 to 2023-01",
+      "type": "professional",
+      "facts": [
+        "Acted as backend development lead.",
+        "Interpreted requirements documentation.",
+        "Defined database models and schemas.",
+        "Created user stories and tasks.",
+        "Estimated delivery timelines.",
+        "Performed manual deployments.",
+        "Built REST APIs.",
+        "Built gRPC services to enable communication between APIs.",
+        "Developed using C# and .NET 6.",
+        "Used Entity Framework Core, LINQ, Swagger, Serilog and JWT.",
+        "PostgreSQL was used as the database."
+      ],
+      "skills": [
+        "REST APIs",
+        "gRPC",
+        ".NET Core",
+        "C#",
+        "PostgreSQL",
+        "Technical Leadership"
+      ]
+    },
+
+    {
+      "id": "sidia-team-five-dotnet5",
+      "company": "Sidia Instituto de Ciência e Tecnologia",
+      "position": "Full Stack Engineer",
+      "period": "2021-08 to 2021-12",
+      "type": "professional",
+      "facts": [
+        "Led a team of five people.",
+        "Worked with the client to write requirements documentation.",
+        "Created user stories.",
+        "Performed manual deployments.",
+        "Developed both backend and frontend components.",
+        "Built a web portal using Angular and TypeScript.",
+        "Built REST APIs using .NET Core 5.0.",
+        "Used Entity Framework Core, LINQ and Swagger.",
+        "SQL Server was used as the database."
+      ],
+      "skills": [
+        "Angular",
+        "TypeScript",
+        "REST APIs",
+        ".NET Core",
+        "SQL Server",
+        "Technical Leadership"
+      ]
+    },
+
+    {
+      "id": "sidia-junior-development",
+      "company": "Sidia Instituto de Ciência e Tecnologia",
+      "position": "Full Stack Engineer",
+      "period": "2018 to 2021",
+      "type": "professional",
+      "facts": [
+        "Developed test automation scripts using Python.",
+        "Developed REST APIs using .NET Core 3.0.",
+        "Developed desktop applications using WPF.",
+        "Developed web applications using Angular."
+      ],
+      "skills": [
+        "Python",
+        "REST APIs",
+        ".NET Core",
+        "WPF",
+        "Angular"
+      ]
+    },
+
+    {
+      "id": "sidia-ci-onboarding",
+      "company": "Sidia Instituto de Ciência e Tecnologia",
+      "position": "Full Stack Engineer",
+      "type": "professional",
+      "facts": [
+        "Participated in creating a software development process for the team.",
+        "Supported onboarding of new team members.",
+        "Wrote documentation to support the team.",
+        "Helped configure continuous integration environments for new projects.",
+        "Supported colleagues with technical questions and difficulties."
+      ],
+      "skills": [
+        "CI/CD",
+        "Mentoring"
+      ]
+    }
+  ]
+}
