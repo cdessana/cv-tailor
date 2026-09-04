@@ -3,10 +3,11 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 const jobPath = process.argv[2];
+const skipRewrite = process.argv.includes("--skip-rewrite");
 
 if (!jobPath) {
   console.error(
-    "Usage: node scripts/run.mjs <job.json>"
+    "Usage: node scripts/run.mjs <job.json> [--skip-rewrite]"
   );
   process.exit(1);
 }
@@ -215,33 +216,49 @@ if (
   );
 }
 
-await run(
-  "node",
-  [
-    "scripts/rewrite.mjs",
-    resumePath,
-    tailoringPlanPath,
-    resumeRewrittenPath,
-    rewriteReportPath
-  ]
-);
+if (!skipRewrite) {
+  await run(
+    "node",
+    [
+      "scripts/rewrite.mjs",
+      resumePath,
+      tailoringPlanPath,
+      resumeRewrittenPath,
+      rewriteReportPath
+    ]
+  );
+} else {
+  console.log("\n▶ Skipping LLM rewrite step (--skip-rewrite)\n");
+}
 
-await run(
-  "node",
-  [
-    "scripts/summary.mjs",
-    resumeRewrittenPath,
-    tailoringPlanPath,
-    resumeFinalPath,
-    summaryReportPath
-  ]
-);
+const summaryInputPath = skipRewrite
+  ? path.join(outputDir, "resume.json")
+  : resumeRewrittenPath;
 
+if (!skipRewrite) {
+  await run(
+    "node",
+    [
+      "scripts/summary.mjs",
+      summaryInputPath,
+      tailoringPlanPath,
+      resumeFinalPath,
+      summaryReportPath
+    ]
+  );
+} else{
+    console.log("\n▶ Skipping LLM summary step (--skip-rewrite)\n");
+}
+
+const finalCheckInputPath = skipRewrite
+  ? path.join(outputDir, "resume.json")
+  : resumeFinalPath;
+  
 await run(
   "node",
   [
     "scripts/final-check.mjs",
-    resumeFinalPath,
+    finalCheckInputPath,
     tailoringPlanPath,
     finalCheckPath
   ]
