@@ -473,8 +473,6 @@ const missingDates =
       )
   );
 
-console.log(missingDates, '\n',expectedDates)
-
 if (
   missingDates.length
 ) {
