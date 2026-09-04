@@ -1,15 +1,24 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
+import os from 'node:os';
+import { existsSync } from "node:fs";
+
+const platform = os.platform().toLocaleLowerCase();
 
 const resumePath = process.argv[2];
+const themeArg = process.argv[3];
+
 
 if (!resumePath) {
   console.error(
-    "Usage: node scripts/render-stackoverflow.mjs <resume-final.json>"
+    "Usage: node scripts/render.mjs <resume-final.json>  [theme]"
   );
   process.exit(1);
 }
+
+const theme = themeArg || "jsonresume-theme-stackoverflow";
+const themeDisplay = theme.replace("jsonresume-theme-", "").toUpperCase();
 
 const outputDir = path.dirname(resumePath);
 
@@ -28,8 +37,19 @@ const tempResumePath =
 const rawHtmlPath =
   path.join(outputDir, ".resume-render.html");
 
-const chrome =
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+let chromePath;
+
+if (platform.includes('win')) {
+  chromePath = "\"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\""
+} else if (platform.includes('linux')) {
+  chromePath = "/usr/bin/google-chrome"
+} else {
+  chromePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+}
+
+const chrome = chromePath;
+
+
 
 function run(command, args, options = {}) {
   return new Promise((resolve, reject) => {
@@ -38,7 +58,7 @@ function run(command, args, options = {}) {
         command,
         args,
         {
-          shell: false,
+          shell: true,
           stdio:
             options.quiet
               ? ["ignore", "pipe", "pipe"]
@@ -99,7 +119,7 @@ function monthName(month) {
     "Jun",
     "Jul",
     "Aug",
-    "Sept",
+    "Sep",
     "Oct",
     "Nov",
     "Dec"
@@ -306,11 +326,11 @@ const resume =
   );
 
 console.log(
-  "\nSTACKOVERFLOW RENDER"
+  `\n${themeDisplay} RENDER`
 );
 
 console.log(
-  "===================="
+ "=".repeat(themeDisplay.length + 7)
 );
 
 console.log(
@@ -353,7 +373,34 @@ await fs.writeFile(
 );
 
 console.log(
-  "\n▶ Rendering StackOverflow theme"
+  `\n▶ Ensuring ${theme} is available (installing temporarily if needed)...`
+);
+
+/*
+ * Use --no-save so it downloads to node_modules without 
+ * altering your package.json or package-lock.json files.
+ */
+const targetPath = path.join('node_modules', theme);
+
+// 1. Check if the folder already exists in node_modules
+if (existsSync(targetPath)) {
+    console.log(`▶ Skipped, ${theme} is already installed.`);
+} else {
+   console.log(`▶ Installing ${theme}...`);
+  await run(
+    "npm",
+    [
+      "install",
+      "--no-save",
+      "--prefer-offline", 
+      theme
+    ],
+    { quiet: false }
+  );
+}
+
+console.log(
+  `\n▶ Rendering ${theme} theme`
 );
 
 await run(
@@ -363,7 +410,7 @@ await run(
     "render",
     tempResumePath,
     "--theme",
-    "jsonresume-theme-stackoverflow",
+    theme,
     "--output",
     rawHtmlPath
   ]
@@ -425,6 +472,8 @@ const missingDates =
         item.rendered
       )
   );
+
+console.log(missingDates, '\n',expectedDates)
 
 if (
   missingDates.length
