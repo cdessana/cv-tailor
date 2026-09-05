@@ -9,6 +9,8 @@ The core principle is simple:
 
 CV Tailor compares a job description against a structured resume and a separate career evidence database, selects the most relevant experience, optionally rewrites content with a local LLM, validates factual consistency, and renders an ATS-friendly PDF.
 
+---
+
 ## Why this project exists
 
 Tailoring a CV for every job is useful, but doing it manually is repetitive and error-prone.
@@ -27,6 +29,8 @@ Instead of asking an AI to simply “rewrite my resume for this job”, the pipe
 
 The result is a tailored resume without turning keyword optimization into fabrication.
 
+---
+
 ## How it works
 
 ```text
@@ -40,7 +44,7 @@ Analyse
      ↓
 Tailor
      ↓
-Rewrite
+Rewrite (Optional)
      ↓
 Generate Summary
      ↓
@@ -48,14 +52,14 @@ Final Fact Check
      ↓
 Schema Validation
      ↓
-Render
+Render (Dynamic Theme & Page Layout)
      ↓
 PDF
      ↓
 ATS / Content Sanity Checks
 ```
 
-The current pipeline is:
+The execution flow is:
 
 ```text
 base.json
@@ -74,7 +78,7 @@ resume.json
     ↓
 rewrite.mjs
     ↓
-resume-rewritten.json
+resume-rewritten.json (or resume.json if skipped)
 rewrite-report.json
     ↓
 summary.mjs
@@ -84,7 +88,7 @@ summary-report.json
     ↓
 final-check.mjs
     ↓
-render-stackoverflow.mjs
+render.mjs (auto-installs theme, applies @page size & margins)
     ↓
 resume.html
 resume.pdf
@@ -172,27 +176,33 @@ The pipeline then falls back to the original factual bullet or a deterministic e
 
 ```text
 cv-tailor/
+├── cv-tailor.config.json      # Centralized pipeline and provider configuration
 ├── data/
 │   ├── resumes/
 │   │   └── base.json
-│   │
 │   ├── jobs/
 │   │   └── example-job.json
-│   │
 │   ├── aliases.json
 │   └── evidence.json
+│
+├── config/
+│   ├── schema.mjs         # Zod configuration schema & validation
+│   └── load-config.mjs    # Config loader with root path resolution
 │
 ├── scripts/
 │   ├── analyse.mjs
 │   ├── tailor.mjs
+│   ├── llm.mjs                # Multi-provider LLM adapter (Strategy pattern)
 │   ├── rewrite.mjs
 │   ├── summary.mjs
 │   ├── final-check.mjs
-│   ├── render-stackoverflow.mjs
+│   ├── render.mjs             # Dynamic JSON Resume renderer & PDF generator
 │   ├── validate.mjs
-│   └── run.mjs
+│   └── run.mjs                # Main pipeline orchestrator
 │
 ├── output/
+├── eslint.config.mjs          # Flat ESLint configuration
+├── .prettierrc                # Prettier code formatting rules
 ├── package.json
 └── README.md
 ```
@@ -262,6 +272,98 @@ A job may define:
 - competencies;
 - metadata;
 - original job URL.
+
+## Configuration
+
+CV Tailor uses a centralized configuration file (`cv-tailor.config.json`) validated at runtime via **Zod**.
+
+### Precedence Rules
+
+Configuration values are resolved using strict precedence:
+
+```text
+CLI Arguments / Environment Variables
+                ↓
+    cv-tailor.config.json
+                ↓
+          Built-in Defaults
+
+```
+
+- Explicit CLI flags (e.g., `--skip-rewrite`, custom themes, `--format`) always override configuration values.
+- Environment variables (e.g., `LLM_PROVIDER`, `OPENAI_API_KEY`) override provider settings.
+- Missing optional config fields automatically fall back to built-in defaults.
+
+### Example `cv-tailor.config.json`
+
+```json
+{
+  "llm": {
+    "provider": "ollama",
+    "ollama": {
+      "model": "granite4.2:3b-q4_K_S",
+      "url": "[http://127.0.0.1:11434](http://127.0.0.1:11434)"
+    },
+    "local": {
+      "model": "local-model",
+      "baseURL": "[http://127.0.0.1:1234/v1](http://127.0.0.1:1234/v1)",
+      "apiKey": "not-needed"
+    },
+    "openai": {
+      "model": "gpt-4o-mini",
+      "apiKey": ""
+    },
+    "groq": {
+      "model": "llama-3.1-70b-versatile",
+      "baseURL": "[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)",
+      "apiKey": ""
+    },
+    "anthropic": {
+      "model": "claude-3-5-sonnet-20240620",
+      "apiKey": ""
+    },
+    "gemini": {
+      "model": "gemini-1.5-flash",
+      "apiKey": ""
+    }
+  },
+  "render": {
+    "theme": "jsonresume-theme-stackoverflow"
+  },
+  "paths": {
+    "baseResume": "data/resumes/base.json",
+    "evidence": "data/evidence.json",
+    "aliases": "data/aliases.json",
+    "jobs": "data/jobs",
+    "output": "output"
+  },
+  "pipeline": {
+    "rewriteEnabled": true,
+    "maxBulletsPerRole": 7
+  }
+}
+```
+
+### Path Resolution
+
+All relative paths inside `paths.*` are resolved relative to the project root directory where the process is executed.
+
+---
+
+## Supported LLM Providers
+
+The pipeline decouples prompt execution from model implementations via `scripts/llm.mjs`. Switch providers simply by updating `"provider"` in `cv-tailor.config.json` or passing `LLM_PROVIDER=<name>`.
+
+- **`ollama`**: Local inference via Ollama.
+- **`local`**: OpenAI-compatible local endpoints (LM Studio, vLLM, LocalAI).
+- **`openai`**: Official OpenAI models (e.g., GPT-4o-mini).
+- **`groq`**: Fast cloud open-source inference (e.g., Llama 3.1).
+- **`anthropic`**: Claude models via the Anthropic SDK.
+- **`gemini`**: Google Gemini models via `@google/generative-ai`.
+
+API keys can be declared in `cv-tailor.config.json` or supplied via standard environment variables (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `GROQ_API_KEY`).
+
+---
 
 ## Requirements
 
