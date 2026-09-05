@@ -18,5 +18,5 @@ jobs:
       - name: Gemini Code Review
         uses: sshnaidm/gemini-code-review-action@v2
         with:
-          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          gemini-key: ${{ secrets.GEMINI_API_KEY }}
           model: 'gemini-2.5-flash'
