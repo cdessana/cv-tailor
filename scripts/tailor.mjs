@@ -5,7 +5,7 @@ const [
   resumePath,
   analysisPath,
   aliasesPath = "data/aliases.json",
-  evidencePath = "data/evidence.json"
+  evidencePath = "data/evidence.json",
 ] = process.argv.slice(2);
 
 if (!resumePath || !analysisPath) {
@@ -15,21 +15,13 @@ if (!resumePath || !analysisPath) {
   process.exit(1);
 }
 
-const resume = JSON.parse(
-  await fs.readFile(resumePath, "utf8")
-);
+const resume = JSON.parse(await fs.readFile(resumePath, "utf8"));
 
-const analysis = JSON.parse(
-  await fs.readFile(analysisPath, "utf8")
-);
+const analysis = JSON.parse(await fs.readFile(analysisPath, "utf8"));
 
-const aliases = JSON.parse(
-  await fs.readFile(aliasesPath, "utf8")
-);
+const aliases = JSON.parse(await fs.readFile(aliasesPath, "utf8"));
 
-const evidence = JSON.parse(
-  await fs.readFile(evidencePath, "utf8")
-);
+const evidence = JSON.parse(await fs.readFile(evidencePath, "utf8"));
 
 function normalize(value) {
   return String(value)
@@ -49,15 +41,11 @@ function phraseExists(phrase, text) {
     return false;
   }
 
-  return ` ${haystack} `
-    .includes(` ${needle} `);
+  return ` ${haystack} `.includes(` ${needle} `);
 }
 
 function aliasesFor(term) {
-  return [
-    term,
-    ...(aliases[term] ?? [])
-  ];
+  return [term, ...(aliases[term] ?? [])];
 }
 
 function unique(values) {
@@ -67,24 +55,24 @@ function unique(values) {
 const categoryWeight = {
   required: 5,
   preferred: 3,
-  competency: 2
+  competency: 2,
 };
 
 const statusWeight = {
   exact: 1,
   equivalent: 1,
   related: 0.5,
-  missing: 0
+  missing: 0,
 };
 
 const supportedTerms = [
   ...(analysis.matches?.strong ?? []),
-  ...(analysis.matches?.related ?? [])
+  ...(analysis.matches?.related ?? []),
 ].map((item) => ({
   term: item.term,
   category: item.category,
   status: item.status,
-  confidence: item.confidence ?? null
+  confidence: item.confidence ?? null,
 }));
 
 function requirementPoints(requirement) {
@@ -100,19 +88,10 @@ function requirementPoints(requirement) {
  * ----------------------------------------
  */
 
-function matchRequirementAgainstText(
-  requirement,
-  text
-) {
-  const matchedAs =
-    aliasesFor(requirement.term)
-      .find(
-        (candidate) =>
-          phraseExists(
-            candidate,
-            text
-          )
-      );
+function matchRequirementAgainstText(requirement, text) {
+  const matchedAs = aliasesFor(requirement.term).find((candidate) =>
+    phraseExists(candidate, text)
+  );
 
   if (!matchedAs) {
     return null;
@@ -123,30 +102,16 @@ function matchRequirementAgainstText(
     matchedAs,
     category: requirement.category,
     status: requirement.status,
-    points:
-      requirementPoints(
-        requirement
-      )
+    points: requirementPoints(requirement),
   };
 }
 
-function matchRequirementAgainstSkills(
-  requirement,
-  skills
-) {
-  const candidates =
-    aliasesFor(requirement.term);
+function matchRequirementAgainstSkills(requirement, skills) {
+  const candidates = aliasesFor(requirement.term);
 
-  const matchedAs =
-    (skills ?? [])
-      .find(
-        (skill) =>
-          candidates.some(
-            (candidate) =>
-              normalize(candidate) ===
-              normalize(skill)
-          )
-      );
+  const matchedAs = (skills ?? []).find((skill) =>
+    candidates.some((candidate) => normalize(candidate) === normalize(skill))
+  );
 
   if (!matchedAs) {
     return null;
@@ -157,10 +122,7 @@ function matchRequirementAgainstSkills(
     matchedAs,
     category: requirement.category,
     status: requirement.status,
-    points:
-      requirementPoints(
-        requirement
-      )
+    points: requirementPoints(requirement),
   };
 }
 
@@ -182,19 +144,14 @@ function engineeringScore(text) {
     ["event-driven", 1],
     ["continuous integration", 1],
     ["gitlab ci", 1],
-    ["test", 0.5]
+    ["test", 0.5],
   ];
 
-  const normalized =
-    normalize(text);
+  const normalized = normalize(text);
 
   return signals.reduce(
     (sum, [phrase, points]) =>
-      normalized.includes(
-        normalize(phrase)
-      )
-        ? sum + points
-        : sum,
+      normalized.includes(normalize(phrase)) ? sum + points : sum,
     0
   );
 }
@@ -211,8 +168,9 @@ function impactScore(text) {
   }
 
   if (
-    /\b\d+\s+(engineers|interns|projects|services|interfaces|devices|people)\b/i
-      .test(text)
+    /\b\d+\s+(engineers|interns|projects|services|interfaces|devices|people)\b/i.test(
+      text
+    )
   ) {
     score += 1;
   }
@@ -226,201 +184,116 @@ function impactScore(text) {
  * ----------------------------------------
  */
 
-function createResumeCandidate(
-  work,
-  highlight,
-  index
-) {
-  const matches =
-    supportedTerms
-      .map(
-        (requirement) =>
-          matchRequirementAgainstText(
-            requirement,
-            highlight
-          )
-      )
-      .filter(Boolean);
+function createResumeCandidate(work, highlight, index) {
+  const matches = supportedTerms
+    .map((requirement) => matchRequirementAgainstText(requirement, highlight))
+    .filter(Boolean);
 
-  const jobScore =
-    matches.reduce(
-      (sum, match) =>
-        sum + match.points,
-      0
-    );
+  const jobScore = matches.reduce((sum, match) => sum + match.points, 0);
 
-  const engineering =
-    engineeringScore(
-      highlight
-    );
+  const engineering = engineeringScore(highlight);
 
-  const impact =
-    impactScore(
-      highlight
-    );
+  const impact = impactScore(highlight);
 
   return {
-    id:
-      `resume:${normalize(work.name)}:${normalize(work.position)}:${index}`,
+    id: `resume:${normalize(work.name)}:${normalize(work.position)}:${index}`,
 
-    type:
-      "resume-bullet",
+    type: "resume-bullet",
 
-    company:
-      work.name,
+    company: work.name,
 
-    position:
-      work.position,
+    position: work.position,
 
-    originalIndex:
-      index,
+    originalIndex: index,
 
-    evidenceId:
-      null,
+    evidenceId: null,
 
-    text:
-      highlight,
+    text: highlight,
 
     facts: [],
 
     skills: [],
 
-    baseScore:
-      jobScore +
-      engineering +
-      impact,
+    baseScore: jobScore + engineering + impact,
 
     scoreBreakdown: {
-      job:
-        jobScore,
+      job: jobScore,
 
       engineering,
 
-      impact
+      impact,
     },
 
-    matches
+    matches,
   };
 }
 
-function createEvidenceCandidate(
-  experience
-) {
-  const matches =
-    supportedTerms
-      .map(
-        (requirement) =>
-          matchRequirementAgainstSkills(
-            requirement,
-            experience.skills ?? []
-          )
-      )
-      .filter(Boolean);
+function createEvidenceCandidate(experience) {
+  const matches = supportedTerms
+    .map((requirement) =>
+      matchRequirementAgainstSkills(requirement, experience.skills ?? [])
+    )
+    .filter(Boolean);
 
-  const jobScore =
-    matches.reduce(
-      (sum, match) =>
-        sum + match.points,
-      0
-    );
+  const jobScore = matches.reduce((sum, match) => sum + match.points, 0);
 
-  const factText =
-    (experience.facts ?? [])
-      .join(" ");
+  const factText = (experience.facts ?? []).join(" ");
 
-  const engineering =
-    engineeringScore(
-      factText
-    );
+  const engineering = engineeringScore(factText);
 
-  const impact =
-    impactScore(
-      factText
-    );
+  const impact = impactScore(factText);
 
-  const evidenceBonus =
-    matches.length > 0
-      ? 1
-      : 0;
+  const evidenceBonus = matches.length > 0 ? 1 : 0;
 
   return {
-    id:
-      `evidence:${experience.id}`,
+    id: `evidence:${experience.id}`,
 
-    type:
-      "evidence",
+    type: "evidence",
 
-    evidenceId:
-      experience.id,
+    evidenceId: experience.id,
 
-    company:
-      experience.company,
+    company: experience.company,
 
-    position:
-      experience.position,
+    position: experience.position,
 
-    period:
-      experience.period ?? null,
+    period: experience.period ?? null,
 
-    text:
-      null,
+    text: null,
 
-    facts:
-      experience.facts ?? [],
+    facts: experience.facts ?? [],
 
-    skills:
-      experience.skills ?? [],
+    skills: experience.skills ?? [],
 
-    baseScore:
-      jobScore +
-      engineering +
-      impact +
-      evidenceBonus,
+    baseScore: jobScore + engineering + impact + evidenceBonus,
 
     scoreBreakdown: {
-      job:
-        jobScore,
+      job: jobScore,
 
       engineering,
 
       impact,
 
-      evidenceBonus
+      evidenceBonus,
     },
 
-    matches
+    matches,
   };
 }
 
 function candidatesForRole(work) {
-  const resumeCandidates =
-    (work.highlights ?? [])
-      .map(
-        (highlight, index) =>
-          createResumeCandidate(
-            work,
-            highlight,
-            index
-          )
-      );
+  const resumeCandidates = (work.highlights ?? []).map((highlight, index) =>
+    createResumeCandidate(work, highlight, index)
+  );
 
-  const evidenceCandidates =
-    (evidence.experiences ?? [])
-      .filter(
-        (item) =>
-          normalize(item.company) ===
-            normalize(work.name) &&
-          normalize(item.position) ===
-            normalize(work.position)
-      )
-      .map(
-        createEvidenceCandidate
-      );
+  const evidenceCandidates = (evidence.experiences ?? [])
+    .filter(
+      (item) =>
+        normalize(item.company) === normalize(work.name) &&
+        normalize(item.position) === normalize(work.position)
+    )
+    .map(createEvidenceCandidate);
 
-  return [
-    ...resumeCandidates,
-    ...evidenceCandidates
-  ];
+  return [...resumeCandidates, ...evidenceCandidates];
 }
 
 function roleLimit(index) {
@@ -443,95 +316,43 @@ function roleLimit(index) {
 
 function coveredTerms(selected) {
   return new Set(
-    selected.flatMap(
-      (candidate) =>
-        candidate.matches.map(
-          (match) =>
-            match.term
-        )
+    selected.flatMap((candidate) =>
+      candidate.matches.map((match) => match.term)
     )
   );
 }
 
-function overlapCount(
-  candidate,
-  globallySelected
-) {
-  const alreadyCovered =
-    coveredTerms(
-      globallySelected
-    );
+function overlapCount(candidate, globallySelected) {
+  const alreadyCovered = coveredTerms(globallySelected);
 
-  return candidate.matches.filter(
-    (match) =>
-      alreadyCovered.has(
-        match.term
-      )
-  ).length;
+  return candidate.matches.filter((match) => alreadyCovered.has(match.term))
+    .length;
 }
 
-function newCoverageScore(
-  candidate,
-  globallySelected
-) {
-  const alreadyCovered =
-    coveredTerms(
-      globallySelected
-    );
+function newCoverageScore(candidate, globallySelected) {
+  const alreadyCovered = coveredTerms(globallySelected);
 
-  return candidate.matches.reduce(
-    (sum, match) => {
-      if (
-        alreadyCovered.has(
-          match.term
-        )
-      ) {
-        return sum;
-      }
+  return candidate.matches.reduce((sum, match) => {
+    if (alreadyCovered.has(match.term)) {
+      return sum;
+    }
 
-      return (
-        sum +
-        match.points
-      );
-    },
-    0
-  );
+    return sum + match.points;
+  }, 0);
 }
 
-function redundancyPenalty(
-  candidate,
-  globallySelected
-) {
-  const overlap =
-    overlapCount(
-      candidate,
-      globallySelected
-    );
+function redundancyPenalty(candidate, globallySelected) {
+  const overlap = overlapCount(candidate, globallySelected);
 
   return overlap * 1.5;
 }
 
-function candidateSelectionScore(
-  candidate,
-  globallySelected
-) {
-  const newCoverage =
-    newCoverageScore(
-      candidate,
-      globallySelected
-    );
+function candidateSelectionScore(candidate, globallySelected) {
+  const newCoverage = newCoverageScore(candidate, globallySelected);
 
-  const redundancy =
-    redundancyPenalty(
-      candidate,
-      globallySelected
-    );
+  const redundancy = redundancyPenalty(candidate, globallySelected);
 
-  return (
-    candidate.baseScore +
-    newCoverage -
-    redundancy
-  );
+  return candidate.baseScore + newCoverage - redundancy;
 }
 
 /*
@@ -540,23 +361,16 @@ function candidateSelectionScore(
  * ----------------------------------------
  */
 
-function concreteRequiredTerm(
-  candidate,
-  match
-) {
+function concreteRequiredTerm(candidate, match) {
   /*
    * Generic RPC requirement is backed by
    * concrete gRPC professional evidence.
    */
   if (
-    normalize(match.term) ===
-      normalize("RPC") &&
-    (candidate.skills ?? [])
-      .some(
-        (skill) =>
-          normalize(skill) ===
-          normalize("gRPC")
-      )
+    normalize(match.term) === normalize("RPC") &&
+    (candidate.skills ?? []).some(
+      (skill) => normalize(skill) === normalize("gRPC")
+    )
   ) {
     return "gRPC";
   }
@@ -565,60 +379,31 @@ function concreteRequiredTerm(
    * Evidence candidates should preserve
    * the concrete skill actually used.
    */
-  if (
-    candidate.type ===
-    "evidence"
-  ) {
-    const concreteSkill =
-      (candidate.skills ?? [])
-        .find(
-          (skill) =>
-            aliasesFor(
-              match.term
-            )
-              .some(
-                (alias) =>
-                  normalize(alias) ===
-                  normalize(skill)
-              )
-        );
+  if (candidate.type === "evidence") {
+    const concreteSkill = (candidate.skills ?? []).find((skill) =>
+      aliasesFor(match.term).some(
+        (alias) => normalize(alias) === normalize(skill)
+      )
+    );
 
     if (concreteSkill) {
       return concreteSkill;
     }
   }
 
-  return (
-    match.matchedAs ??
-    match.term
-  );
+  return match.matchedAs ?? match.term;
 }
 
-function deriveCoverageMetadata(
-  candidate,
-  previouslySelected
-) {
-  const alreadyCovered =
-    coveredTerms(
-      previouslySelected
-    );
+function deriveCoverageMetadata(candidate, previouslySelected) {
+  const alreadyCovered = coveredTerms(previouslySelected);
 
   /*
    * Why did this candidate add something
    * new at the moment it was selected?
    */
-  const coverageReason =
-    candidate.matches
-      .filter(
-        (match) =>
-          !alreadyCovered.has(
-            match.term
-          )
-      )
-      .map(
-        (match) =>
-          match.term
-      );
+  const coverageReason = candidate.matches
+    .filter((match) => !alreadyCovered.has(match.term))
+    .map((match) => match.term);
 
   /*
    * Only REQUIRED job requirements that
@@ -629,25 +414,14 @@ function deriveCoverageMetadata(
    * are useful for ranking but are not forced
    * into every bullet.
    */
-  const requiredTerms =
-    unique(
-      candidate.matches
-        .filter(
-          (match) =>
-            match.category ===
-              "required" &&
-            coverageReason.includes(
-              match.term
-            )
-        )
-        .map(
-          (match) =>
-            concreteRequiredTerm(
-              candidate,
-              match
-            )
-        )
-    );
+  const requiredTerms = unique(
+    candidate.matches
+      .filter(
+        (match) =>
+          match.category === "required" && coverageReason.includes(match.term)
+      )
+      .map((match) => concreteRequiredTerm(candidate, match))
+  );
 
   /*
    * All remaining matches are optional.
@@ -657,37 +431,23 @@ function deriveCoverageMetadata(
    * - preferred requirements;
    * - engineering competencies.
    */
-  const optionalTerms =
-    unique(
-      candidate.matches
-        .filter(
-          (match) =>
-            !(
-              match.category ===
-                "required" &&
-              coverageReason.includes(
-                match.term
-              )
-            )
-        )
-        .map(
-          (match) =>
-            concreteRequiredTerm(
-              candidate,
-              match
-            )
-        )
-    );
+  const optionalTerms = unique(
+    candidate.matches
+      .filter(
+        (match) =>
+          !(
+            match.category === "required" && coverageReason.includes(match.term)
+          )
+      )
+      .map((match) => concreteRequiredTerm(candidate, match))
+  );
 
   return {
-    coverageReason:
-      unique(
-        coverageReason
-      ),
+    coverageReason: unique(coverageReason),
 
     requiredTerms,
 
-    optionalTerms
+    optionalTerms,
   };
 }
 
@@ -697,107 +457,52 @@ function deriveCoverageMetadata(
  * ----------------------------------------
  */
 
-function selectRoleCandidates(
-  work,
-  roleIndex,
-  globallySelected
-) {
-  const candidates =
-    candidatesForRole(
-      work
-    );
+function selectRoleCandidates(work, roleIndex, globallySelected) {
+  const candidates = candidatesForRole(work);
 
-  const limit =
-    roleLimit(
-      roleIndex
-    );
+  const limit = roleLimit(roleIndex);
 
-  if (
-    candidates.length === 0
-  ) {
+  if (candidates.length === 0) {
     return {
       selected: [],
-      omitted: []
+      omitted: [],
     };
   }
 
   const selected = [];
 
-  while (
-    selected.length < limit
-  ) {
-    const available =
-      candidates.filter(
-        (candidate) =>
-          !selected.some(
-            (item) =>
-              item.id ===
-              candidate.id
-          )
-      );
+  while (selected.length < limit) {
+    const available = candidates.filter(
+      (candidate) => !selected.some((item) => item.id === candidate.id)
+    );
 
-    if (
-      available.length === 0
-    ) {
+    if (available.length === 0) {
       break;
     }
 
-    const combinedSelected = [
-      ...globallySelected,
-      ...selected
-    ];
+    const combinedSelected = [...globallySelected, ...selected];
 
-    const ranked =
-      available
-        .map(
-          (candidate) => ({
-            ...candidate,
+    const ranked = available
+      .map((candidate) => ({
+        ...candidate,
 
-            selectionScore:
-              candidateSelectionScore(
-                candidate,
-                combinedSelected
-              ),
+        selectionScore: candidateSelectionScore(candidate, combinedSelected),
 
-            newCoverageScore:
-              newCoverageScore(
-                candidate,
-                combinedSelected
-              ),
+        newCoverageScore: newCoverageScore(candidate, combinedSelected),
 
-            redundancyPenalty:
-              redundancyPenalty(
-                candidate,
-                combinedSelected
-              )
-          })
-        )
-        .sort(
-          (a, b) => {
-            if (
-              b.selectionScore !==
-              a.selectionScore
-            ) {
-              return (
-                b.selectionScore -
-                a.selectionScore
-              );
-            }
+        redundancyPenalty: redundancyPenalty(candidate, combinedSelected),
+      }))
+      .sort((a, b) => {
+        if (b.selectionScore !== a.selectionScore) {
+          return b.selectionScore - a.selectionScore;
+        }
 
-            return (
-              b.baseScore -
-              a.baseScore
-            );
-          }
-        );
+        return b.baseScore - a.baseScore;
+      });
 
-    const best =
-      ranked[0];
+    const best = ranked[0];
 
-    if (
-      !best ||
-      best.selectionScore <= 0
-    ) {
+    if (!best || best.selectionScore <= 0) {
       break;
     }
 
@@ -805,71 +510,34 @@ function selectRoleCandidates(
      * Capture WHY this candidate is selected
      * BEFORE adding it to global coverage.
      */
-    const coverageMetadata =
-      deriveCoverageMetadata(
-        best,
-        combinedSelected
-      );
+    const coverageMetadata = deriveCoverageMetadata(best, combinedSelected);
 
     selected.push({
       ...best,
-      ...coverageMetadata
+      ...coverageMetadata,
     });
   }
 
-  const selectedIds =
-    new Set(
-      selected.map(
-        (item) =>
-          item.id
-      )
-    );
+  const selectedIds = new Set(selected.map((item) => item.id));
 
-  const finalContext = [
-    ...globallySelected,
-    ...selected
-  ];
+  const finalContext = [...globallySelected, ...selected];
 
-  const omitted =
-    candidates
-      .filter(
-        (candidate) =>
-          !selectedIds.has(
-            candidate.id
-          )
-      )
-      .map(
-        (candidate) => ({
-          ...candidate,
+  const omitted = candidates
+    .filter((candidate) => !selectedIds.has(candidate.id))
+    .map((candidate) => ({
+      ...candidate,
 
-          selectionScore:
-            candidateSelectionScore(
-              candidate,
-              finalContext
-            ),
+      selectionScore: candidateSelectionScore(candidate, finalContext),
 
-          newCoverageScore:
-            newCoverageScore(
-              candidate,
-              finalContext
-            ),
+      newCoverageScore: newCoverageScore(candidate, finalContext),
 
-          redundancyPenalty:
-            redundancyPenalty(
-              candidate,
-              finalContext
-            )
-        })
-      )
-      .sort(
-        (a, b) =>
-          b.selectionScore -
-          a.selectionScore
-      );
+      redundancyPenalty: redundancyPenalty(candidate, finalContext),
+    }))
+    .sort((a, b) => b.selectionScore - a.selectionScore);
 
   return {
     selected,
-    omitted
+    omitted,
   };
 }
 
@@ -883,38 +551,22 @@ const rolePlans = [];
 
 const globallySelected = [];
 
-for (
-  let index = 0;
-  index < resume.work.length;
-  index++
-) {
-  const work =
-    resume.work[index];
+for (let index = 0; index < resume.work.length; index++) {
+  const work = resume.work[index];
 
-  const selection =
-    selectRoleCandidates(
-      work,
-      index,
-      globallySelected
-    );
+  const selection = selectRoleCandidates(work, index, globallySelected);
 
   rolePlans.push({
-    company:
-      work.name,
+    company: work.name,
 
-    position:
-      work.position,
+    position: work.position,
 
-    selected:
-      selection.selected,
+    selected: selection.selected,
 
-    omitted:
-      selection.omitted
+    omitted: selection.omitted,
   });
 
-  globallySelected.push(
-    ...selection.selected
-  );
+  globallySelected.push(...selection.selected);
 }
 
 /*
@@ -929,53 +581,27 @@ for (
  * that already existed in base.json.
  */
 
-const safeWork =
-  resume.work.map(
-    (work) => {
-      const plan =
-        rolePlans.find(
-          (item) =>
-            item.company ===
-              work.name &&
-            item.position ===
-              work.position
-        );
-
-      const selectedResumeBullets =
-        (
-          plan?.selected ??
-          []
-        )
-          .filter(
-            (candidate) =>
-              candidate.type ===
-              "resume-bullet"
-          )
-          .sort(
-            (a, b) =>
-              a.originalIndex -
-              b.originalIndex
-          );
-
-      const tailored = {
-        ...work,
-
-        highlights:
-          selectedResumeBullets.map(
-            (candidate) =>
-              candidate.text
-          )
-      };
-
-      if (
-        tailored.endDate === ""
-      ) {
-        delete tailored.endDate;
-      }
-
-      return tailored;
-    }
+const safeWork = resume.work.map((work) => {
+  const plan = rolePlans.find(
+    (item) => item.company === work.name && item.position === work.position
   );
+
+  const selectedResumeBullets = (plan?.selected ?? [])
+    .filter((candidate) => candidate.type === "resume-bullet")
+    .sort((a, b) => a.originalIndex - b.originalIndex);
+
+  const tailored = {
+    ...work,
+
+    highlights: selectedResumeBullets.map((candidate) => candidate.text),
+  };
+
+  if (tailored.endDate === "") {
+    delete tailored.endDate;
+  }
+
+  return tailored;
+});
 
 /*
  * ----------------------------------------
@@ -986,95 +612,48 @@ const safeWork =
 function scoreSkill(keyword) {
   let score = 0;
 
-  for (
-    const requirement
-    of supportedTerms
-  ) {
-    const matched =
-      aliasesFor(
-        requirement.term
-      )
-        .some(
-          (candidate) =>
-            normalize(candidate) ===
-            normalize(keyword)
-        );
+  for (const requirement of supportedTerms) {
+    const matched = aliasesFor(requirement.term).some(
+      (candidate) => normalize(candidate) === normalize(keyword)
+    );
 
     if (!matched) {
       continue;
     }
 
-    score +=
-      categoryWeight[
-        requirement.category
-      ] ?? 1;
+    score += categoryWeight[requirement.category] ?? 1;
   }
 
   return score;
 }
 
-const tailoredSkills =
-  (resume.skills ?? [])
-    .map(
-      (group) => {
-        const ranked =
-          (group.keywords ?? [])
-            .map(
-              (keyword) => ({
-                keyword,
+const tailoredSkills = (resume.skills ?? [])
+  .map((group) => {
+    const ranked = (group.keywords ?? [])
+      .map((keyword) => ({
+        keyword,
 
-                score:
-                  scoreSkill(
-                    keyword
-                  )
-              })
-            )
-            .sort(
-              (a, b) =>
-                b.score -
-                a.score
-            );
+        score: scoreSkill(keyword),
+      }))
+      .sort((a, b) => b.score - a.score);
 
-        return {
-          ...group,
+    return {
+      ...group,
 
-          keywords:
-            ranked.map(
-              (item) =>
-                item.keyword
-            ),
+      keywords: ranked.map((item) => item.keyword),
 
-          _relevance:
-            ranked.reduce(
-              (sum, item) =>
-                sum +
-                item.score,
-              0
-            )
-        };
-      }
-    )
-    .sort(
-      (a, b) =>
-        b._relevance -
-        a._relevance
-    )
-    .map(
-      ({
-        _relevance,
-        ...group
-      }) =>
-        group
-    );
+      _relevance: ranked.reduce((sum, item) => sum + item.score, 0),
+    };
+  })
+  .sort((a, b) => b._relevance - a._relevance)
+  .map(({ _relevance, ...group }) => group);
 
 const tailoredResume = {
   ...resume,
 
-  work:
-    safeWork,
+  work: safeWork,
 
-  skills:
-    tailoredSkills
+  skills: tailoredSkills,
 };
 
 /*
@@ -1083,55 +662,31 @@ const tailoredResume = {
  * ----------------------------------------
  */
 
-const finalCovered =
-  coveredTerms(
-    globallySelected
-  );
+const finalCovered = coveredTerms(globallySelected);
 
-const globalCoverage =
-  supportedTerms.map(
-    (requirement) => ({
-      term:
-        requirement.term,
+const globalCoverage = supportedTerms.map((requirement) => ({
+  term: requirement.term,
 
-      category:
-        requirement.category,
+  category: requirement.category,
 
-      status:
-        requirement.status,
+  status: requirement.status,
 
-      covered:
-        finalCovered.has(
-          requirement.term
-        ),
+  covered: finalCovered.has(requirement.term),
 
-      selectedBy:
-        globallySelected
-          .filter(
-            (candidate) =>
-              candidate.matches.some(
-                (match) =>
-                  match.term ===
-                  requirement.term
-              )
-          )
-          .map(
-            (candidate) => ({
-              id:
-                candidate.id,
+  selectedBy: globallySelected
+    .filter((candidate) =>
+      candidate.matches.some((match) => match.term === requirement.term)
+    )
+    .map((candidate) => ({
+      id: candidate.id,
 
-              type:
-                candidate.type,
+      type: candidate.type,
 
-              company:
-                candidate.company,
+      company: candidate.company,
 
-              position:
-                candidate.position
-            })
-          )
-    })
-  );
+      position: candidate.position,
+    })),
+}));
 
 /*
  * ----------------------------------------
@@ -1142,67 +697,31 @@ const globalCoverage =
 function slug(value) {
   return String(value)
     .normalize("NFKD")
-    .replace(
-      /[\u0300-\u036f]/g,
-      ""
-    )
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .replace(
-      /[^a-z0-9]+/g,
-      "-"
-    )
-    .replace(
-      /^-|-$/g,
-      ""
-    );
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
-const company =
-  analysis.job?.company ??
-  "company";
+const company = analysis.job?.company ?? "company";
 
-const title =
-  analysis.job?.title ??
-  "role";
+const title = analysis.job?.title ?? "role";
 
-const outputDirectory =
-  path.join(
-    "output",
-    slug(company)
-  );
+const outputDirectory = path.join("output", slug(company));
 
-await fs.mkdir(
-  outputDirectory,
-  {
-    recursive: true
-  }
-);
+await fs.mkdir(outputDirectory, {
+  recursive: true,
+});
 
-const resumeOutput =
-  path.join(
-    outputDirectory,
-    "resume.json"
-  );
+const resumeOutput = path.join(outputDirectory, "resume.json");
 
-const planOutput =
-  path.join(
-    outputDirectory,
-    "tailoring-plan.json"
-  );
+const planOutput = path.join(outputDirectory, "tailoring-plan.json");
 
-const reportOutput =
-  path.join(
-    outputDirectory,
-    "tailoring-report.json"
-  );
+const reportOutput = path.join(outputDirectory, "tailoring-report.json");
 
 await fs.writeFile(
   resumeOutput,
-  JSON.stringify(
-    tailoredResume,
-    null,
-    2
-  ),
+  JSON.stringify(tailoredResume, null, 2),
   "utf8"
 );
 
@@ -1210,89 +729,55 @@ await fs.writeFile(
   planOutput,
   JSON.stringify(
     {
-      job:
-        analysis.job,
+      job: analysis.job,
 
-      scores:
-        analysis.scores,
+      scores: analysis.scores,
 
-      generatedAt:
-        new Date()
-          .toISOString(),
+      generatedAt: new Date().toISOString(),
 
       globalCoverage,
 
-      roles:
-        rolePlans.map(
-          (role) => ({
-            company:
-              role.company,
+      roles: rolePlans.map((role) => ({
+        company: role.company,
 
-            position:
-              role.position,
+        position: role.position,
 
-            selected:
-              role.selected.map(
-                (candidate) => ({
-                  id:
-                    candidate.id,
+        selected: role.selected.map((candidate) => ({
+          id: candidate.id,
 
-                  type:
-                    candidate.type,
+          type: candidate.type,
 
-                  evidenceId:
-                    candidate.evidenceId,
+          evidenceId: candidate.evidenceId,
 
-                  text:
-                    candidate.text,
+          text: candidate.text,
 
-                  facts:
-                    candidate.facts,
+          facts: candidate.facts,
 
-                  skills:
-                    candidate.skills,
+          skills: candidate.skills,
 
-                  period:
-                    candidate.period ??
-                    null,
+          period: candidate.period ?? null,
 
-                  coverageReason:
-                    candidate.coverageReason ??
-                    [],
+          coverageReason: candidate.coverageReason ?? [],
 
-                  requiredTerms:
-                    candidate.requiredTerms ??
-                    [],
+          requiredTerms: candidate.requiredTerms ?? [],
 
-                  optionalTerms:
-                    candidate.optionalTerms ??
-                    [],
+          optionalTerms: candidate.optionalTerms ?? [],
 
-                  baseScore:
-                    candidate.baseScore,
+          baseScore: candidate.baseScore,
 
-                  selectionScore:
-                    candidate.selectionScore,
+          selectionScore: candidate.selectionScore,
 
-                  newCoverageScore:
-                    candidate.newCoverageScore,
+          newCoverageScore: candidate.newCoverageScore,
 
-                  redundancyPenalty:
-                    candidate.redundancyPenalty,
+          redundancyPenalty: candidate.redundancyPenalty,
 
-                  matches:
-                    candidate.matches
-                })
-              )
-          })
-        ),
+          matches: candidate.matches,
+        })),
+      })),
 
       safety: {
-        unsupportedTerms:
-          analysis.tailoring
-            ?.doNotAdd ??
-          []
-      }
+        unsupportedTerms: analysis.tailoring?.doNotAdd ?? [],
+      },
     },
     null,
     2
@@ -1304,27 +789,19 @@ await fs.writeFile(
   reportOutput,
   JSON.stringify(
     {
-      job:
-        analysis.job,
+      job: analysis.job,
 
-      scores:
-        analysis.scores,
+      scores: analysis.scores,
 
-      generatedAt:
-        new Date()
-          .toISOString(),
+      generatedAt: new Date().toISOString(),
 
       globalCoverage,
 
-      roles:
-        rolePlans,
+      roles: rolePlans,
 
       safety: {
-        unsupportedTerms:
-          analysis.tailoring
-            ?.doNotAdd ??
-          []
-      }
+        unsupportedTerms: analysis.tailoring?.doNotAdd ?? [],
+      },
     },
     null,
     2
@@ -1338,177 +815,76 @@ await fs.writeFile(
  * ----------------------------------------
  */
 
-console.log(
-  `\nTailoring plan for ${company} — ${title}`
-);
+console.log(`\nTailoring plan for ${company} — ${title}`);
 
-console.log(
-  "\nSELECTED CANDIDATES"
-);
+console.log("\nSELECTED CANDIDATES");
 
-console.log(
-  "-------------------"
-);
+console.log("-------------------");
 
-for (
-  const role
-  of rolePlans
-) {
-  console.log(
-    `\n${role.company}`
-  );
+for (const role of rolePlans) {
+  console.log(`\n${role.company}`);
 
-  console.log(
-    role.position
-  );
+  console.log(role.position);
 
-  for (
-    const candidate
-    of role.selected
-  ) {
+  for (const candidate of role.selected) {
     console.log(
       `\n[base ${candidate.baseScore.toFixed(2)} | final ${candidate.selectionScore.toFixed(2)}] ${candidate.type}`
     );
 
-    if (
-      candidate.type ===
-      "resume-bullet"
-    ) {
-      console.log(
-        `  ${candidate.text}`
-      );
+    if (candidate.type === "resume-bullet") {
+      console.log(`  ${candidate.text}`);
     } else {
-      console.log(
-        `  evidence: ${candidate.evidenceId}`
-      );
+      console.log(`  evidence: ${candidate.evidenceId}`);
 
+      console.log(`  skills: ${candidate.skills.join(", ")}`);
+    }
+
+    if (candidate.matches.length > 0) {
       console.log(
-        `  skills: ${
-          candidate.skills.join(", ")
-        }`
+        `  matches: ${candidate.matches.map((match) => match.term).join(", ")}`
       );
     }
 
-    if (
-      candidate.matches.length >
-      0
-    ) {
-      console.log(
-        `  matches: ${
-          candidate.matches
-            .map(
-              (match) =>
-                match.term
-            )
-            .join(", ")
-        }`
-      );
+    if (candidate.coverageReason?.length > 0) {
+      console.log(`  coverage reason: ${candidate.coverageReason.join(", ")}`);
     }
 
-    if (
-      candidate.coverageReason
-        ?.length > 0
-    ) {
-      console.log(
-        `  coverage reason: ${
-          candidate.coverageReason
-            .join(", ")
-        }`
-      );
+    if (candidate.requiredTerms?.length > 0) {
+      console.log(`  required terms: ${candidate.requiredTerms.join(", ")}`);
     }
 
-    if (
-      candidate.requiredTerms
-        ?.length > 0
-    ) {
-      console.log(
-        `  required terms: ${
-          candidate.requiredTerms
-            .join(", ")
-        }`
-      );
+    if (candidate.optionalTerms?.length > 0) {
+      console.log(`  optional terms: ${candidate.optionalTerms.join(", ")}`);
     }
 
-    if (
-      candidate.optionalTerms
-        ?.length > 0
-    ) {
-      console.log(
-        `  optional terms: ${
-          candidate.optionalTerms
-            .join(", ")
-        }`
-      );
+    if (candidate.newCoverageScore > 0) {
+      console.log(`  new coverage: +${candidate.newCoverageScore.toFixed(2)}`);
     }
 
-    if (
-      candidate.newCoverageScore >
-      0
-    ) {
-      console.log(
-        `  new coverage: +${candidate.newCoverageScore.toFixed(2)}`
-      );
-    }
-
-    if (
-      candidate.redundancyPenalty >
-      0
-    ) {
-      console.log(
-        `  redundancy: -${candidate.redundancyPenalty.toFixed(2)}`
-      );
+    if (candidate.redundancyPenalty > 0) {
+      console.log(`  redundancy: -${candidate.redundancyPenalty.toFixed(2)}`);
     }
   }
 }
 
-console.log(
-  "\nGLOBAL COVERAGE"
-);
+console.log("\nGLOBAL COVERAGE");
 
-console.log(
-  "---------------"
-);
+console.log("---------------");
 
-for (
-  const item
-  of globalCoverage
-) {
-  console.log(
-    `${
-      item.covered
-        ? "✓"
-        : "○"
-    } ${item.term}`
-  );
+for (const item of globalCoverage) {
+  console.log(`${item.covered ? "✓" : "○"} ${item.term}`);
 }
 
-console.log(
-  "\nDO NOT ADD"
-);
+console.log("\nDO NOT ADD");
 
-console.log(
-  "----------"
-);
+console.log("----------");
 
-for (
-  const item
-  of analysis.tailoring
-    ?.doNotAdd ??
-  []
-) {
-  console.log(
-    `✗ ${item.term}`
-  );
+for (const item of analysis.tailoring?.doNotAdd ?? []) {
+  console.log(`✗ ${item.term}`);
 }
 
-console.log(
-  `\nSafe resume: ${resumeOutput}`
-);
+console.log(`\nSafe resume: ${resumeOutput}`);
 
-console.log(
-  `Tailoring plan: ${planOutput}`
-);
+console.log(`Tailoring plan: ${planOutput}`);
 
-console.log(
-  `Full report: ${reportOutput}`
-);
+console.log(`Full report: ${reportOutput}`);

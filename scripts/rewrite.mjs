@@ -1,23 +1,15 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-const MODEL =
-  process.env.OLLAMA_MODEL ||
-  "granite4.2:3b-q4_K_S";
+const MODEL = process.env.OLLAMA_MODEL || "granite4.2:3b-q4_K_S";
 
-const OLLAMA_URL =
-  process.env.OLLAMA_URL ||
-  "http://127.0.0.1:11434/api/chat";
+const OLLAMA_URL = process.env.OLLAMA_URL || "http://127.0.0.1:11434/api/chat";
 
 const MAX_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 1200;
 
-const [
-  resumePath,
-  planPath,
-  outputPathArg,
-  reportPathArg
-] = process.argv.slice(2);
+const [resumePath, planPath, outputPathArg, reportPathArg] =
+  process.argv.slice(2);
 
 if (!resumePath || !planPath) {
   console.error(
@@ -26,144 +18,67 @@ if (!resumePath || !planPath) {
   process.exit(1);
 }
 
-const planDir =
-  path.dirname(planPath);
+const planDir = path.dirname(planPath);
 
-const outputPath =
-  outputPathArg ||
-  path.join(
-    planDir,
-    "resume-rewritten.json"
-  );
+const outputPath = outputPathArg || path.join(planDir, "resume-rewritten.json");
 
-const reportPath =
-  reportPathArg ||
-  path.join(
-    planDir,
-    "rewrite-report.json"
-  );
+const reportPath = reportPathArg || path.join(planDir, "rewrite-report.json");
 
-const resume =
-  JSON.parse(
-    await fs.readFile(
-      resumePath,
-      "utf8"
-    )
-  );
+const resume = JSON.parse(await fs.readFile(resumePath, "utf8"));
 
-const plan =
-  JSON.parse(
-    await fs.readFile(
-      planPath,
-      "utf8"
-    )
-  );
+const plan = JSON.parse(await fs.readFile(planPath, "utf8"));
 
 function sleep(ms) {
-  return new Promise(
-    resolve =>
-      setTimeout(
-        resolve,
-        ms
-      )
-  );
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function normalize(value = "") {
   return String(value)
     .normalize("NFD")
-    .replace(
-      /[\u0300-\u036f]/g,
-      ""
-    )
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .replace(
-      /\s+/g,
-      " "
-    )
+    .replace(/\s+/g, " ")
     .trim();
 }
 
-function phraseExists(
-  text,
-  phrase
-) {
-  const haystack =
-    normalize(text);
+function phraseExists(text, phrase) {
+  const haystack = normalize(text);
 
-  const needle =
-    normalize(phrase);
+  const needle = normalize(phrase);
 
-  if (
-    !haystack ||
-    !needle
-  ) {
+  if (!haystack || !needle) {
     return false;
   }
 
-  const escaped =
-    needle.replace(
-      /[.*+?^${}()|[\]\\]/g,
-      "\\$&"
-    );
+  const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-  return new RegExp(
-    `(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`,
-    "i"
-  ).test(
-    haystack
-  );
+  return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, "i").test(haystack);
 }
 
 function unique(values) {
-  return [
-    ...new Set(
-      values.filter(Boolean)
-    )
-  ];
+  return [...new Set(values.filter(Boolean))];
 }
 
 function sentence(text) {
-  const value =
-    String(text || "")
-      .trim();
+  const value = String(text || "").trim();
 
   if (!value) {
     return "";
   }
 
-  return /[.!?]$/.test(value)
-    ? value
-    : `${value}.`;
+  return /[.!?]$/.test(value) ? value : `${value}.`;
 }
 
 function numbers(text = "") {
-  return [
-    ...String(text).matchAll(
-      /\b\d+(?:[.,]\d+)?%?\b/g
-    )
-  ].map(
-    match =>
-      match[0]
+  return [...String(text).matchAll(/\b\d+(?:[.,]\d+)?%?\b/g)].map(
+    (match) => match[0]
   );
 }
 
-function introducedNumbers(
-  source,
-  proposed
-) {
-  const allowed =
-    new Set(
-      numbers(source)
-    );
+function introducedNumbers(source, proposed) {
+  const allowed = new Set(numbers(source));
 
-  return unique(
-    numbers(proposed)
-      .filter(
-        value =>
-          !allowed.has(value)
-      )
-  );
+  return unique(numbers(proposed).filter((value) => !allowed.has(value)));
 }
 
 const TECH_TERMS = [
@@ -219,20 +134,11 @@ const TECH_TERMS = [
   "Redis",
   "DynamoDB",
   "Oracle",
-  "Terraform"
+  "Terraform",
 ];
 
-function mentionedTechnologies(
-  text
-) {
-  return TECH_TERMS
-    .filter(
-      term =>
-        phraseExists(
-          text,
-          term
-        )
-    );
+function mentionedTechnologies(text) {
+  return TECH_TERMS.filter((term) => phraseExists(text, term));
 }
 
 function getUnsupportedTerms() {
@@ -240,127 +146,81 @@ function getUnsupportedTerms() {
     ...(plan.unsupportedTerms || []),
     ...(plan.doNotAdd || []),
     ...(plan.doNotAddTerms || []),
-    ...(
-      plan.analysis?.unsupportedTerms ||
-      []
-    )
+    ...(plan.analysis?.unsupportedTerms || []),
   ]);
 }
 
-const unsupportedTerms =
-  getUnsupportedTerms();
+const unsupportedTerms = getUnsupportedTerms();
 
-function candidateSourceText(
-  candidate
-) {
-  if (
-    candidate.type ===
-    "resume-bullet"
-  ) {
-    return (
-      candidate.text ||
-      ""
-    );
+function candidateSourceText(candidate) {
+  if (candidate.type === "resume-bullet") {
+    return candidate.text || "";
   }
 
   return [
     ...(candidate.facts || []),
     ...(candidate.priorityFacts || []),
-    ...(candidate.skills || [])
+    ...(candidate.skills || []),
   ].join(" ");
 }
 
-function evidenceFacts(
-  candidate
-) {
+function evidenceFacts(candidate) {
   return unique([
-    ...(
-      candidate.priorityFacts ||
-      []
-    ),
-    ...(
-      candidate.facts ||
-      []
-    )
+    ...(candidate.priorityFacts || []),
+    ...(candidate.facts || []),
   ]);
 }
 
-function evidenceSpecificRule(
-  candidate
-) {
-  return (
-    EVIDENCE_RULES[
-      candidate.evidenceId
-    ] || null
-  );
+function evidenceSpecificRule(candidate) {
+  return EVIDENCE_RULES[candidate.evidenceId] || null;
 }
 
 const EVIDENCE_RULES = {
   "sidia-node-mongodb": {
-    requiredTerms: [
-      "Node.js",
-      "JavaScript",
-      "MongoDB"
-    ],
+    requiredTerms: ["Node.js", "JavaScript", "MongoDB"],
     optionalTerms: [],
-    minOptionalMatches: 0
+    minOptionalMatches: 0,
   },
 
   "sidia-grpc-dotnet6": {
-    requiredTerms: [
-      "gRPC"
-    ],
-    optionalTerms: [
-      "REST APIs"
-    ],
-    minOptionalMatches: 0
+    requiredTerms: ["gRPC"],
+    optionalTerms: ["REST APIs"],
+    minOptionalMatches: 0,
   },
 
   "sidia-node-high-volume": {
-    requiredTerms: [
-      "high-volume"
-    ],
-    optionalTerms: [
-      "availability",
-      "request performance"
-    ],
-    minOptionalMatches: 1
-  }
+    requiredTerms: ["high-volume"],
+    optionalTerms: ["availability", "request performance"],
+    minOptionalMatches: 1,
+  },
 };
 
 function evidenceRule(candidate) {
-  return (
-    EVIDENCE_RULES[
-      candidate.evidenceId
-    ] || null
-  );
+  return EVIDENCE_RULES[candidate.evidenceId] || null;
 }
 
 function requiredTermsFor(candidate) {
-  const rule =
-    evidenceRule(candidate);
+  const rule = evidenceRule(candidate);
 
   return unique([
     ...(candidate.requiredTerms || []),
     ...(candidate.distinctiveRule?.requiredTerms || []),
-    ...(rule?.requiredTerms || [])
+    ...(rule?.requiredTerms || []),
   ]);
 }
 
 function optionalTermsFor(candidate) {
-  const rule =
-    evidenceRule(candidate);
+  const rule = evidenceRule(candidate);
 
   return unique([
     ...(candidate.optionalTerms || []),
     ...(candidate.distinctiveRule?.optionalTerms || []),
-    ...(rule?.optionalTerms || [])
+    ...(rule?.optionalTerms || []),
   ]);
 }
 
 function minOptionalMatchesFor(candidate) {
-  const rule =
-    evidenceRule(candidate);
+  const rule = evidenceRule(candidate);
 
   return Math.max(
     candidate.distinctiveRule?.minOptionalMatches || 0,
@@ -368,27 +228,16 @@ function minOptionalMatchesFor(candidate) {
   );
 }
 
-function deterministicEvidenceFallback(
-  candidate
-) {
-  const facts =
-    evidenceFacts(
-      candidate
-    );
+function deterministicEvidenceFallback(candidate) {
+  const facts = evidenceFacts(candidate);
 
   if (!facts.length) {
     return "";
   }
 
-  const requiredTerms =
-    requiredTermsFor(
-      candidate
-    );
+  const requiredTerms = requiredTermsFor(candidate);
 
-  const specificRule =
-    evidenceSpecificRule(
-      candidate
-    );
+  const specificRule = evidenceSpecificRule(candidate);
 
   const selected = [];
 
@@ -396,28 +245,11 @@ function deterministicEvidenceFallback(
    * First preserve every required
    * distinctive fact we can identify.
    */
-  for (
-    const required of
-    requiredTerms
-  ) {
-    const matching =
-      facts.find(
-        fact =>
-          phraseExists(
-            fact,
-            required
-          )
-      );
+  for (const required of requiredTerms) {
+    const matching = facts.find((fact) => phraseExists(fact, required));
 
-    if (
-      matching &&
-      !selected.includes(
-        matching
-      )
-    ) {
-      selected.push(
-        matching
-      );
+    if (matching && !selected.includes(matching)) {
+      selected.push(matching);
     }
   }
 
@@ -431,43 +263,24 @@ function deterministicEvidenceFallback(
    * intended to preserve availability
    * or request-performance context.
    */
-  if (
-    specificRule &&
-    specificRule.minOptionalMatches > 0
-  ) {
+  if (specificRule && specificRule.minOptionalMatches > 0) {
     let matches = 0;
 
-    for (
-      const fact of facts
-    ) {
-      if (
-        selected.includes(
-          fact
-        )
-      ) {
+    for (const fact of facts) {
+      if (selected.includes(fact)) {
         continue;
       }
 
-      const matchesSpecific =
-        specificRule.optionalTerms.some(
-          term =>
-            phraseExists(
-              fact,
-              term
-            )
-        );
+      const matchesSpecific = specificRule.optionalTerms.some((term) =>
+        phraseExists(fact, term)
+      );
 
       if (matchesSpecific) {
-        selected.push(
-          fact
-        );
+        selected.push(fact);
 
         matches++;
 
-        if (
-          matches >=
-          specificRule.minOptionalMatches
-        ) {
+        if (matches >= specificRule.minOptionalMatches) {
           break;
         }
       }
@@ -479,134 +292,78 @@ function deterministicEvidenceFallback(
    * anything, retain the strongest
    * available factual statement.
    */
-  if (
-    selected.length === 0
-  ) {
-    selected.push(
-      facts[0]
-    );
+  if (selected.length === 0) {
+    selected.push(facts[0]);
   }
 
-  return selected
-    .slice(0, 3)
-    .map(sentence)
-    .join(" ");
+  return selected.slice(0, 3).map(sentence).join(" ");
 }
 
-function extractJsonObject(
-  raw
-) {
-  const text =
-    String(raw || "")
-      .trim();
+function extractJsonObject(raw) {
+  const text = String(raw || "").trim();
 
   try {
-    return JSON.parse(
-      text
-    );
+    return JSON.parse(text);
   } catch {
     // continue
   }
 
-  const match =
-    text.match(
-      /\{[\s\S]*\}/
-    );
+  const match = text.match(/\{[\s\S]*\}/);
 
   if (!match) {
-    throw new Error(
-      "Model response did not contain JSON."
-    );
+    throw new Error("Model response did not contain JSON.");
   }
 
-  return JSON.parse(
-    match[0]
-  );
+  return JSON.parse(match[0]);
 }
 
-async function callOllama(
-  messages
-) {
+async function callOllama(messages) {
   let lastError;
 
-  for (
-    let attempt = 1;
-    attempt <= MAX_ATTEMPTS;
-    attempt++
-  ) {
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      const response =
-        await fetch(
-          OLLAMA_URL,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type":
-                "application/json"
-            },
-            body:
-              JSON.stringify({
-                model: MODEL,
-                stream: false,
-                format: "json",
-                messages,
-                options: {
-                  temperature: 0.1
-                }
-              })
-          }
-        );
+      const response = await fetch(OLLAMA_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          stream: false,
+          format: "json",
+          messages,
+          options: {
+            temperature: 0.1,
+          },
+        }),
+      });
 
       if (!response.ok) {
-        throw new Error(
-          `Ollama returned HTTP ${response.status}`
-        );
+        throw new Error(`Ollama returned HTTP ${response.status}`);
       }
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
-      const content =
-        data.message?.content;
+      const content = data.message?.content;
 
       if (!content) {
-        throw new Error(
-          "Ollama returned an empty response."
-        );
+        throw new Error("Ollama returned an empty response.");
       }
 
-      const parsed =
-        extractJsonObject(
-          content
-        );
+      const parsed = extractJsonObject(content);
 
-      if (
-        typeof parsed.rewritten !==
-        "string"
-      ) {
-        throw new Error(
-          'Expected {"rewritten":"..."}'
-        );
+      if (typeof parsed.rewritten !== "string") {
+        throw new Error('Expected {"rewritten":"..."}');
       }
 
-      return (
-        parsed.rewritten
-          .trim()
-      );
+      return parsed.rewritten.trim();
     } catch (error) {
       lastError = error;
 
-      if (
-        attempt <
-        MAX_ATTEMPTS
-      ) {
-        console.log(
-          `      Ollama attempt ${attempt} failed; retrying...`
-        );
+      if (attempt < MAX_ATTEMPTS) {
+        console.log(`      Ollama attempt ${attempt} failed; retrying...`);
 
-        await sleep(
-          RETRY_DELAY_MS
-        );
+        await sleep(RETRY_DELAY_MS);
       }
     }
   }
@@ -614,17 +371,12 @@ async function callOllama(
   throw lastError;
 }
 
-function causalStrengtheningIssues(
-  source,
-  proposed
-) {
+function causalStrengtheningIssues(source, proposed) {
   const issues = [];
 
-  const sourceNormalized =
-    normalize(source);
+  const sourceNormalized = normalize(source);
 
-  const proposedNormalized =
-    normalize(proposed);
+  const proposedNormalized = normalize(proposed);
 
   /*
    * Particularly important for the
@@ -634,35 +386,21 @@ function causalStrengtheningIssues(
    * must not become
    * "converted" / "helped convert".
    */
-  const cautiousConversion =
-    /contribut\w*\s+to\s+(?:the\s+)?conversion/.test(
-      sourceNormalized
-    );
-
-    if (
-  cautiousConversion &&
-  !/\bcontribut\w*\b/.test(
-    proposedNormalized
-  )
-) {
-  issues.push(
-    "causal_strengthening: cautious contribution wording was not preserved"
+  const cautiousConversion = /contribut\w*\s+to\s+(?:the\s+)?conversion/.test(
+    sourceNormalized
   );
-}
+
+  if (cautiousConversion && !/\bcontribut\w*\b/.test(proposedNormalized)) {
+    issues.push(
+      "causal_strengthening: cautious contribution wording was not preserved"
+    );
+  }
 
   if (
     cautiousConversion &&
-    (
-      /\bconverted\b/.test(
-        proposedNormalized
-      ) ||
-      /\bhelped\s+convert\b/.test(
-        proposedNormalized
-      ) ||
-      /\bled\s+to\s+the\s+conversion\b/.test(
-        proposedNormalized
-      )
-    )
+    (/\bconverted\b/.test(proposedNormalized) ||
+      /\bhelped\s+convert\b/.test(proposedNormalized) ||
+      /\bled\s+to\s+the\s+conversion\b/.test(proposedNormalized))
   ) {
     issues.push(
       "causal_strengthening: conversion attribution became stronger than the source"
@@ -671,90 +409,51 @@ function causalStrengtheningIssues(
 
   const riskyPatterns = [
     {
-      regex:
-        /\bguaranteed\b/,
-      label:
-        "guaranteed"
+      regex: /\bguaranteed\b/,
+      label: "guaranteed",
     },
     {
-      regex:
-        /\bguaranteeing\b/,
-      label:
-        "guaranteeing"
+      regex: /\bguaranteeing\b/,
+      label: "guaranteeing",
     },
     {
-      regex:
-        /\bensured\b/,
-      label:
-        "ensured"
+      regex: /\bensured\b/,
+      label: "ensured",
     },
     {
-      regex:
-        /\bensuring\b/,
-      label:
-        "ensuring"
+      regex: /\bensuring\b/,
+      label: "ensuring",
     },
     {
-      regex:
-        /\bowned\b/,
-      label:
-        "owned"
+      regex: /\bowned\b/,
+      label: "owned",
     },
     {
-      regex:
-        /\bsolely\b/,
-      label:
-        "solely"
+      regex: /\bsolely\b/,
+      label: "solely",
     },
     {
-      regex:
-        /\bsingle-handedly\b/,
-      label:
-        "single-handedly"
-    }
+      regex: /\bsingle-handedly\b/,
+      label: "single-handedly",
+    },
   ];
 
-  for (
-    const {
-      regex,
-      label
-    } of riskyPatterns
-  ) {
-    if (
-      regex.test(
-        proposedNormalized
-      ) &&
-      !regex.test(
-        sourceNormalized
-      )
-    ) {
-      issues.push(
-        `semantic_strengthening: introduced "${label}"`
-      );
+  for (const { regex, label } of riskyPatterns) {
+    if (regex.test(proposedNormalized) && !regex.test(sourceNormalized)) {
+      issues.push(`semantic_strengthening: introduced "${label}"`);
     }
   }
 
   return issues;
 }
 
-function validateRewrite(
-  candidate,
-  proposed
-) {
+function validateRewrite(candidate, proposed) {
   const issues = [];
 
-  const source =
-    candidateSourceText(
-      candidate
-    );
+  const source = candidateSourceText(candidate);
 
-  if (
-    !proposed ||
-    proposed.length < 10
-  ) {
-    issues.push(
-      "empty_or_too_short"
-    );
+  if (!proposed || proposed.length < 10) {
+    issues.push("empty_or_too_short");
 
     return issues;
   }
@@ -764,38 +463,18 @@ function validateRewrite(
       proposed
     )
   ) {
-    issues.push(
-      "meta_text"
-    );
+    issues.push("meta_text");
   }
 
-  const newNumbers =
-    introducedNumbers(
-      source,
-      proposed
-    );
+  const newNumbers = introducedNumbers(source, proposed);
 
-  if (
-    newNumbers.length
-  ) {
-    issues.push(
-      `introduced_numbers: ${newNumbers.join(", ")}`
-    );
+  if (newNumbers.length) {
+    issues.push(`introduced_numbers: ${newNumbers.join(", ")}`);
   }
 
-  for (
-    const term of
-    unsupportedTerms
-  ) {
-    if (
-      phraseExists(
-        proposed,
-        term
-      )
-    ) {
-      issues.push(
-        `unsupported_term: ${term}`
-      );
+  for (const term of unsupportedTerms) {
+    if (phraseExists(proposed, term)) {
+      issues.push(`unsupported_term: ${term}`);
     }
   }
 
@@ -808,132 +487,63 @@ function validateRewrite(
     source,
     ...(candidate.skills || []),
     ...(candidate.requiredTerms || []),
-    ...(candidate.optionalTerms || [])
+    ...(candidate.optionalTerms || []),
   ].join(" ");
 
-  for (
-    const technology of
-    mentionedTechnologies(
-      proposed
-    )
-  ) {
-    if (
-      !phraseExists(
-        allowedTechText,
-        technology
-      )
-    ) {
-      issues.push(
-        `introduced_technology: ${technology}`
-      );
+  for (const technology of mentionedTechnologies(proposed)) {
+    if (!phraseExists(allowedTechText, technology)) {
+      issues.push(`introduced_technology: ${technology}`);
     }
   }
 
-  for (
-    const required of
-    requiredTermsFor(
-      candidate
-    )
-  ) {
-    if (
-      !phraseExists(
-        proposed,
-        required
-      )
-    ) {
-      issues.push(
-        `missing_required_term: ${required}`
-      );
+  for (const required of requiredTermsFor(candidate)) {
+    if (!phraseExists(proposed, required)) {
+      issues.push(`missing_required_term: ${required}`);
     }
   }
 
-  const optionalTerms =
-    optionalTermsFor(
-      candidate
-    );
+  const optionalTerms = optionalTermsFor(candidate);
 
-  const minOptional =
-    minOptionalMatchesFor(
-      candidate
-    );
+  const minOptional = minOptionalMatchesFor(candidate);
 
-  if (
-    minOptional > 0
-  ) {
-    const optionalMatches =
-      optionalTerms.filter(
-        term =>
-          phraseExists(
-            proposed,
-            term
-          )
-      ).length;
+  if (minOptional > 0) {
+    const optionalMatches = optionalTerms.filter((term) =>
+      phraseExists(proposed, term)
+    ).length;
 
-    if (
-      optionalMatches <
-      minOptional
-    ) {
+    if (optionalMatches < minOptional) {
       issues.push(
         `missing_optional_context: expected ${minOptional}, found ${optionalMatches}`
       );
     }
   }
 
-  const specificRule =
-  evidenceSpecificRule(
-    candidate
-  );
+  const specificRule = evidenceSpecificRule(candidate);
 
-if (
-  specificRule &&
-  specificRule.minOptionalMatches > 0
-) {
-  const matches =
-    specificRule.optionalTerms
-      .filter(
-        term =>
-          phraseExists(
-            proposed,
-            term
-          )
-      )
-      .length;
+  if (specificRule && specificRule.minOptionalMatches > 0) {
+    const matches = specificRule.optionalTerms.filter((term) =>
+      phraseExists(proposed, term)
+    ).length;
 
-  if (
-    matches <
-    specificRule.minOptionalMatches
-  ) {
-    issues.push(
-      `missing_distinctive_context: expected ${specificRule.minOptionalMatches} of [${specificRule.optionalTerms.join(", ")}], found ${matches}`
-    );
+    if (matches < specificRule.minOptionalMatches) {
+      issues.push(
+        `missing_distinctive_context: expected ${specificRule.minOptionalMatches} of [${specificRule.optionalTerms.join(", ")}], found ${matches}`
+      );
+    }
   }
-}
 
   /*
    * Preserve the full DDD name whenever
    * the original evidence contains it.
    */
   if (
-    phraseExists(
-      source,
-      "Domain-Driven Design"
-    ) &&
-    !phraseExists(
-      proposed,
-      "Domain-Driven Design"
-    )
+    phraseExists(source, "Domain-Driven Design") &&
+    !phraseExists(proposed, "Domain-Driven Design")
   ) {
-    issues.push(
-      "ddd_full_name_removed"
-    );
+    issues.push("ddd_full_name_removed");
   }
 
-  issues.push(
-    ...causalStrengtheningIssues(
-      source,
-      proposed
-    )
-  );
+  issues.push(...causalStrengtheningIssues(source, proposed));
 
   return issues;
 }
@@ -961,9 +571,7 @@ Return JSON only:
 `.trim();
 }
 
-function userPromptForResumeBullet(
-  candidate
-) {
+function userPromptForResumeBullet(candidate) {
   return `
 Rewrite this resume bullet conservatively.
 
@@ -980,9 +588,7 @@ Do not introduce any facts not present in SOURCE.
 `.trim();
 }
 
-function userPromptForEvidence(
-  candidate
-) {
+function userPromptForEvidence(candidate) {
   return `
 Create one concise resume bullet using ONLY the factual evidence below.
 
@@ -990,12 +596,7 @@ EVIDENCE ID:
 ${candidate.evidenceId || candidate.id}
 
 FACTS:
-${(candidate.facts || [])
-  .map(
-    fact =>
-      `- ${fact}`
-  )
-  .join("\n")}
+${(candidate.facts || []).map((fact) => `- ${fact}`).join("\n")}
 
 SKILLS EXPLICITLY SUPPORTED BY THIS EVIDENCE:
 ${(candidate.skills || []).join(", ") || "none"}
@@ -1011,37 +612,18 @@ Do not combine this evidence with facts from another project.
 `.trim();
 }
 
-async function rewriteCandidate(
-  candidate
-) {
+async function rewriteCandidate(candidate) {
   const source =
-    candidate.type ===
-    "evidence"
+    candidate.type === "evidence"
       ? {
-          evidenceId:
-            candidate.evidenceId ||
-            candidate.id,
-          facts:
-            candidate.facts ||
-            [],
-          skills:
-            candidate.skills ||
-            [],
-          coverageReason:
-            candidate.coverageReason ||
-            [],
-          requiredTerms:
-            candidate.requiredTerms ||
-            [],
-          optionalTerms:
-            candidate.optionalTerms ||
-            [],
-          priorityFacts:
-            candidate.priorityFacts ||
-            [],
-          distinctiveRule:
-            candidate.distinctiveRule ||
-            null
+          evidenceId: candidate.evidenceId || candidate.id,
+          facts: candidate.facts || [],
+          skills: candidate.skills || [],
+          coverageReason: candidate.coverageReason || [],
+          requiredTerms: candidate.requiredTerms || [],
+          optionalTerms: candidate.optionalTerms || [],
+          priorityFacts: candidate.priorityFacts || [],
+          distinctiveRule: candidate.distinctiveRule || null,
         }
       : candidate.text;
 
@@ -1049,31 +631,21 @@ async function rewriteCandidate(
   let generationError = null;
 
   try {
-    proposed =
-      await callOllama([
-        {
-          role: "system",
-          content:
-            systemPrompt()
-        },
-        {
-          role: "user",
-          content:
-            candidate.type ===
-            "evidence"
-              ? userPromptForEvidence(
-                  candidate
-                )
-              : userPromptForResumeBullet(
-                  candidate
-                )
-        }
-      ]);
+    proposed = await callOllama([
+      {
+        role: "system",
+        content: systemPrompt(),
+      },
+      {
+        role: "user",
+        content:
+          candidate.type === "evidence"
+            ? userPromptForEvidence(candidate)
+            : userPromptForResumeBullet(candidate),
+      },
+    ]);
   } catch (error) {
-    generationError =
-      error instanceof Error
-        ? error.message
-        : String(error);
+    generationError = error instanceof Error ? error.message : String(error);
   }
 
   /*
@@ -1083,42 +655,20 @@ async function rewriteCandidate(
    * evidence must NOT make the factual
    * evidence disappear from the CV.
    */
-  if (
-    generationError &&
-    candidate.type ===
-    "evidence"
-  ) {
-    const fallback =
-      deterministicEvidenceFallback(
-        candidate
-      );
+  if (generationError && candidate.type === "evidence") {
+    const fallback = deterministicEvidenceFallback(candidate);
 
-    const fallbackIssues =
-      validateRewrite(
-        candidate,
-        fallback
-      );
+    const fallbackIssues = validateRewrite(candidate, fallback);
 
     return {
       candidate,
-      accepted:
-        fallbackIssues.length ===
-        0,
+      accepted: fallbackIssues.length === 0,
       source,
       proposed: null,
-      final:
-        fallbackIssues.length ===
-        0
-          ? fallback
-          : null,
-      fallback:
-        fallbackIssues.length ===
-        0
-          ? "deterministic-evidence"
-          : null,
+      final: fallbackIssues.length === 0 ? fallback : null,
+      fallback: fallbackIssues.length === 0 ? "deterministic-evidence" : null,
       generationError,
-      issues:
-        fallbackIssues
+      issues: fallbackIssues,
     };
   }
 
@@ -1127,34 +677,22 @@ async function rewriteCandidate(
    * factual. If Ollama is unavailable,
    * preserve the original bullet.
    */
-  if (
-    generationError &&
-    candidate.type ===
-    "resume-bullet"
-  ) {
+  if (generationError && candidate.type === "resume-bullet") {
     return {
       candidate,
       accepted: true,
       source,
       proposed: null,
-      final:
-        candidate.text,
-      fallback:
-        "original-resume-bullet",
+      final: candidate.text,
+      fallback: "original-resume-bullet",
       generationError,
-      issues: []
+      issues: [],
     };
   }
 
-  const issues =
-    validateRewrite(
-      candidate,
-      proposed
-    );
+  const issues = validateRewrite(candidate, proposed);
 
-  if (
-    issues.length === 0
-  ) {
+  if (issues.length === 0) {
     return {
       candidate,
       accepted: true,
@@ -1163,7 +701,7 @@ async function rewriteCandidate(
       final: proposed,
       fallback: null,
       generationError: null,
-      issues: []
+      issues: [],
     };
   }
 
@@ -1171,21 +709,16 @@ async function rewriteCandidate(
    * Unsafe rewrite of an existing
    * resume bullet -> retain the original.
    */
-  if (
-    candidate.type ===
-    "resume-bullet"
-  ) {
+  if (candidate.type === "resume-bullet") {
     return {
       candidate,
       accepted: false,
       source,
       proposed,
-      final:
-        candidate.text,
-      fallback:
-        "original-resume-bullet",
+      final: candidate.text,
+      fallback: "original-resume-bullet",
       generationError: null,
-      issues
+      issues,
     };
   }
 
@@ -1193,339 +726,159 @@ async function rewriteCandidate(
    * Unsafe LLM output from evidence ->
    * use deterministic factual fallback.
    */
-  const fallback =
-    deterministicEvidenceFallback(
-      candidate
-    );
+  const fallback = deterministicEvidenceFallback(candidate);
 
-  const fallbackIssues =
-    validateRewrite(
-      candidate,
-      fallback
-    );
+  const fallbackIssues = validateRewrite(candidate, fallback);
 
   return {
     candidate,
-    accepted:
-      fallbackIssues.length ===
-      0,
+    accepted: fallbackIssues.length === 0,
     source,
     proposed,
-    final:
-      fallbackIssues.length ===
-      0
-        ? fallback
-        : null,
-    fallback:
-      fallbackIssues.length ===
-      0
-        ? "deterministic-evidence"
-        : null,
+    final: fallbackIssues.length === 0 ? fallback : null,
+    fallback: fallbackIssues.length === 0 ? "deterministic-evidence" : null,
     generationError: null,
-    issues: [
-      ...issues,
-      ...fallbackIssues.map(
-        issue =>
-          `fallback:${issue}`
-      )
-    ]
+    issues: [...issues, ...fallbackIssues.map((issue) => `fallback:${issue}`)],
   };
 }
 
-function getRoles(
-  plan
-) {
-  if (
-    Array.isArray(
-      plan.roles
-    )
-  ) {
+function getRoles(plan) {
+  if (Array.isArray(plan.roles)) {
     return plan.roles;
   }
 
-  if (
-    Array.isArray(
-      plan.work
-    )
-  ) {
+  if (Array.isArray(plan.work)) {
     return plan.work;
   }
 
-  if (
-    Array.isArray(
-      plan.selectedRoles
-    )
-  ) {
+  if (Array.isArray(plan.selectedRoles)) {
     return plan.selectedRoles;
   }
 
-  throw new Error(
-    "Could not find roles in tailoring plan."
-  );
+  throw new Error("Could not find roles in tailoring plan.");
 }
 
-function getRoleCandidates(
-  role
-) {
-  if (
-    Array.isArray(
-      role.selectedCandidates
-    )
-  ) {
+function getRoleCandidates(role) {
+  if (Array.isArray(role.selectedCandidates)) {
     return role.selectedCandidates;
   }
 
-  if (
-    Array.isArray(
-      role.selected
-    )
-  ) {
+  if (Array.isArray(role.selected)) {
     return role.selected;
   }
 
-  if (
-    Array.isArray(
-      role.items
-    )
-  ) {
+  if (Array.isArray(role.items)) {
     return role.items;
   }
 
-  if (
-    Array.isArray(
-      role.candidates
-    )
-  ) {
-    const explicitlySelected =
-      role.candidates.filter(
-        candidate =>
-          candidate.selected === true
-      );
+  if (Array.isArray(role.candidates)) {
+    const explicitlySelected = role.candidates.filter(
+      (candidate) => candidate.selected === true
+    );
 
-    return explicitlySelected.length
-      ? explicitlySelected
-      : role.candidates;
+    return explicitlySelected.length ? explicitlySelected : role.candidates;
   }
 
   return [];
 }
 
-function roleCompany(
-  role
-) {
+function roleCompany(role) {
+  return role.company || role.name || role.organization || "";
+}
+
+function rolePosition(role) {
+  return role.position || role.title || "";
+}
+
+function sameRole(work, role) {
   return (
-    role.company ||
-    role.name ||
-    role.organization ||
-    ""
+    normalize(work.name) === normalize(roleCompany(role)) &&
+    normalize(work.position) === normalize(rolePosition(role))
   );
 }
 
-function rolePosition(
-  role
-) {
-  return (
-    role.position ||
-    role.title ||
-    ""
-  );
-}
-
-function sameRole(
-  work,
-  role
-) {
-  return (
-    normalize(
-      work.name
-    ) ===
-      normalize(
-        roleCompany(role)
-      ) &&
-    normalize(
-      work.position
-    ) ===
-      normalize(
-        rolePosition(role)
-      )
-  );
-}
-
-const rewrittenResume =
-  structuredClone(
-    resume
-  );
+const rewrittenResume = structuredClone(resume);
 
 const report = {
   model: MODEL,
-  generatedAt:
-    new Date().toISOString(),
-  roles: []
+  generatedAt: new Date().toISOString(),
+  roles: [],
 };
 
-const roles =
-  getRoles(
-    plan
-  );
+const roles = getRoles(plan);
 
-for (
-  const role of roles
-) {
-  const company =
-    roleCompany(
-      role
-    );
+for (const role of roles) {
+  const company = roleCompany(role);
 
-  const position =
-    rolePosition(
-      role
-    );
+  const position = rolePosition(role);
 
-  console.log(
-    `\n${company} — ${position}`
-  );
+  console.log(`\n${company} — ${position}`);
 
   const roleReport = {
     company,
     position,
-    items: []
+    items: [],
   };
 
-  const candidates =
-    getRoleCandidates(
-      role
-    );
+  const candidates = getRoleCandidates(role);
 
-  const rewrittenHighlights =
-    [];
+  const rewrittenHighlights = [];
 
-  for (
-    const candidate of
-    candidates
-  ) {
-    const result =
-      await rewriteCandidate(
-        candidate
-      );
+  for (const candidate of candidates) {
+    const result = await rewriteCandidate(candidate);
 
-    roleReport.items.push(
-      result
-    );
+    roleReport.items.push(result);
 
-    if (
-      result.final
-    ) {
-      rewrittenHighlights.push(
-        result.final
-      );
+    if (result.final) {
+      rewrittenHighlights.push(result.final);
     }
 
-    const type =
-      candidate.type ||
-      "candidate";
+    const type = candidate.type || "candidate";
 
-    if (
-      result.generationError &&
-      result.fallback
-    ) {
-      console.log(
-        `  ↪ ${type}: Ollama failed; used ${result.fallback}`
-      );
+    if (result.generationError && result.fallback) {
+      console.log(`  ↪ ${type}: Ollama failed; used ${result.fallback}`);
 
-      console.log(
-        `      ${result.final}`
-      );
+      console.log(`      ${result.final}`);
 
       continue;
     }
 
-    if (
-      result.issues.length
-    ) {
-      console.log(
-        `  ↪ ${type}: unsafe rewrite rejected`
-      );
+    if (result.issues.length) {
+      console.log(`  ↪ ${type}: unsafe rewrite rejected`);
 
-      for (
-        const issue of
-        result.issues
-      ) {
-        console.log(
-          `      ${issue}`
-        );
+      for (const issue of result.issues) {
+        console.log(`      ${issue}`);
       }
 
-      if (
-        result.fallback
-      ) {
-        console.log(
-          `      fallback: ${result.fallback}`
-        );
+      if (result.fallback) {
+        console.log(`      fallback: ${result.fallback}`);
 
-        console.log(
-          `      ${result.final}`
-        );
+        console.log(`      ${result.final}`);
       }
 
       continue;
     }
 
-    console.log(
-      `  ✓ ${type}: ${result.final}`
-    );
+    console.log(`  ✓ ${type}: ${result.final}`);
   }
 
-  const workEntry =
-    rewrittenResume.work
-      ?.find(
-        work =>
-          sameRole(
-            work,
-            role
-          )
-      );
+  const workEntry = rewrittenResume.work?.find((work) => sameRole(work, role));
 
   if (workEntry) {
-    workEntry.highlights =
-      rewrittenHighlights;
+    workEntry.highlights = rewrittenHighlights;
   }
 
-  report.roles.push(
-    roleReport
-  );
+  report.roles.push(roleReport);
 }
 
-await fs.mkdir(
-  path.dirname(
-    outputPath
-  ),
-  {
-    recursive: true
-  }
-);
+await fs.mkdir(path.dirname(outputPath), {
+  recursive: true,
+});
 
-await fs.writeFile(
-  outputPath,
-  JSON.stringify(
-    rewrittenResume,
-    null,
-    2
-  ) + "\n"
-);
+await fs.writeFile(outputPath, JSON.stringify(rewrittenResume, null, 2) + "\n");
 
-await fs.writeFile(
-  reportPath,
-  JSON.stringify(
-    report,
-    null,
-    2
-  ) + "\n"
-);
+await fs.writeFile(reportPath, JSON.stringify(report, null, 2) + "\n");
 
-console.log(
-  `\nRewritten resume: ${outputPath}`
-);
+console.log(`\nRewritten resume: ${outputPath}`);
 
-console.log(
-  `Rewrite report: ${reportPath}`
-);
+console.log(`Rewrite report: ${reportPath}`);

@@ -4,9 +4,7 @@ import addFormats from "ajv-formats";
 
 const resumePath = "data/resumes/base.json";
 
-const resume = JSON.parse(
-  await fs.readFile(resumePath, "utf8")
-);
+const resume = JSON.parse(await fs.readFile(resumePath, "utf8"));
 
 const schemaResponse = await fetch(
   "https://raw.githubusercontent.com/jsonresume/resume-schema/master/schema.json"
@@ -22,7 +20,7 @@ const schema = await schemaResponse.json();
 
 const ajv = new Ajv({
   allErrors: true,
-  strict: false
+  strict: false,
 });
 
 addFormats(ajv);
@@ -39,14 +37,10 @@ if (valid) {
 console.error("✗ Resume is invalid.\n");
 
 for (const error of validate.errors ?? []) {
-  console.error(
-    `${error.instancePath || "/"}: ${error.message}`
-  );
+  console.error(`${error.instancePath || "/"}: ${error.message}`);
 
   if (error.params) {
-    console.error(
-      `  ${JSON.stringify(error.params)}`
-    );
+    console.error(`  ${JSON.stringify(error.params)}`);
   }
 }
 

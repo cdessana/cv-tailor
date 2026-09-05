@@ -14,7 +14,7 @@
       {
         "network": "LinkedIn",
         "username": "Carmina Nascimento",
-        "url": "https://www.linkedin.com/in/carmina-nascimento/"  
+        "url": "https://www.linkedin.com/in/carmina-nascimento/"
       }
     ]
   },
@@ -153,25 +153,15 @@
     {
       "name": "Architecture Concepts",
       "level": "Familiar",
-      "keywords": [
-        "Clean Architecture"
-      ]
+      "keywords": ["Clean Architecture"]
     },
     {
       "name": "Frontend",
-      "keywords": [
-        "JavaScript",
-        "TypeScript",
-        "Angular"
-      ]
+      "keywords": ["JavaScript", "TypeScript", "Angular"]
     },
     {
       "name": "Data",
-      "keywords": [
-        "SQL",
-        "MySQL",
-        "MongoDB"
-      ]
+      "keywords": ["SQL", "MySQL", "MongoDB"]
     },
     {
       "name": "Cloud & DevOps",
@@ -203,9 +193,7 @@
     },
     {
       "name": "Other",
-      "keywords": [
-        "C++"
-      ]
+      "keywords": ["C++"]
     }
   ],
   "languages": [

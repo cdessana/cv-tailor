@@ -1,10 +1,7 @@
 import fs from "node:fs/promises";
 
-const [
-  resumePath,
-  jobPath,
-  aliasesPath = "data/aliases.json"
-] = process.argv.slice(2);
+const [resumePath, jobPath, aliasesPath = "data/aliases.json"] =
+  process.argv.slice(2);
 
 if (!resumePath || !jobPath) {
   console.error(
@@ -13,17 +10,11 @@ if (!resumePath || !jobPath) {
   process.exit(1);
 }
 
-const resume = JSON.parse(
-  await fs.readFile(resumePath, "utf8")
-);
+const resume = JSON.parse(await fs.readFile(resumePath, "utf8"));
 
-const job = JSON.parse(
-  await fs.readFile(jobPath, "utf8")
-);
+const job = JSON.parse(await fs.readFile(jobPath, "utf8"));
 
-const aliases = JSON.parse(
-  await fs.readFile(aliasesPath, "utf8")
-);
+const aliases = JSON.parse(await fs.readFile(aliasesPath, "utf8"));
 
 function normalize(value) {
   return String(value)
@@ -56,7 +47,7 @@ function collectResumeData(resume) {
       skills.push({
         term: keyword,
         group: skillGroup.name ?? null,
-        level
+        level,
       });
     }
   }
@@ -67,14 +58,14 @@ function collectResumeData(resume) {
         type: "work",
         company: work.name,
         position: work.position,
-        text: highlight
+        text: highlight,
       });
     }
   }
 
   return {
     skills,
-    evidence
+    evidence,
   };
 }
 
@@ -109,7 +100,7 @@ function findEquivalentSkill(term) {
     if (match) {
       return {
         alias,
-        match
+        match,
       };
     }
   }
@@ -123,7 +114,7 @@ function findEvidence(term) {
       if (phraseExists(candidate, item.text)) {
         return {
           candidate,
-          evidence: item
+          evidence: item,
         };
       }
     }
@@ -136,20 +127,18 @@ function classify(term) {
   const exact = findExactSkill(term);
 
   if (exact) {
-    if (
-      String(exact.level ?? "").toLowerCase() === "familiar"
-    ) {
+    if (String(exact.level ?? "").toLowerCase() === "familiar") {
       return {
         status: "related",
         reason: `listed as familiar: ${exact.term}`,
-        evidence: null
+        evidence: null,
       };
     }
 
     return {
       status: "exact",
       reason: `explicit skill: ${exact.term}`,
-      evidence: null
+      evidence: null,
     };
   }
 
@@ -159,7 +148,7 @@ function classify(term) {
     return {
       status: "equivalent",
       reason: `equivalent to: ${equivalent.match.term}`,
-      evidence: null
+      evidence: null,
     };
   }
 
@@ -169,21 +158,21 @@ function classify(term) {
     return {
       status: "related",
       reason: `related evidence: ${evidence.candidate}`,
-      evidence: evidence.evidence
+      evidence: evidence.evidence,
     };
   }
 
   return {
     status: "missing",
     reason: null,
-    evidence: null
+    evidence: null,
   };
 }
 
 function analyze(items) {
   return items.map((term) => ({
     term,
-    ...classify(term)
+    ...classify(term),
   }));
 }
 
@@ -228,9 +217,7 @@ function score(results) {
     }
   }, 0);
 
-  return Math.round(
-    (points / Math.max(results.length, 1)) * 100
-  );
+  return Math.round((points / Math.max(results.length, 1)) * 100);
 }
 
 function printSection(title, results) {
@@ -238,9 +225,7 @@ function printSection(title, results) {
   console.log("-".repeat(title.length));
 
   for (const item of results) {
-    console.log(
-      `${icon(item.status)} ${item.term} [${label(item.status)}]`
-    );
+    console.log(`${icon(item.status)} ${item.term} [${label(item.status)}]`);
 
     if (item.reason) {
       console.log(`  ${item.reason}`);
@@ -251,9 +236,7 @@ function printSection(title, results) {
         `  evidence: ${item.evidence.company} — ${item.evidence.position}`
       );
 
-      console.log(
-        `  "${item.evidence.text}"`
-      );
+      console.log(`  "${item.evidence.text}"`);
     }
   }
 
@@ -262,48 +245,25 @@ function printSection(title, results) {
 
 const requirements = job.requirements ?? {};
 
-const required = analyze(
-  requirements.required ?? []
-);
+const required = analyze(requirements.required ?? []);
 
-const preferred = analyze(
-  requirements.preferred ?? []
-);
+const preferred = analyze(requirements.preferred ?? []);
 
-const competencies = analyze(
-  requirements.competencies ?? []
-);
+const competencies = analyze(requirements.competencies ?? []);
 
-console.log(
-  `\n${job.company} — ${job.title}`
-);
+console.log(`\n${job.company} — ${job.title}`);
 
-printSection(
-  "CORE REQUIREMENTS",
-  required
-);
+printSection("CORE REQUIREMENTS", required);
 
-printSection(
-  "PREFERRED",
-  preferred
-);
+printSection("PREFERRED", preferred);
 
-printSection(
-  "ENGINEERING COMPETENCIES",
-  competencies
-);
+printSection("ENGINEERING COMPETENCIES", competencies);
 
 console.log("\nSUMMARY");
 console.log("-------");
 
-console.log(
-  `Core requirements:        ${score(required)}%`
-);
+console.log(`Core requirements:        ${score(required)}%`);
 
-console.log(
-  `Preferred:                ${score(preferred)}%`
-);
+console.log(`Preferred:                ${score(preferred)}%`);
 
-console.log(
-  `Engineering competencies: ${score(competencies)}%`
-);
+console.log(`Engineering competencies: ${score(competencies)}%`);
