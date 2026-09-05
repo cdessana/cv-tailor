@@ -6,7 +6,7 @@ const [
   resumePath,
   planPath,
   outputPath = "output/flash/resume-final.json",
-  reportPath = "output/flash/summary-report.json"
+  reportPath = "output/flash/summary-report.json",
 ] = process.argv.slice(2);
 
 if (!resumePath || !planPath) {
@@ -16,17 +16,11 @@ if (!resumePath || !planPath) {
   process.exit(1);
 }
 
-const resume = JSON.parse(
-  await fs.readFile(resumePath, "utf8")
-);
+const resume = JSON.parse(await fs.readFile(resumePath, "utf8"));
 
-const plan = JSON.parse(
-  await fs.readFile(planPath, "utf8")
-);
+const plan = JSON.parse(await fs.readFile(planPath, "utf8"));
 
-const model =
-  process.env.OLLAMA_MODEL ??
-  "granite4.2:3b-q4_K_S";
+const model = process.env.OLLAMA_MODEL ?? "granite4.2:3b-q4_K_S";
 
 function normalize(value) {
   return String(value)
@@ -38,33 +32,16 @@ function normalize(value) {
     .trim();
 }
 
-function phraseExists(
-  phrase,
-  text
-) {
-  const needle =
-    normalize(
-      phrase
-    );
+function phraseExists(phrase, text) {
+  const needle = normalize(phrase);
 
-  const haystack =
-    normalize(
-      text
-    );
+  const haystack = normalize(text);
 
-  if (
-    !needle ||
-    !haystack
-  ) {
+  if (!needle || !haystack) {
     return false;
   }
 
-  return (
-    ` ${haystack} `
-      .includes(
-        ` ${needle} `
-      )
-  );
+  return ` ${haystack} `.includes(` ${needle} `);
 }
 
 function unique(values) {
@@ -78,13 +55,10 @@ function unique(values) {
  */
 
 const summarySchema = z.object({
-  summary: z.string().min(1)
+  summary: z.string().min(1),
 });
 
-const summaryJsonSchema =
-  z.toJSONSchema(
-    summarySchema
-  );
+const summaryJsonSchema = z.toJSONSchema(summarySchema);
 
 /*
  * ----------------------------------------
@@ -132,70 +106,34 @@ const technologyPatterns = [
   "LINQ",
   "Swagger",
   "Serilog",
-  "JWT"
+  "JWT",
 ];
 
 function detectTechnologies(text) {
-  const normalized =
-    normalize(text);
+  const normalized = normalize(text);
 
   return unique(
-    technologyPatterns.filter(
-      (technology) =>
-        normalized.includes(
-          normalize(technology)
-        )
+    technologyPatterns.filter((technology) =>
+      normalized.includes(normalize(technology))
     )
   );
 }
 
 function canonicalTechnology(value) {
-  const normalized =
-    normalize(value);
+  const normalized = normalize(value);
 
   const groups = [
-    [
-      "Node.js",
-      "NodeJS"
-    ],
-    [
-      "REST",
-      "REST APIs",
-      "RESTful APIs"
-    ],
-    [
-      "GCP",
-      "Google Cloud",
-      "Google Cloud Platform"
-    ],
-    [
-      ".NET",
-      ".NET Core"
-    ],
-    [
-      "CI/CD",
-      "GitLab CI"
-    ],
-    [
-      "RPC",
-      "gRPC"
-    ]
+    ["Node.js", "NodeJS"],
+    ["REST", "REST APIs", "RESTful APIs"],
+    ["GCP", "Google Cloud", "Google Cloud Platform"],
+    [".NET", ".NET Core"],
+    ["CI/CD", "GitLab CI"],
+    ["RPC", "gRPC"],
   ];
 
-  for (
-    const group
-    of groups
-  ) {
-    if (
-      group.some(
-        (item) =>
-          normalize(item) ===
-          normalized
-      )
-    ) {
-      return normalize(
-        group[0]
-      );
+  for (const group of groups) {
+    if (group.some((item) => normalize(item) === normalized)) {
+      return normalize(group[0]);
     }
   }
 
@@ -208,57 +146,29 @@ function canonicalTechnology(value) {
  * ----------------------------------------
  */
 
-const workEvidence =
-  (resume.work ?? [])
-    .map(
-      (work) => {
-        const bullets =
-          work.highlights ?? [];
+const workEvidence = (resume.work ?? []).map((work) => {
+  const bullets = work.highlights ?? [];
 
-        const text =
-          bullets.join(" ");
+  const text = bullets.join(" ");
 
-        return {
-          company:
-            work.name,
+  return {
+    company: work.name,
 
-          position:
-            work.position,
+    position: work.position,
 
-          bullets,
+    bullets,
 
-          text,
+    text,
 
-          technologies:
-            unique(
-              detectTechnologies(
-                text
-              )
-                .map(
-                  canonicalTechnology
-                )
-            )
-        };
-      }
-    );
+    technologies: unique(detectTechnologies(text).map(canonicalTechnology)),
+  };
+});
 
-const professionalText =
-  workEvidence
-    .map(
-      (item) =>
-        item.text
-    )
-    .join(" ");
+const professionalText = workEvidence.map((item) => item.text).join(" ");
 
-const professionalTechnologies =
-  unique(
-    detectTechnologies(
-      professionalText
-    )
-      .map(
-        canonicalTechnology
-      )
-  );
+const professionalTechnologies = unique(
+  detectTechnologies(professionalText).map(canonicalTechnology)
+);
 
 /*
  * ----------------------------------------
@@ -266,38 +176,19 @@ const professionalTechnologies =
  * ----------------------------------------
  */
 
-const targetCoverage =
-  (
-    plan.globalCoverage ??
-    []
-  )
-    .filter(
-      (item) =>
-        item.covered
-    )
-    .map(
-      (item) => ({
-        term:
-          item.term,
+const targetCoverage = (plan.globalCoverage ?? [])
+  .filter((item) => item.covered)
+  .map((item) => ({
+    term: item.term,
 
-        category:
-          item.category,
+    category: item.category,
 
-        status:
-          item.status
-      })
-    );
+    status: item.status,
+  }));
 
-const unsupportedTerms =
-  (
-    plan.safety
-      ?.unsupportedTerms ??
-    []
-  )
-    .map(
-      (item) =>
-        item.term
-    );
+const unsupportedTerms = (plan.safety?.unsupportedTerms ?? []).map(
+  (item) => item.term
+);
 
 /*
  * ----------------------------------------
@@ -305,17 +196,11 @@ const unsupportedTerms =
  * ----------------------------------------
  */
 
-const originalSummary =
-  resume.basics
-    ?.summary ??
-  "";
+const originalSummary = resume.basics?.summary ?? "";
 
-const originalNumberTokens =
-  new Set(
-    originalSummary.match(
-      /\b\d+\+?%?\b/g
-    ) ?? []
-  );
+const originalNumberTokens = new Set(
+  originalSummary.match(/\b\d+\+?%?\b/g) ?? []
+);
 
 /*
  * ----------------------------------------
@@ -326,13 +211,8 @@ const originalNumberTokens =
 function splitSentences(text) {
   return String(text)
     .trim()
-    .split(
-      /(?<=[.!?])\s+/
-    )
-    .map(
-      (sentence) =>
-        sentence.trim()
-    )
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
     .filter(Boolean);
 }
 
@@ -344,17 +224,8 @@ function splitSentences(text) {
 
 function unsupportedTermIssues(text) {
   return unsupportedTerms
-    .filter(
-      (term) =>
-        phraseExists(
-          term,
-          text
-        )
-    )
-    .map(
-      (term) =>
-        `Unsupported job term introduced: ${term}`
-    );
+    .filter((term) => phraseExists(term, text))
+    .map((term) => `Unsupported job term introduced: ${term}`);
 }
 
 /*
@@ -364,19 +235,12 @@ function unsupportedTermIssues(text) {
  */
 
 function technologyIssues(text) {
-  const detected =
-    detectTechnologies(
-      text
-    );
+  const detected = detectTechnologies(text);
 
   return detected
     .filter(
       (technology) =>
-        !professionalTechnologies.includes(
-          canonicalTechnology(
-            technology
-          )
-        )
+        !professionalTechnologies.includes(canonicalTechnology(technology))
     )
     .map(
       (technology) =>
@@ -391,23 +255,12 @@ function technologyIssues(text) {
  */
 
 function numberIssues(text) {
-  const numbers =
-    text.match(
-      /\b\d+\+?%?\b/g
-    ) ?? [];
+  const numbers = text.match(/\b\d+\+?%?\b/g) ?? [];
 
   return unique(
     numbers
-      .filter(
-        (number) =>
-          !originalNumberTokens.has(
-            number
-          )
-      )
-      .map(
-        (number) =>
-          `New number introduced in summary: ${number}`
-      )
+      .filter((number) => !originalNumberTokens.has(number))
+      .map((number) => `New number introduced in summary: ${number}`)
   );
 }
 
@@ -418,46 +271,26 @@ function numberIssues(text) {
  */
 
 function lengthIssues(text) {
-  const words =
-    String(text)
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
+  const words = String(text).trim().split(/\s+/).filter(Boolean);
 
   const issues = [];
 
-  if (
-    words.length > 85
-  ) {
-    issues.push(
-      `Summary too long: ${words.length} words`
-    );
+  if (words.length > 85) {
+    issues.push(`Summary too long: ${words.length} words`);
   }
 
-  if (
-    words.length < 30
-  ) {
-    issues.push(
-      `Summary too short: ${words.length} words`
-    );
+  if (words.length < 30) {
+    issues.push(`Summary too short: ${words.length} words`);
   }
 
   return issues;
 }
 
 function sentenceIssues(text) {
-  const sentences =
-    splitSentences(
-      text
-    );
+  const sentences = splitSentences(text);
 
-  if (
-    sentences.length < 2 ||
-    sentences.length > 3
-  ) {
-    return [
-      `Summary must contain 2 or 3 sentences; found ${sentences.length}`
-    ];
+  if (sentences.length < 2 || sentences.length > 3) {
+    return [`Summary must contain 2 or 3 sentences; found ${sentences.length}`];
   }
 
   return [];
@@ -470,128 +303,99 @@ function sentenceIssues(text) {
  */
 
 function forbiddenClaimsIssues(text) {
-  const normalized =
-    normalize(text);
+  const normalized = normalize(text);
 
   const patterns = [
     {
-      term:
-        "expert in",
+      term: "expert in",
 
-      reason:
-        'Avoid unverified "expert" level'
+      reason: 'Avoid unverified "expert" level',
     },
 
     {
-      term:
-        "deep expertise",
+      term: "deep expertise",
 
-      reason:
-        "Avoid unverified expertise-strength claim"
+      reason: "Avoid unverified expertise-strength claim",
     },
 
     {
-      term:
-        "extensive experience with react",
+      term: "extensive experience with react",
 
       reason:
-        "React is supported by certification, not professional work evidence"
+        "React is supported by certification, not professional work evidence",
     },
 
     {
-      term:
-        "ensure code quality",
+      term: "ensure code quality",
 
-      reason:
-        "Avoid broad guarantee-style claim about code quality"
+      reason: "Avoid broad guarantee-style claim about code quality",
     },
 
     {
-      term:
-        "ensuring code quality",
+      term: "ensuring code quality",
 
-      reason:
-        "Avoid broad guarantee-style claim about code quality"
+      reason: "Avoid broad guarantee-style claim about code quality",
     },
 
     {
-      term:
-        "enforce ci cd",
+      term: "enforce ci cd",
 
       reason:
-        "Avoid stronger ownership claim for CI/CD than the evidence supports"
+        "Avoid stronger ownership claim for CI/CD than the evidence supports",
     },
 
     {
-      term:
-        "enforcing ci cd",
+      term: "enforcing ci cd",
 
       reason:
-        "Avoid stronger ownership claim for CI/CD than the evidence supports"
+        "Avoid stronger ownership claim for CI/CD than the evidence supports",
     },
 
     {
-      term:
-        "regular code reviews",
+      term: "regular code reviews",
 
-      reason:
-        "Code review frequency is not supported by the evidence"
+      reason: "Code review frequency is not supported by the evidence",
     },
 
     {
-      term:
-        "maintaining high availability",
+      term: "maintaining high availability",
 
       reason:
-        "Availability is supported only as an engineering concern, not as a verified achieved level"
+        "Availability is supported only as an engineering concern, not as a verified achieved level",
     },
 
     {
-      term:
-        "maintained high availability",
+      term: "maintained high availability",
 
       reason:
-        "Availability is supported only as an engineering concern, not as a verified achieved level"
+        "Availability is supported only as an engineering concern, not as a verified achieved level",
     },
 
     {
-      term:
-        "achieving high availability",
+      term: "achieving high availability",
 
       reason:
-        "Availability is supported only as an engineering concern, not as a verified outcome"
+        "Availability is supported only as an engineering concern, not as a verified outcome",
     },
 
     {
-      term:
-        "delivering high availability",
+      term: "delivering high availability",
 
       reason:
-        "Availability is supported only as an engineering concern, not as a verified outcome"
+        "Availability is supported only as an engineering concern, not as a verified outcome",
     },
 
     {
-      term:
-        "maintaining high performance",
+      term: "maintaining high performance",
 
       reason:
-        "Performance must not be generalized into an unverified sustained level"
-    }
+        "Performance must not be generalized into an unverified sustained level",
+    },
   ];
 
   return patterns
-    .filter(
-      (item) =>
-        normalized.includes(
-          normalize(
-            item.term
-          )
-        )
-    )
-    .map(
-      (item) =>
-        item.reason
-    );
+    .filter((item) => normalized.includes(normalize(item.term)))
+    .map((item) => item.reason);
 }
 
 /*
@@ -601,8 +405,7 @@ function forbiddenClaimsIssues(text) {
  */
 
 function causalStrengtheningIssues(text) {
-  const normalized =
-    normalize(text);
+  const normalized = normalize(text);
 
   const suspiciousClaims = [
     "improve reliability",
@@ -643,20 +446,12 @@ function causalStrengtheningIssues(text) {
     "increases reliability",
 
     "boost reliability",
-    "boosts reliability"
+    "boosts reliability",
   ];
 
   return suspiciousClaims
-    .filter(
-      (claim) =>
-        normalized.includes(
-          normalize(claim)
-        )
-    )
-    .map(
-      (claim) =>
-        `Potentially unsupported causal claim: ${claim}`
-    );
+    .filter((claim) => normalized.includes(normalize(claim)))
+    .map((claim) => `Potentially unsupported causal claim: ${claim}`);
 }
 
 /*
@@ -670,10 +465,7 @@ function causalStrengtheningIssues(text) {
  */
 
 function causalConnectorIssues(text) {
-  const sentences =
-    splitSentences(
-      text
-    );
+  const sentences = splitSentences(text);
 
   const issues = [];
 
@@ -685,39 +477,20 @@ function causalConnectorIssues(text) {
     "thereby improving",
     "thereby increasing",
     "which enhanced",
-    "which enhances"
+    "which enhances",
   ];
 
-  for (
-    const sentence
-    of sentences
-  ) {
-    const normalized =
-      normalize(
-        sentence
-      );
+  for (const sentence of sentences) {
+    const normalized = normalize(sentence);
 
-    for (
-      const connector
-      of connectors
-    ) {
-      if (
-        normalized.includes(
-          normalize(
-            connector
-          )
-        )
-      ) {
-        issues.push(
-          `Potential inferred causal relationship: ${connector}`
-        );
+    for (const connector of connectors) {
+      if (normalized.includes(normalize(connector))) {
+        issues.push(`Potential inferred causal relationship: ${connector}`);
       }
     }
   }
 
-  return unique(
-    issues
-  );
+  return unique(issues);
 }
 
 /*
@@ -726,65 +499,36 @@ function causalConnectorIssues(text) {
  * ----------------------------------------
  */
 
-function roleSupportsTechnologies(
-  technologies
-) {
-  const canonical =
-    unique(
-      technologies.map(
-        canonicalTechnology
-      )
-    );
+function roleSupportsTechnologies(technologies) {
+  const canonical = unique(technologies.map(canonicalTechnology));
 
-  return workEvidence.some(
-    (role) =>
-      canonical.every(
-        (technology) =>
-          role.technologies.includes(
-            technology
-          )
-      )
+  return workEvidence.some((role) =>
+    canonical.every((technology) => role.technologies.includes(technology))
   );
 }
 
 function crossCompanyMixingIssues(text) {
-  const sentences =
-    splitSentences(
-      text
-    );
+  const sentences = splitSentences(text);
 
   const issues = [];
 
-  for (
-    const sentence
-    of sentences
-  ) {
-    const technologies =
-      detectTechnologies(
-        sentence
-      );
+  for (const sentence of sentences) {
+    const technologies = detectTechnologies(sentence);
 
-    if (
-      technologies.length < 2
-    ) {
+    if (technologies.length < 2) {
       continue;
     }
 
     const stackClaim =
-      /\b(using|with|built with|building with|developed with|developing with|implemented with|powered by)\b/i
-        .test(
-          sentence
-        );
+      /\b(using|with|built with|building with|developed with|developing with|implemented with|powered by)\b/i.test(
+        sentence
+      );
 
     if (!stackClaim) {
       continue;
     }
 
-    if (
-      !roleSupportsTechnologies(
-        technologies
-      )
-    ) {
+    if (!roleSupportsTechnologies(technologies)) {
       issues.push(
         `Possible cross-company technology mixing: ${technologies.join(", ")}`
       );
@@ -801,68 +545,38 @@ function crossCompanyMixingIssues(text) {
  */
 
 function compoundClaimIssues(text) {
-  const sentences =
-    splitSentences(
-      text
-    );
+  const sentences = splitSentences(text);
 
   const issues = [];
 
-  for (
-    const sentence
-    of sentences
-  ) {
-    const normalized =
-      normalize(
-        sentence
-      );
+  for (const sentence of sentences) {
+    const normalized = normalize(sentence);
 
     const signals = [
-      normalized.includes(
-        "technical leadership"
-      ),
+      normalized.includes("technical leadership"),
 
-      normalized.includes(
-        "ci cd"
-      ),
+      normalized.includes("ci cd"),
 
-      normalized.includes(
-        "gitlab ci"
-      ),
+      normalized.includes("gitlab ci"),
 
-      normalized.includes(
-        "mentor"
-      ),
+      normalized.includes("mentor"),
 
-      normalized.includes(
-        "code reviews"
-      ),
+      normalized.includes("code reviews"),
 
-      normalized.includes(
-        "refactoring"
-      ),
+      normalized.includes("refactoring"),
 
-      normalized.includes(
-        "performance"
-      ),
+      normalized.includes("performance"),
 
-      normalized.includes(
-        "reliability"
-      )
+      normalized.includes("reliability"),
     ];
 
-    const count =
-      signals
-        .filter(Boolean)
-        .length;
+    const count = signals.filter(Boolean).length;
 
     /*
      * Too many unrelated concepts in one
      * sentence encourages false relationships.
      */
-    if (
-      count >= 5
-    ) {
+    if (count >= 5) {
       issues.push(
         "Summary sentence bundles too many unrelated professional claims"
       );
@@ -878,75 +592,47 @@ function compoundClaimIssues(text) {
  * ----------------------------------------
  */
 
-async function generate(
-  prompt,
-  {
-    attempts = 3,
-    retryDelayMs = 1200
-  } = {}
-) {
+async function generate(prompt, { attempts = 3, retryDelayMs = 1200 } = {}) {
   let lastError;
 
-  for (
-    let attempt = 1;
-    attempt <= attempts;
-    attempt++
-  ) {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      const response =
-        await ollama.chat({
-          model,
+      const response = await ollama.chat({
+        model,
 
-          messages: [
-            {
-              role: "system",
+        messages: [
+          {
+            role: "system",
 
-              content:
-                "You write conservative professional resume summaries. Never invent experience, technologies, metrics, responsibilities, outcomes, frequency, causal relationships, seniority, expertise level, or company-specific technology combinations. Prefer descriptive career-wide statements over inferred outcomes. Use only the supplied verified professional evidence. Return only valid JSON matching the provided schema."
-            },
-            {
-              role: "user",
-              content: prompt
-            }
-          ],
+            content:
+              "You write conservative professional resume summaries. Never invent experience, technologies, metrics, responsibilities, outcomes, frequency, causal relationships, seniority, expertise level, or company-specific technology combinations. Prefer descriptive career-wide statements over inferred outcomes. Use only the supplied verified professional evidence. Return only valid JSON matching the provided schema.",
+          },
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
 
-          format:
-            summaryJsonSchema,
+        format: summaryJsonSchema,
 
-          options: {
-            temperature: 0.1
-          }
-        });
+        options: {
+          temperature: 0.1,
+        },
+      });
 
-      const parsed =
-        summarySchema.parse(
-          JSON.parse(
-            response.message.content
-          )
-        );
+      const parsed = summarySchema.parse(JSON.parse(response.message.content));
 
       return parsed.summary.trim();
-
     } catch (error) {
       lastError = error;
 
-      if (
-        attempt >= attempts
-      ) {
+      if (attempt >= attempts) {
         break;
       }
 
-      console.log(
-        `Ollama attempt ${attempt} failed; retrying...`
-      );
+      console.log(`Ollama attempt ${attempt} failed; retrying...`);
 
-      await new Promise(
-        (resolve) =>
-          setTimeout(
-            resolve,
-            retryDelayMs
-          )
-      );
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
     }
   }
 
@@ -959,28 +645,18 @@ async function generate(
  * ----------------------------------------
  */
 
-const roleEvidenceForPrompt =
-  workEvidence
-    .filter(
-      (role) =>
-        role.bullets.length >
-        0
-    )
-    .map(
-      (role) => `
+const roleEvidenceForPrompt = workEvidence
+  .filter((role) => role.bullets.length > 0)
+  .map(
+    (role) => `
 ROLE:
 ${role.company} — ${role.position}
 
 VERIFIED BULLETS:
-${role.bullets
-  .map(
-    (bullet) =>
-      `- ${bullet}`
-  )
-  .join("\n")}
+${role.bullets.map((bullet) => `- ${bullet}`).join("\n")}
 `
-    )
-    .join("\n");
+  )
+  .join("\n");
 
 /*
  * ----------------------------------------
@@ -1047,10 +723,7 @@ STRICT RULES:
 
 SUPPORTED TARGET TERMS:
 ${targetCoverage
-  .map(
-    (item) =>
-      `- ${item.term} (${item.category}, ${item.status})`
-  )
+  .map((item) => `- ${item.term} (${item.category}, ${item.status})`)
   .join("\n")}
 
 ORIGINAL SUMMARY:
@@ -1060,10 +733,7 @@ VERIFIED ROLE EVIDENCE:
 ${roleEvidenceForPrompt}
 `;
 
-const proposedSummary =
-  await generate(
-    prompt
-  );
+const proposedSummary = await generate(prompt);
 
 /*
  * ----------------------------------------
@@ -1072,54 +742,30 @@ const proposedSummary =
  */
 
 const issues = [
-  ...unsupportedTermIssues(
-    proposedSummary
-  ),
+  ...unsupportedTermIssues(proposedSummary),
 
-  ...technologyIssues(
-    proposedSummary
-  ),
+  ...technologyIssues(proposedSummary),
 
-  ...numberIssues(
-    proposedSummary
-  ),
+  ...numberIssues(proposedSummary),
 
-  ...lengthIssues(
-    proposedSummary
-  ),
+  ...lengthIssues(proposedSummary),
 
-  ...sentenceIssues(
-    proposedSummary
-  ),
+  ...sentenceIssues(proposedSummary),
 
-  ...forbiddenClaimsIssues(
-    proposedSummary
-  ),
+  ...forbiddenClaimsIssues(proposedSummary),
 
-  ...causalStrengtheningIssues(
-    proposedSummary
-  ),
+  ...causalStrengtheningIssues(proposedSummary),
 
-  ...causalConnectorIssues(
-    proposedSummary
-  ),
+  ...causalConnectorIssues(proposedSummary),
 
-  ...crossCompanyMixingIssues(
-    proposedSummary
-  ),
+  ...crossCompanyMixingIssues(proposedSummary),
 
-  ...compoundClaimIssues(
-    proposedSummary
-  )
+  ...compoundClaimIssues(proposedSummary),
 ];
 
-const accepted =
-  issues.length === 0;
+const accepted = issues.length === 0;
 
-const finalSummary =
-  accepted
-    ? proposedSummary
-    : originalSummary;
+const finalSummary = accepted ? proposedSummary : originalSummary;
 
 /*
  * Safe fallback:
@@ -1132,38 +778,28 @@ const finalResume = {
   basics: {
     ...resume.basics,
 
-    summary:
-      finalSummary
-  }
+    summary: finalSummary,
+  },
 };
 
 const report = {
   model,
 
-  generatedAt:
-    new Date()
-      .toISOString(),
+  generatedAt: new Date().toISOString(),
 
   target: {
-    company:
-      plan.job?.company ??
-      null,
+    company: plan.job?.company ?? null,
 
-    title:
-      plan.job?.title ??
-      null
+    title: plan.job?.title ?? null,
   },
 
-  original:
-    originalSummary,
+  original: originalSummary,
 
-  proposed:
-    proposedSummary,
+  proposed: proposedSummary,
 
   accepted,
 
-  final:
-    finalSummary,
+  final: finalSummary,
 
   issues,
 
@@ -1173,83 +809,39 @@ const report = {
 
   targetCoverage,
 
-  roleEvidence:
-    workEvidence.map(
-      (role) => ({
-        company:
-          role.company,
+  roleEvidence: workEvidence.map((role) => ({
+    company: role.company,
 
-        position:
-          role.position,
+    position: role.position,
 
-        technologies:
-          role.technologies,
+    technologies: role.technologies,
 
-        bulletCount:
-          role.bullets.length
-      })
-    )
+    bulletCount: role.bullets.length,
+  })),
 };
 
-await fs.writeFile(
-  outputPath,
-  JSON.stringify(
-    finalResume,
-    null,
-    2
-  ),
-  "utf8"
-);
+await fs.writeFile(outputPath, JSON.stringify(finalResume, null, 2), "utf8");
 
-await fs.writeFile(
-  reportPath,
-  JSON.stringify(
-    report,
-    null,
-    2
-  ),
-  "utf8"
-);
+await fs.writeFile(reportPath, JSON.stringify(report, null, 2), "utf8");
 
-console.log(
-  "\nSUMMARY"
-);
+console.log("\nSUMMARY");
 
-console.log(
-  "-------"
-);
+console.log("-------");
 
-console.log(
-  proposedSummary
-);
+console.log(proposedSummary);
 
 if (accepted) {
-  console.log(
-    "\n✓ Summary accepted"
-  );
+  console.log("\n✓ Summary accepted");
 } else {
-  console.log(
-    "\n✗ Summary rejected"
-  );
+  console.log("\n✗ Summary rejected");
 
-  for (
-    const issue
-    of issues
-  ) {
-    console.log(
-      `  - ${issue}`
-    );
+  for (const issue of issues) {
+    console.log(`  - ${issue}`);
   }
 
-  console.log(
-    "\nOriginal summary preserved."
-  );
+  console.log("\nOriginal summary preserved.");
 }
 
-console.log(
-  `\nFinal resume: ${outputPath}`
-);
+console.log(`\nFinal resume: ${outputPath}`);
 
-console.log(
-  `Summary report: ${reportPath}`
-);
+console.log(`Summary report: ${reportPath}`);

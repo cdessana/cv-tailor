@@ -1,10 +1,7 @@
 import fs from "node:fs/promises";
 
-const [
-  resumePath,
-  planPath,
-  outputPath = "output/flash/final-check.json"
-] = process.argv.slice(2);
+const [resumePath, planPath, outputPath = "output/flash/final-check.json"] =
+  process.argv.slice(2);
 
 if (!resumePath || !planPath) {
   console.error(
@@ -13,13 +10,9 @@ if (!resumePath || !planPath) {
   process.exit(1);
 }
 
-const resume = JSON.parse(
-  await fs.readFile(resumePath, "utf8")
-);
+const resume = JSON.parse(await fs.readFile(resumePath, "utf8"));
 
-const plan = JSON.parse(
-  await fs.readFile(planPath, "utf8")
-);
+const plan = JSON.parse(await fs.readFile(planPath, "utf8"));
 
 /*
  * ----------------------------------------
@@ -41,40 +34,23 @@ function unique(values) {
   return [...new Set(values)];
 }
 
-function phraseExists(
-  phrase,
-  text
-) {
-  const needle =
-    normalize(phrase);
+function phraseExists(phrase, text) {
+  const needle = normalize(phrase);
 
-  const haystack =
-    normalize(text);
+  const haystack = normalize(text);
 
   if (!needle || !haystack) {
     return false;
   }
 
-  return (
-    ` ${haystack} `
-      .includes(
-        ` ${needle} `
-      )
-  );
+  return ` ${haystack} `.includes(` ${needle} `);
 }
 
-function pushIssue(
-  collection,
-  code,
-  message,
-  details = null
-) {
+function pushIssue(collection, code, message, details = null) {
   collection.push({
     code,
     message,
-    ...(details
-      ? { details }
-      : {})
+    ...(details ? { details } : {}),
   });
 }
 
@@ -85,89 +61,39 @@ function pushIssue(
  */
 
 const aliasGroups = [
-  [
-    "REST APIs",
-    "REST",
-    "REST API",
-    "RESTful API",
-    "RESTful APIs"
-  ],
+  ["REST APIs", "REST", "REST API", "RESTful API", "RESTful APIs"],
 
-  [
-    "RPC",
-    "gRPC"
-  ],
+  ["RPC", "gRPC"],
 
   [
     "GCP",
     "Google Cloud",
     "Google Cloud Platform",
-    "Google Cloud Platform (GCP)"
+    "Google Cloud Platform (GCP)",
   ],
 
-  [
-    "CI/CD",
-    "GitLab CI",
-    "Continuous Integration"
-  ],
+  ["CI/CD", "GitLab CI", "Continuous Integration"],
 
-  [
-    "Domain-Driven Design",
-    "DDD",
-    "Domain Driven Design"
-  ],
+  ["Domain-Driven Design", "DDD", "Domain Driven Design"],
 
-  [
-    "Event-Driven Architecture",
-    "Event-Driven",
-    "event-driven"
-  ],
+  ["Event-Driven Architecture", "Event-Driven", "event-driven"],
 
-  [
-    "Automated Testing",
-    "Unit Testing",
-    "Unit Tests"
-  ],
+  ["Automated Testing", "Unit Testing", "Unit Tests"],
 
-  [
-    "Mentoring",
-    "Mentor",
-    "Mentored"
-  ],
+  ["Mentoring", "Mentor", "Mentored"],
 
-  [
-    "Technical Leadership",
-    "Team Lead",
-    "Development Lead"
-  ],
+  ["Technical Leadership", "Team Lead", "Development Lead"],
 
-  [
-    "Code Reviews",
-    "Code Review"
-  ],
+  ["Code Reviews", "Code Review"],
 
-  [
-    "Scalable Systems",
-    "Scalability",
-    "Scalable"
-  ]
+  ["Scalable Systems", "Scalability", "Scalable"],
 ];
 
 function aliasesFor(term) {
-  const normalized =
-    normalize(term);
+  const normalized = normalize(term);
 
-  for (
-    const group
-    of aliasGroups
-  ) {
-    if (
-      group.some(
-        (item) =>
-          normalize(item) ===
-          normalized
-      )
-    ) {
+  for (const group of aliasGroups) {
+    if (group.some((item) => normalize(item) === normalized)) {
       return group;
     }
   }
@@ -175,18 +101,8 @@ function aliasesFor(term) {
   return [term];
 }
 
-function termExists(
-  term,
-  text
-) {
-  return aliasesFor(term)
-    .some(
-      (alias) =>
-        phraseExists(
-          alias,
-          text
-        )
-    );
+function termExists(term, text) {
+  return aliasesFor(term).some((alias) => phraseExists(alias, text));
 }
 
 /*
@@ -195,40 +111,21 @@ function termExists(
  * ----------------------------------------
  */
 
-const summary =
-  resume.basics?.summary ??
-  "";
+const summary = resume.basics?.summary ?? "";
 
-const workText =
-  (resume.work ?? [])
-    .flatMap(
-      (work) =>
-        work.highlights ?? []
-    )
-    .join(" ");
+const workText = (resume.work ?? [])
+  .flatMap((work) => work.highlights ?? [])
+  .join(" ");
 
-const skillsText =
-  (resume.skills ?? [])
-    .flatMap(
-      (skill) => [
-        skill.name,
-        skill.level,
-        ...(skill.keywords ?? [])
-      ]
-    )
-    .filter(Boolean)
-    .join(" ");
+const skillsText = (resume.skills ?? [])
+  .flatMap((skill) => [skill.name, skill.level, ...(skill.keywords ?? [])])
+  .filter(Boolean)
+  .join(" ");
 
-const certificatesText =
-  (resume.certificates ?? [])
-    .flatMap(
-      (certificate) => [
-        certificate.name,
-        certificate.issuer
-      ]
-    )
-    .filter(Boolean)
-    .join(" ");
+const certificatesText = (resume.certificates ?? [])
+  .flatMap((certificate) => [certificate.name, certificate.issuer])
+  .filter(Boolean)
+  .join(" ");
 
 const fullResumeText = [
   resume.basics?.name,
@@ -236,7 +133,7 @@ const fullResumeText = [
   summary,
   workText,
   skillsText,
-  certificatesText
+  certificatesText,
 ]
   .filter(Boolean)
   .join(" ");
@@ -257,30 +154,12 @@ const info = [];
  * ----------------------------------------
  */
 
-const unsupportedTerms =
-  (
-    plan.safety
-      ?.unsupportedTerms ??
-    []
-  )
-    .map(
-      (item) =>
-        typeof item === "string"
-          ? item
-          : item.term
-    )
-    .filter(Boolean);
+const unsupportedTerms = (plan.safety?.unsupportedTerms ?? [])
+  .map((item) => (typeof item === "string" ? item : item.term))
+  .filter(Boolean);
 
-for (
-  const term
-  of unsupportedTerms
-) {
-  if (
-    phraseExists(
-      term,
-      fullResumeText
-    )
-  ) {
+for (const term of unsupportedTerms) {
+  if (phraseExists(term, fullResumeText)) {
     pushIssue(
       errors,
       "unsupported_term_present",
@@ -295,87 +174,42 @@ for (
  * ----------------------------------------
  */
 
-const coverageItems =
-  plan.globalCoverage ??
-  [];
+const coverageItems = plan.globalCoverage ?? [];
 
-const coverage =
-  coverageItems.map(
-    (item) => {
-      const inSummary =
-        termExists(
-          item.term,
-          summary
-        );
+const coverage = coverageItems.map((item) => {
+  const inSummary = termExists(item.term, summary);
 
-      const inWork =
-        termExists(
-          item.term,
-          workText
-        );
+  const inWork = termExists(item.term, workText);
 
-      const inSkills =
-        termExists(
-          item.term,
-          skillsText
-        );
+  const inSkills = termExists(item.term, skillsText);
 
-      const inCertificates =
-        termExists(
-          item.term,
-          certificatesText
-        );
+  const inCertificates = termExists(item.term, certificatesText);
 
-      return {
-        term:
-          item.term,
+  return {
+    term: item.term,
 
-        category:
-          item.category,
+    category: item.category,
 
-        expectedStatus:
-          item.status,
+    expectedStatus: item.status,
 
-        found:
-          inSummary ||
-          inWork ||
-          inSkills ||
-          inCertificates,
+    found: inSummary || inWork || inSkills || inCertificates,
 
-        locations: [
-          ...(inSummary
-            ? ["summary"]
-            : []),
+    locations: [
+      ...(inSummary ? ["summary"] : []),
 
-          ...(inWork
-            ? ["work"]
-            : []),
+      ...(inWork ? ["work"] : []),
 
-          ...(inSkills
-            ? ["skills"]
-            : []),
+      ...(inSkills ? ["skills"] : []),
 
-          ...(inCertificates
-            ? ["certificates"]
-            : [])
-        ]
-      };
-    }
-  );
+      ...(inCertificates ? ["certificates"] : []),
+    ],
+  };
+});
 
-for (
-  const item
-  of coverage
-) {
-  const category =
-    normalize(
-      item.category
-    );
+for (const item of coverage) {
+  const category = normalize(item.category);
 
-  if (
-    category === "required" &&
-    !item.found
-  ) {
+  if (category === "required" && !item.found) {
     pushIssue(
       warnings,
       "required_term_missing",
@@ -383,10 +217,7 @@ for (
     );
   }
 
-  if (
-    category === "preferred" &&
-    !item.found
-  ) {
+  if (category === "preferred" && !item.found) {
     pushIssue(
       info,
       "preferred_term_missing",
@@ -401,30 +232,12 @@ for (
  * ----------------------------------------
  */
 
-const familiarTerms =
-  (resume.skills ?? [])
-    .filter(
-      (skill) =>
-        normalize(
-          skill.level
-        ) ===
-        "familiar"
-    )
-    .flatMap(
-      (skill) =>
-        skill.keywords ?? []
-    );
+const familiarTerms = (resume.skills ?? [])
+  .filter((skill) => normalize(skill.level) === "familiar")
+  .flatMap((skill) => skill.keywords ?? []);
 
-for (
-  const term
-  of familiarTerms
-) {
-  if (
-    termExists(
-      term,
-      workText
-    )
-  ) {
+for (const term of familiarTerms) {
+  if (termExists(term, workText)) {
     pushIssue(
       warnings,
       "familiarity_depth_conflict",
@@ -432,12 +245,7 @@ for (
     );
   }
 
-  if (
-    termExists(
-      term,
-      summary
-    )
-  ) {
+  if (termExists(term, summary)) {
     pushIssue(
       warnings,
       "familiarity_in_summary",
@@ -452,21 +260,10 @@ for (
  * ----------------------------------------
  */
 
-const hasReactCertificate =
-  termExists(
-    "React",
-    certificatesText
-  );
+const hasReactCertificate = termExists("React", certificatesText);
 
-if (
-  hasReactCertificate
-) {
-  if (
-    termExists(
-      "React",
-      workText
-    )
-  ) {
+if (hasReactCertificate) {
+  if (termExists("React", workText)) {
     pushIssue(
       warnings,
       "react_professional_claim",
@@ -474,12 +271,7 @@ if (
     );
   }
 
-  if (
-    termExists(
-      "React",
-      summary
-    )
-  ) {
+  if (termExists("React", summary)) {
     pushIssue(
       warnings,
       "react_summary_claim",
@@ -501,26 +293,14 @@ const hardBlockedProfessionalTerms = [
   "NestJS",
   "React Native",
   "Azure",
-  "SLAs"
+  "SLAs",
 ];
 
-for (
-  const term
-  of hardBlockedProfessionalTerms
-) {
+for (const term of hardBlockedProfessionalTerms) {
   if (
-    termExists(
-      term,
-      summary
-    ) ||
-    termExists(
-      term,
-      workText
-    ) ||
-    termExists(
-      term,
-      skillsText
-    )
+    termExists(term, summary) ||
+    termExists(term, workText) ||
+    termExists(term, skillsText)
   ) {
     pushIssue(
       errors,
@@ -538,59 +318,42 @@ for (
 
 const importantVerifiedSkills = [
   {
-    term:
-      "gRPC",
+    term: "gRPC",
 
     reason:
-      "Professional Sidia evidence exists and RPC is required by the target role."
+      "Professional Sidia evidence exists and RPC is required by the target role.",
   },
 
   {
-    term:
-      "Node.js",
+    term: "Node.js",
 
     reason:
-      "Professional Sidia evidence exists and Node.js is required by the target role."
+      "Professional Sidia evidence exists and Node.js is required by the target role.",
   },
 
   {
-    term:
-      "MongoDB",
+    term: "MongoDB",
 
     reason:
-      "Professional Sidia evidence exists and MongoDB is required by the target role."
+      "Professional Sidia evidence exists and MongoDB is required by the target role.",
   },
 
   {
-    term:
-      "CI/CD",
+    term: "CI/CD",
 
     reason:
-      "Professional Sidia evidence exists and CI/CD is preferred by the target role."
-  }
+      "Professional Sidia evidence exists and CI/CD is preferred by the target role.",
+  },
 ];
 
-for (
-  const item
-  of importantVerifiedSkills
-) {
-  if (
-    termExists(
-      item.term,
-      workText
-    ) &&
-    !termExists(
-      item.term,
-      skillsText
-    )
-  ) {
+for (const item of importantVerifiedSkills) {
+  if (termExists(item.term, workText) && !termExists(item.term, skillsText)) {
     pushIssue(
       warnings,
       "verified_skill_missing_from_skills",
       `${item.term} is supported by professional experience but missing from the skills section.`,
       {
-        reason:
-          item.reason
+        reason: item.reason,
       }
     );
   }
@@ -603,14 +366,8 @@ for (
  */
 
 if (
-  phraseExists(
-    "DDD",
-    workText
-  ) &&
-  !phraseExists(
-    "Domain-Driven Design",
-    workText
-  )
+  phraseExists("DDD", workText) &&
+  !phraseExists("Domain-Driven Design", workText)
 ) {
   pushIssue(
     info,
@@ -625,16 +382,8 @@ if (
  * ----------------------------------------
  */
 
-for (
-  const work
-  of resume.work ?? []
-) {
-  if (
-    Array.isArray(
-      work.highlights
-    ) &&
-    work.highlights.length === 0
-  ) {
+for (const work of resume.work ?? []) {
+  if (Array.isArray(work.highlights) && work.highlights.length === 0) {
     pushIssue(
       warnings,
       "empty_role",
@@ -654,88 +403,39 @@ function parseDate(value) {
     return null;
   }
 
-  const match =
-    String(value)
-      .match(
-        /^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?$/
-      );
+  const match = String(value).match(/^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?$/);
 
   if (!match) {
     return null;
   }
 
   return {
-    year:
-      Number(
-        match[1]
-      ),
+    year: Number(match[1]),
 
-    month:
-      match[2]
-        ? Number(
-            match[2]
-          )
-        : null,
+    month: match[2] ? Number(match[2]) : null,
 
-    day:
-      match[3]
-        ? Number(
-            match[3]
-          )
-        : null
+    day: match[3] ? Number(match[3]) : null,
   };
 }
 
-function dateSortValue(
-  value,
-  {
-    end = false
-  } = {}
-) {
-  const parsed =
-    parseDate(
-      value
-    );
+function dateSortValue(value, { end = false } = {}) {
+  const parsed = parseDate(value);
 
   if (!parsed) {
     return null;
   }
 
-  const month =
-    parsed.month ??
-    (
-      end
-        ? 12
-        : 1
-    );
+  const month = parsed.month ?? (end ? 12 : 1);
 
-  const day =
-    parsed.day ??
-    (
-      end
-        ? 31
-        : 1
-    );
+  const day = parsed.day ?? (end ? 31 : 1);
 
-  return (
-    parsed.year *
-      10000 +
-    month *
-      100 +
-    day
-  );
+  return parsed.year * 10000 + month * 100 + day;
 }
 
-for (
-  const work
-  of resume.work ?? []
-) {
-  const label =
-    `${work.name} — ${work.position}`;
+for (const work of resume.work ?? []) {
+  const label = `${work.name} — ${work.position}`;
 
-  if (
-    work.endDate === ""
-  ) {
+  if (work.endDate === "") {
     pushIssue(
       errors,
       "empty_end_date",
@@ -743,12 +443,7 @@ for (
     );
   }
 
-  if (
-    work.startDate &&
-    !parseDate(
-      work.startDate
-    )
-  ) {
+  if (work.startDate && !parseDate(work.startDate)) {
     pushIssue(
       warnings,
       "invalid_start_date",
@@ -756,12 +451,7 @@ for (
     );
   }
 
-  if (
-    work.endDate &&
-    !parseDate(
-      work.endDate
-    )
-  ) {
+  if (work.endDate && !parseDate(work.endDate)) {
     pushIssue(
       warnings,
       "invalid_end_date",
@@ -776,52 +466,25 @@ for (
  * ----------------------------------------
  */
 
-const datedWork =
-  (resume.work ?? [])
-    .map(
-      (work) => ({
-        ...work,
+const datedWork = (resume.work ?? [])
+  .map((work) => ({
+    ...work,
 
-        startSort:
-          dateSortValue(
-            work.startDate
-          ),
+    startSort: dateSortValue(work.startDate),
 
-        endSort:
-          work.endDate
-            ? dateSortValue(
-                work.endDate,
-                { end: true }
-              )
-            : Infinity
-      })
-    )
-    .filter(
-      (work) =>
-        work.startSort !== null
-    );
+    endSort: work.endDate
+      ? dateSortValue(work.endDate, { end: true })
+      : Infinity,
+  }))
+  .filter((work) => work.startSort !== null);
 
-for (
-  let i = 0;
-  i < datedWork.length;
-  i++
-) {
-  for (
-    let j = i + 1;
-    j < datedWork.length;
-    j++
-  ) {
-    const a =
-      datedWork[i];
+for (let i = 0; i < datedWork.length; i++) {
+  for (let j = i + 1; j < datedWork.length; j++) {
+    const a = datedWork[i];
 
-    const b =
-      datedWork[j];
+    const b = datedWork[j];
 
-    const overlap =
-      a.startSort <=
-        b.endSort &&
-      b.startSort <=
-        a.endSort;
+    const overlap = a.startSort <= b.endSort && b.startSort <= a.endSort;
 
     if (!overlap) {
       continue;
@@ -841,17 +504,9 @@ for (
  * ----------------------------------------
  */
 
-const summaryWordCount =
-  summary
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .length;
+const summaryWordCount = summary.trim().split(/\s+/).filter(Boolean).length;
 
-if (
-  summaryWordCount <
-  25
-) {
+if (summaryWordCount < 25) {
   pushIssue(
     warnings,
     "summary_short",
@@ -859,10 +514,7 @@ if (
   );
 }
 
-if (
-  summaryWordCount >
-  90
-) {
+if (summaryWordCount > 90) {
   pushIssue(
     warnings,
     "summary_long",
@@ -872,71 +524,52 @@ if (
 
 const riskySummaryClaims = [
   {
-    phrase:
-      "expert in",
+    phrase: "expert in",
 
-    reason:
-      "Unverified expertise-level language."
+    reason: "Unverified expertise-level language.",
   },
 
   {
-    phrase:
-      "deep expertise",
+    phrase: "deep expertise",
 
-    reason:
-      "Unverified expertise-level language."
+    reason: "Unverified expertise-level language.",
   },
 
   {
-    phrase:
-      "maintaining high availability",
+    phrase: "maintaining high availability",
 
     reason:
-      "Availability is currently supported as an engineering concern, not a verified achieved level."
+      "Availability is currently supported as an engineering concern, not a verified achieved level.",
   },
 
   {
-    phrase:
-      "maintained high availability",
+    phrase: "maintained high availability",
 
     reason:
-      "Availability is currently supported as an engineering concern, not a verified achieved level."
+      "Availability is currently supported as an engineering concern, not a verified achieved level.",
   },
 
   {
-    phrase:
-      "ensuring reliability",
+    phrase: "ensuring reliability",
 
-    reason:
-      "Broad reliability guarantee is not supported."
+    reason: "Broad reliability guarantee is not supported.",
   },
 
   {
-    phrase:
-      "ensure reliability",
+    phrase: "ensure reliability",
 
-    reason:
-      "Broad reliability guarantee is not supported."
-  }
+    reason: "Broad reliability guarantee is not supported.",
+  },
 ];
 
-for (
-  const item
-  of riskySummaryClaims
-) {
-  if (
-    phraseExists(
-      item.phrase,
-      summary
-    )
-  ) {
+for (const item of riskySummaryClaims) {
+  if (phraseExists(item.phrase, summary)) {
     pushIssue(
       warnings,
       "risky_summary_claim",
       `Summary contains risky wording: "${item.phrase}".`,
       {
-        reason:
-          item.reason
+        reason: item.reason,
       }
     );
   }
@@ -948,47 +581,32 @@ for (
  * ----------------------------------------
  */
 
-for (
-  const work
-  of resume.work ?? []
-) {
-  for (
-    const bullet
-    of work.highlights ?? []
-  ) {
-    const wordCount =
-      bullet
-        .trim()
-        .split(/\s+/)
-        .filter(Boolean)
-        .length;
+for (const work of resume.work ?? []) {
+  for (const bullet of work.highlights ?? []) {
+    const wordCount = bullet.trim().split(/\s+/).filter(Boolean).length;
 
-    if (
-      wordCount >
-      45
-    ) {
+    if (wordCount > 45) {
       pushIssue(
         info,
         "long_bullet",
         `${work.name} — ${work.position} contains a long bullet (${wordCount} words).`,
         {
-          bullet
+          bullet,
         }
       );
     }
 
     if (
-      /\b(responsible for|worked on various|various tasks|etc\.)\b/i
-        .test(
-          bullet
-        )
+      /\b(responsible for|worked on various|various tasks|etc\.)\b/i.test(
+        bullet
+      )
     ) {
       pushIssue(
         info,
         "weak_bullet_language",
         `${work.name} — ${work.position} contains generic wording.`,
         {
-          bullet
+          bullet,
         }
       );
     }
@@ -1001,46 +619,21 @@ for (
  * ----------------------------------------
  */
 
-if (
-  !resume.basics?.email
-) {
-  pushIssue(
-    errors,
-    "missing_email",
-    "Email is missing."
-  );
+if (!resume.basics?.email) {
+  pushIssue(errors, "missing_email", "Email is missing.");
 }
 
-if (
-  !resume.basics?.phone
-) {
-  pushIssue(
-    warnings,
-    "missing_phone",
-    "Phone number is missing."
-  );
+if (!resume.basics?.phone) {
+  pushIssue(warnings, "missing_phone", "Phone number is missing.");
 }
 
-const linkedin =
-  (resume.basics?.profiles ?? [])
-    .find(
-      (profile) =>
-        normalize(
-          profile.network
-        ) ===
-        "linkedin"
-    );
+const linkedin = (resume.basics?.profiles ?? []).find(
+  (profile) => normalize(profile.network) === "linkedin"
+);
 
 if (!linkedin) {
-  pushIssue(
-    warnings,
-    "missing_linkedin",
-    "LinkedIn profile is missing."
-  );
-
-} else if (
-  !linkedin.url
-) {
+  pushIssue(warnings, "missing_linkedin", "LinkedIn profile is missing.");
+} else if (!linkedin.url) {
   pushIssue(
     warnings,
     "linkedin_without_url",
@@ -1054,65 +647,31 @@ if (!linkedin) {
  * ----------------------------------------
  */
 
-function categoryCoverage(
-  category
-) {
-  const items =
-    coverage.filter(
-      (item) =>
-        normalize(
-          item.category
-        ) ===
-        normalize(
-          category
-        )
-    );
+function categoryCoverage(category) {
+  const items = coverage.filter(
+    (item) => normalize(item.category) === normalize(category)
+  );
 
-  if (
-    items.length === 0
-  ) {
+  if (items.length === 0) {
     return null;
   }
 
-  const found =
-    items.filter(
-      (item) =>
-        item.found
-    ).length;
+  const found = items.filter((item) => item.found).length;
 
   return {
     found,
-    total:
-      items.length,
+    total: items.length,
 
-    percent:
-      Math.round(
-        (
-          found /
-          items.length
-        ) *
-        100
-      )
+    percent: Math.round((found / items.length) * 100),
   };
 }
 
-const requiredCoverage =
-  categoryCoverage(
-    "required"
-  );
+const requiredCoverage = categoryCoverage("required");
 
-const preferredCoverage =
-  categoryCoverage(
-    "preferred"
-  );
+const preferredCoverage = categoryCoverage("preferred");
 
 const competencyCoverage =
-  categoryCoverage(
-    "competency"
-  ) ??
-  categoryCoverage(
-    "competencies"
-  );
+  categoryCoverage("competency") ?? categoryCoverage("competencies");
 
 /*
  * ----------------------------------------
@@ -1121,11 +680,7 @@ const competencyCoverage =
  */
 
 const status =
-  errors.length > 0
-    ? "fail"
-    : warnings.length > 0
-      ? "review"
-      : "pass";
+  errors.length > 0 ? "fail" : warnings.length > 0 ? "review" : "pass";
 
 /*
  * ----------------------------------------
@@ -1134,48 +689,34 @@ const status =
  */
 
 const report = {
-  generatedAt:
-    new Date()
-      .toISOString(),
+  generatedAt: new Date().toISOString(),
 
-  resume:
-    resumePath,
+  resume: resumePath,
 
   target: {
-    company:
-      plan.job?.company ??
-      null,
+    company: plan.job?.company ?? null,
 
-    title:
-      plan.job?.title ??
-      null
+    title: plan.job?.title ?? null,
   },
 
   status,
 
   counts: {
-    errors:
-      errors.length,
+    errors: errors.length,
 
-    warnings:
-      warnings.length,
+    warnings: warnings.length,
 
-    info:
-      info.length
+    info: info.length,
   },
 
   coverage: {
-    required:
-      requiredCoverage,
+    required: requiredCoverage,
 
-    preferred:
-      preferredCoverage,
+    preferred: preferredCoverage,
 
-    competencies:
-      competencyCoverage,
+    competencies: competencyCoverage,
 
-    terms:
-      coverage
+    terms: coverage,
   },
 
   unsupportedTerms,
@@ -1184,18 +725,10 @@ const report = {
 
   warnings,
 
-  info
+  info,
 };
 
-await fs.writeFile(
-  outputPath,
-  JSON.stringify(
-    report,
-    null,
-    2
-  ),
-  "utf8"
-);
+await fs.writeFile(outputPath, JSON.stringify(report, null, 2), "utf8");
 
 /*
  * ----------------------------------------
@@ -1203,91 +736,54 @@ await fs.writeFile(
  * ----------------------------------------
  */
 
-console.log(
-  "\nFINAL CHECK"
-);
+console.log("\nFINAL CHECK");
 
-console.log(
-  "==========="
-);
+console.log("===========");
 
 console.log(
   `Target: ${report.target.company ?? "unknown"} — ${report.target.title ?? "unknown"}`
 );
 
-console.log(
-  `Status: ${status.toUpperCase()}`
-);
+console.log(`Status: ${status.toUpperCase()}`);
 
-if (
-  requiredCoverage
-) {
+if (requiredCoverage) {
   console.log(
     `Required coverage: ${requiredCoverage.found}/${requiredCoverage.total} (${requiredCoverage.percent}%)`
   );
 }
 
-if (
-  preferredCoverage
-) {
+if (preferredCoverage) {
   console.log(
     `Preferred coverage: ${preferredCoverage.found}/${preferredCoverage.total} (${preferredCoverage.percent}%)`
   );
 }
 
-if (
-  competencyCoverage
-) {
+if (competencyCoverage) {
   console.log(
     `Competency coverage: ${competencyCoverage.found}/${competencyCoverage.total} (${competencyCoverage.percent}%)`
   );
 }
 
-console.log(
-  `\nErrors: ${errors.length}`
-);
+console.log(`\nErrors: ${errors.length}`);
 
-for (
-  const issue
-  of errors
-) {
-  console.log(
-    `  ✗ [${issue.code}] ${issue.message}`
-  );
+for (const issue of errors) {
+  console.log(`  ✗ [${issue.code}] ${issue.message}`);
 }
 
-console.log(
-  `\nWarnings: ${warnings.length}`
-);
+console.log(`\nWarnings: ${warnings.length}`);
 
-for (
-  const issue
-  of warnings
-) {
-  console.log(
-    `  ! [${issue.code}] ${issue.message}`
-  );
+for (const issue of warnings) {
+  console.log(`  ! [${issue.code}] ${issue.message}`);
 }
 
-console.log(
-  `\nInfo: ${info.length}`
-);
+console.log(`\nInfo: ${info.length}`);
 
-for (
-  const issue
-  of info
-) {
-  console.log(
-    `  · [${issue.code}] ${issue.message}`
-  );
+for (const issue of info) {
+  console.log(`  · [${issue.code}] ${issue.message}`);
 }
 
-console.log(
-  `\nReport: ${outputPath}`
-);
+console.log(`\nReport: ${outputPath}`);
 
-if (
-  errors.length > 0
-) {
+if (errors.length > 0) {
   process.exitCode = 1;
 }

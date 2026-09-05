@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
-import os from 'node:os';
+import os from "node:os";
 import { existsSync } from "node:fs";
 
 const platform = os.platform().toLocaleLowerCase();
@@ -9,11 +9,8 @@ const platform = os.platform().toLocaleLowerCase();
 const resumePath = process.argv[2];
 const themeArg = process.argv[3];
 
-
 if (!resumePath) {
-  console.error(
-    "Usage: node scripts/render.mjs <resume-final.json>  [theme]"
-  );
+  console.error("Usage: node scripts/render.mjs <resume-final.json>  [theme]");
   process.exit(1);
 }
 
@@ -22,86 +19,61 @@ const themeDisplay = theme.replace("jsonresume-theme-", "").toUpperCase();
 
 const outputDir = path.dirname(resumePath);
 
-const htmlPath =
-  path.join(outputDir, "resume.html");
+const htmlPath = path.join(outputDir, "resume.html");
 
-const pdfPath =
-  path.join(outputDir, "resume.pdf");
+const pdfPath = path.join(outputDir, "resume.pdf");
 
-const txtPath =
-  path.join(outputDir, "resume.txt");
+const txtPath = path.join(outputDir, "resume.txt");
 
-const tempResumePath =
-  path.join(outputDir, ".resume-render.json");
+const tempResumePath = path.join(outputDir, ".resume-render.json");
 
-const rawHtmlPath =
-  path.join(outputDir, ".resume-render.html");
+const rawHtmlPath = path.join(outputDir, ".resume-render.html");
 
 let chromePath;
 
-if (platform.includes('win')) {
-  chromePath = "\"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\""
-} else if (platform.includes('linux')) {
-  chromePath = "/usr/bin/google-chrome"
+if (platform.includes("win")) {
+  chromePath = '"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"';
+} else if (platform.includes("linux")) {
+  chromePath = "/usr/bin/google-chrome";
 } else {
   chromePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 }
 
 const chrome = chromePath;
 
-
-
 function run(command, args, options = {}) {
   return new Promise((resolve, reject) => {
-    const child =
-      spawn(
-        command,
-        args,
-        {
-          shell: true,
-          stdio:
-            options.quiet
-              ? ["ignore", "pipe", "pipe"]
-              : "inherit"
-        }
-      );
+    const child = spawn(command, args, {
+      shell: true,
+      stdio: options.quiet ? ["ignore", "pipe", "pipe"] : "inherit",
+    });
 
     let stdout = "";
     let stderr = "";
 
     if (options.quiet) {
-      child.stdout?.on(
-        "data",
-        chunk => {
-          stdout += chunk;
-        }
-      );
+      child.stdout?.on("data", (chunk) => {
+        stdout += chunk;
+      });
 
-      child.stderr?.on(
-        "data",
-        chunk => {
-          stderr += chunk;
-        }
-      );
+      child.stderr?.on("data", (chunk) => {
+        stderr += chunk;
+      });
     }
 
     child.on("error", reject);
 
-    child.on("exit", code => {
+    child.on("exit", (code) => {
       if (code === 0) {
         resolve({
           stdout,
-          stderr
+          stderr,
         });
       } else {
         reject(
           new Error(
             `${command} exited with code ${code}` +
-            (
-              stderr
-                ? `\n${stderr}`
-                : ""
-            )
+              (stderr ? `\n${stderr}` : "")
           )
         );
       }
@@ -122,7 +94,7 @@ function monthName(month) {
     "Sep",
     "Oct",
     "Nov",
-    "Dec"
+    "Dec",
   ][Number(month) - 1];
 }
 
@@ -138,21 +110,15 @@ function monthName(month) {
  * resume.
  */
 function safeRenderDate(value) {
-  if (
-    typeof value !== "string"
-  ) {
+  if (typeof value !== "string") {
     return value;
   }
 
-  if (
-    /^\d{4}-\d{2}$/.test(value)
-  ) {
+  if (/^\d{4}-\d{2}$/.test(value)) {
     return `${value}-15`;
   }
 
-  if (
-    /^\d{4}$/.test(value)
-  ) {
+  if (/^\d{4}$/.test(value)) {
     return `${value}-07-15`;
   }
 
@@ -160,37 +126,18 @@ function safeRenderDate(value) {
 }
 
 function transformDates(value) {
-  if (
-    Array.isArray(value)
-  ) {
-    return value.map(
-      transformDates
-    );
+  if (Array.isArray(value)) {
+    return value.map(transformDates);
   }
 
-  if (
-    value &&
-    typeof value === "object"
-  ) {
+  if (value && typeof value === "object") {
     const result = {};
 
-    for (
-      const [key, child] of
-      Object.entries(value)
-    ) {
-      if (
-        [
-          "startDate",
-          "endDate",
-          "date",
-          "releaseDate"
-        ].includes(key)
-      ) {
-        result[key] =
-          safeRenderDate(child);
+    for (const [key, child] of Object.entries(value)) {
+      if (["startDate", "endDate", "date", "releaseDate"].includes(key)) {
+        result[key] = safeRenderDate(child);
       } else {
-        result[key] =
-          transformDates(child);
+        result[key] = transformDates(child);
       }
     }
 
@@ -201,46 +148,25 @@ function transformDates(value) {
 }
 
 function collectYearOnlyDates(value, found = new Set()) {
-  if (
-    Array.isArray(value)
-  ) {
-    for (
-      const item of value
-    ) {
-      collectYearOnlyDates(
-        item,
-        found
-      );
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectYearOnlyDates(item, found);
     }
 
     return found;
   }
 
-  if (
-    value &&
-    typeof value === "object"
-  ) {
-    for (
-      const [key, child] of
-      Object.entries(value)
-    ) {
+  if (value && typeof value === "object") {
+    for (const [key, child] of Object.entries(value)) {
       if (
-        [
-          "startDate",
-          "endDate",
-          "date",
-          "releaseDate"
-        ].includes(key) &&
+        ["startDate", "endDate", "date", "releaseDate"].includes(key) &&
         typeof child === "string" &&
         /^\d{4}$/.test(child)
       ) {
         found.add(child);
       }
 
-      collectYearOnlyDates(
-        child,
-        found
-      );
+      collectYearOnlyDates(child, found);
     }
   }
 
@@ -248,56 +174,31 @@ function collectYearOnlyDates(value, found = new Set()) {
 }
 
 function expectedMonthDates(value, found = []) {
-  if (
-    Array.isArray(value)
-  ) {
-    for (
-      const item of value
-    ) {
-      expectedMonthDates(
-        item,
-        found
-      );
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      expectedMonthDates(item, found);
     }
 
     return found;
   }
 
-  if (
-    value &&
-    typeof value === "object"
-  ) {
-    for (
-      const [key, child] of
-      Object.entries(value)
-    ) {
+  if (value && typeof value === "object") {
+    for (const [key, child] of Object.entries(value)) {
       if (
-        [
-          "startDate",
-          "endDate",
-          "date",
-          "releaseDate"
-        ].includes(key) &&
+        ["startDate", "endDate", "date", "releaseDate"].includes(key) &&
         typeof child === "string"
       ) {
-        const match =
-          child.match(
-            /^(\d{4})-(\d{2})$/
-          );
+        const match = child.match(/^(\d{4})-(\d{2})$/);
 
         if (match) {
           found.push({
             source: child,
-            rendered:
-              `${monthName(match[2])} ${match[1]}`
+            rendered: `${monthName(match[2])} ${match[1]}`,
           });
         }
       }
 
-      expectedMonthDates(
-        child,
-        found
-      );
+      expectedMonthDates(child, found);
     }
   }
 
@@ -305,71 +206,36 @@ function expectedMonthDates(value, found = []) {
 }
 
 function escapeRegExp(value) {
-  return value.replace(
-    /[.*+?^${}()|[\]\\]/g,
-    "\\$&"
-  );
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function normalizeWhitespace(value) {
-  return String(value)
-    .replace(/\s+/g, " ")
-    .trim();
+  return String(value).replace(/\s+/g, " ").trim();
 }
 
-const resume =
-  JSON.parse(
-    await fs.readFile(
-      resumePath,
-      "utf8"
-    )
-  );
+const resume = JSON.parse(await fs.readFile(resumePath, "utf8"));
 
-console.log(
-  `\n${themeDisplay} RENDER`
-);
+console.log(`\n${themeDisplay} RENDER`);
 
-console.log(
- "=".repeat(themeDisplay.length + 7)
-);
+console.log("=".repeat(themeDisplay.length + 7));
 
-console.log(
-  `Source: ${resumePath}`
-);
+console.log(`Source: ${resumePath}`);
 
 /*
  * Validate the original JSON, never the
  * temporary rendering copy.
  */
-console.log(
-  "\n▶ JSON Resume schema validation"
-);
+console.log("\n▶ JSON Resume schema validation");
 
-await run(
-  "npx",
-  [
-    "resumed",
-    "validate",
-    resumePath
-  ]
-);
+await run("npx", ["resumed", "validate", resumePath]);
 
-console.log(
-  "✓ Schema validation passed"
-);
+console.log("✓ Schema validation passed");
 
-const renderResume =
-  transformDates(
-    structuredClone(resume)
-  );
+const renderResume = transformDates(structuredClone(resume));
 
 await fs.writeFile(
   tempResumePath,
-  JSON.stringify(
-    renderResume,
-    null,
-    2
-  ) + "\n"
+  JSON.stringify(renderResume, null, 2) + "\n"
 );
 
 console.log(
@@ -377,129 +243,72 @@ console.log(
 );
 
 /*
- * Use --no-save so it downloads to node_modules without 
+ * Use --no-save so it downloads to node_modules without
  * altering your package.json or package-lock.json files.
  */
-const targetPath = path.join('node_modules', theme);
+const targetPath = path.join("node_modules", theme);
 
 // 1. Check if the folder already exists in node_modules
 if (existsSync(targetPath)) {
-    console.log(`▶ Skipped, ${theme} is already installed.`);
+  console.log(`▶ Skipped, ${theme} is already installed.`);
 } else {
-   console.log(`▶ Installing ${theme}...`);
-  await run(
-    "npm",
-    [
-      "install",
-      "--no-save",
-      "--prefer-offline", 
-      theme
-    ],
-    { quiet: false }
-  );
+  console.log(`▶ Installing ${theme}...`);
+  await run("npm", ["install", "--no-save", "--prefer-offline", theme], {
+    quiet: false,
+  });
 }
 
-console.log(
-  `\n▶ Rendering ${theme} theme`
-);
+console.log(`\n▶ Rendering ${theme} theme`);
 
-await run(
-  "npx",
-  [
-    "resumed",
-    "render",
-    tempResumePath,
-    "--theme",
-    theme,
-    "--output",
-    rawHtmlPath
-  ]
-);
+await run("npx", [
+  "resumed",
+  "render",
+  tempResumePath,
+  "--theme",
+  theme,
+  "--output",
+  rawHtmlPath,
+]);
 
-let html =
-  await fs.readFile(
-    rawHtmlPath,
-    "utf8"
-  );
+let html = await fs.readFile(rawHtmlPath, "utf8");
 
 /*
  * Dates that originally contained only a year
  * were temporarily rendered as Jul YYYY.
  * Restore their original precision.
  */
-const yearOnlyDates =
-  collectYearOnlyDates(
-    resume
-  );
+const yearOnlyDates = collectYearOnlyDates(resume);
 
-for (
-  const year of yearOnlyDates
-) {
-  html =
-    html.replace(
-      new RegExp(
-        escapeRegExp(
-          `Jul ${year}`
-        ),
-        "g"
-      ),
-      year
-    );
+for (const year of yearOnlyDates) {
+  html = html.replace(new RegExp(escapeRegExp(`Jul ${year}`), "g"), year);
 }
 
-await fs.writeFile(
-  htmlPath,
-  html,
-  "utf8"
-);
+await fs.writeFile(htmlPath, html, "utf8");
 
-console.log(
-  `✓ HTML: ${htmlPath}`
-);
+console.log(`✓ HTML: ${htmlPath}`);
 
 /*
  * Check the date bug before creating the PDF.
  */
-const expectedDates =
-  expectedMonthDates(
-    resume
-  );
+const expectedDates = expectedMonthDates(resume);
 
-const missingDates =
-  expectedDates.filter(
-    item =>
-      !html.includes(
-        item.rendered
-      )
-  );
+const missingDates = expectedDates.filter(
+  (item) => !html.includes(item.rendered)
+);
 
-if (
-  missingDates.length
-) {
-  console.error(
-    "\n✗ Rendered HTML is missing expected dates:"
-  );
+if (missingDates.length) {
+  console.error("\n✗ Rendered HTML is missing expected dates:");
 
-  for (
-    const item of missingDates
-  ) {
-    console.error(
-      `  ${item.source} → ${item.rendered}`
-    );
+  for (const item of missingDates) {
+    console.error(`  ${item.source} → ${item.rendered}`);
   }
 
-  throw new Error(
-    "Date sanity check failed."
-  );
+  throw new Error("Date sanity check failed.");
 }
 
-console.log(
-  "✓ Date sanity check passed"
-);
+console.log("✓ Date sanity check passed");
 
-console.log(
-  "\n▶ Generating PDF"
-);
+console.log("\n▶ Generating PDF");
 
 await run(
   chrome,
@@ -508,205 +317,117 @@ await run(
     "--disable-gpu",
     "--no-pdf-header-footer",
     `--print-to-pdf=${path.resolve(pdfPath)}`,
-    `file://${path.resolve(htmlPath)}`
+    `file://${path.resolve(htmlPath)}`,
   ],
   {
-    quiet: true
+    quiet: true,
   }
 );
 
-console.log(
-  `✓ PDF: ${pdfPath}`
-);
+console.log(`✓ PDF: ${pdfPath}`);
 
-console.log(
-  "\n▶ Extracting PDF text"
-);
+console.log("\n▶ Extracting PDF text");
 
-await run(
-  "pdftotext",
-  [
-    pdfPath,
-    txtPath
-  ]
-);
+await run("pdftotext", [pdfPath, txtPath]);
 
-console.log(
-  `✓ Text: ${txtPath}`
-);
+console.log(`✓ Text: ${txtPath}`);
 
-const pdfInfo =
-  await run(
-    "pdfinfo",
-    [pdfPath],
-    {
-      quiet: true
-    }
-  );
+const pdfInfo = await run("pdfinfo", [pdfPath], {
+  quiet: true,
+});
 
-const pagesMatch =
-  pdfInfo.stdout.match(
-    /^Pages:\s+(\d+)/m
-  );
+const pagesMatch = pdfInfo.stdout.match(/^Pages:\s+(\d+)/m);
 
-const pages =
-  pagesMatch
-    ? Number(pagesMatch[1])
-    : null;
+const pages = pagesMatch ? Number(pagesMatch[1]) : null;
 
-const text =
-  await fs.readFile(
-    txtPath,
-    "utf8"
-  );
+const text = await fs.readFile(txtPath, "utf8");
 
-const normalizedText =
-  normalizeWhitespace(
-    text
-  );
+const normalizedText = normalizeWhitespace(text);
 
 const checks = [
   {
     name: "Name",
-    expected:
-      resume.basics?.name
+    expected: resume.basics?.name,
   },
   {
     name: "Email",
-    expected:
-      resume.basics?.email
+    expected: resume.basics?.email,
   },
   {
     name: "Phone",
-    expected:
-      resume.basics?.phone
+    expected: resume.basics?.phone,
   },
   {
     name: "Node.js",
-    expected: "Node.js"
+    expected: "Node.js",
   },
   {
     name: "MongoDB",
-    expected: "MongoDB"
+    expected: "MongoDB",
   },
   {
     name: "gRPC",
-    expected: "gRPC"
+    expected: "gRPC",
   },
   {
     name: "Domain-Driven Design",
-    expected:
-      "Domain-Driven Design"
-  }
-].filter(
-  check =>
-    check.expected
+    expected: "Domain-Driven Design",
+  },
+].filter((check) => check.expected);
+
+const failedChecks = checks.filter(
+  (check) => !normalizedText.includes(check.expected)
 );
 
-const failedChecks =
-  checks.filter(
-    check =>
-      !normalizedText.includes(
-        check.expected
-      )
-  );
+console.log("\nPDF SANITY CHECK");
 
-console.log(
-  "\nPDF SANITY CHECK"
-);
+console.log("================");
 
-console.log(
-  "================"
-);
+console.log(`Pages: ${pages ?? "unknown"}`);
 
-console.log(
-  `Pages: ${pages ?? "unknown"}`
-);
+for (const check of checks) {
+  const passed = !failedChecks.includes(check);
 
-for (
-  const check of checks
-) {
-  const passed =
-    !failedChecks.includes(
-      check
-    );
-
-  console.log(
-    `${passed ? "✓" : "✗"} ${check.name}`
-  );
+  console.log(`${passed ? "✓" : "✗"} ${check.name}`);
 }
 
-for (
-  const item of
-  expectedDates
-) {
-  const passed =
-    normalizedText.includes(
-      item.rendered
-    );
+for (const item of expectedDates) {
+  const passed = normalizedText.includes(item.rendered);
 
-  console.log(
-    `${passed ? "✓" : "✗"} Date ${item.source} → ${item.rendered}`
-  );
+  console.log(`${passed ? "✓" : "✗"} Date ${item.source} → ${item.rendered}`);
 
   if (!passed) {
     failedChecks.push({
-      name:
-        `Date ${item.source}`,
-      expected:
-        item.rendered
+      name: `Date ${item.source}`,
+      expected: item.rendered,
     });
   }
 }
 
-if (
-  pages &&
-  pages > 2
-) {
-  console.warn(
-    `\n! PDF has ${pages} pages; target is 2.`
-  );
+if (pages && pages > 2) {
+  console.warn(`\n! PDF has ${pages} pages; target is 2.`);
 }
 
-if (
-  failedChecks.length
-) {
+if (failedChecks.length) {
   console.error(
     `\n✗ PDF sanity check failed (${failedChecks.length} issue(s)).`
   );
 
   process.exitCode = 1;
 } else {
-  console.log(
-    "\n✓ PDF sanity check passed"
-  );
+  console.log("\n✓ PDF sanity check passed");
 }
 
 /*
  * Temporary files should never become
  * project artifacts.
  */
-await Promise.allSettled([
-  fs.unlink(
-    tempResumePath
-  ),
-  fs.unlink(
-    rawHtmlPath
-  )
-]);
+await Promise.allSettled([fs.unlink(tempResumePath), fs.unlink(rawHtmlPath)]);
 
-console.log(
-  "\nGenerated:"
-);
+console.log("\nGenerated:");
 
-console.log(
-  `  ${htmlPath}`
-);
+console.log(`  ${htmlPath}`);
 
-console.log(
-  `  ${pdfPath}`
-);
+console.log(`  ${pdfPath}`);
 
-console.log(
-  `  ${txtPath}`
-);
+console.log(`  ${txtPath}`);

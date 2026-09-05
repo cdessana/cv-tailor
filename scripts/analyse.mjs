@@ -5,7 +5,7 @@ const [
   resumePath,
   jobPath,
   aliasesPath = "data/aliases.json",
-  evidencePath = "data/evidence.json"
+  evidencePath = "data/evidence.json",
 ] = process.argv.slice(2);
 
 if (!resumePath || !jobPath) {
@@ -15,39 +15,26 @@ if (!resumePath || !jobPath) {
   process.exit(1);
 }
 
-const resume = JSON.parse(
-  await fs.readFile(resumePath, "utf8")
-);
+const resume = JSON.parse(await fs.readFile(resumePath, "utf8"));
 
-const job = JSON.parse(
-  await fs.readFile(jobPath, "utf8")
-);
+const job = JSON.parse(await fs.readFile(jobPath, "utf8"));
 
-const aliases = JSON.parse(
-  await fs.readFile(aliasesPath, "utf8")
-);
+const aliases = JSON.parse(await fs.readFile(aliasesPath, "utf8"));
 
 let evidence = {
   version: 2,
   skills: {},
-  experiences: []
+  experiences: [],
 };
 
 try {
-  evidence = JSON.parse(
-    await fs.readFile(
-      evidencePath,
-      "utf8"
-    )
-  );
+  evidence = JSON.parse(await fs.readFile(evidencePath, "utf8"));
 } catch (error) {
   if (error.code !== "ENOENT") {
     throw error;
   }
 
-  console.warn(
-    `Evidence file not found: ${evidencePath}`
-  );
+  console.warn(`Evidence file not found: ${evidencePath}`);
 }
 
 function normalize(value) {
@@ -68,15 +55,11 @@ function phraseExists(phrase, text) {
     return false;
   }
 
-  return ` ${haystack} `
-    .includes(` ${needle} `);
+  return ` ${haystack} `.includes(` ${needle} `);
 }
 
 function aliasesFor(term) {
-  return [
-    term,
-    ...(aliases[term] ?? [])
-  ];
+  return [term, ...(aliases[term] ?? [])];
 }
 
 function unique(values) {
@@ -96,7 +79,7 @@ for (const group of resume.skills ?? []) {
     resumeSkills.push({
       keyword,
       group: group.name,
-      level: group.level ?? null
+      level: group.level ?? null,
     });
   }
 }
@@ -105,9 +88,7 @@ function findResumeSkill(term) {
   const candidates = aliasesFor(term);
 
   const exact = resumeSkills.find(
-    (skill) =>
-      normalize(skill.keyword) ===
-      normalize(term)
+    (skill) => normalize(skill.keyword) === normalize(term)
   );
 
   if (exact) {
@@ -116,15 +97,13 @@ function findResumeSkill(term) {
       status: "exact",
       matchedAs: exact.keyword,
       skillGroup: exact.group,
-      level: exact.level
+      level: exact.level,
     };
   }
 
   for (const candidate of candidates) {
     const match = resumeSkills.find(
-      (skill) =>
-        normalize(skill.keyword) ===
-        normalize(candidate)
+      (skill) => normalize(skill.keyword) === normalize(candidate)
     );
 
     if (match) {
@@ -133,7 +112,7 @@ function findResumeSkill(term) {
         status: "equivalent",
         matchedAs: match.keyword,
         skillGroup: match.group,
-        level: match.level
+        level: match.level,
       };
     }
   }
@@ -154,7 +133,7 @@ for (const work of resume.work ?? []) {
     resumeWorkEvidence.push({
       company: work.name,
       position: work.position,
-      text: highlight
+      text: highlight,
     });
   }
 }
@@ -164,12 +143,8 @@ function findResumeWorkEvidence(term) {
   const results = [];
 
   for (const work of resumeWorkEvidence) {
-    const matchedAs = candidates.find(
-      (candidate) =>
-        phraseExists(
-          candidate,
-          work.text
-        )
+    const matchedAs = candidates.find((candidate) =>
+      phraseExists(candidate, work.text)
     );
 
     if (!matchedAs) {
@@ -181,7 +156,7 @@ function findResumeWorkEvidence(term) {
       company: work.company,
       position: work.position,
       matchedAs,
-      text: work.text
+      text: work.text,
     });
   }
 
@@ -199,19 +174,12 @@ function findCertificateEvidence(term) {
   const results = [];
 
   for (const certificate of resume.certificates ?? []) {
-    const certificateText = [
-      certificate.name,
-      certificate.issuer
-    ]
+    const certificateText = [certificate.name, certificate.issuer]
       .filter(Boolean)
       .join(" ");
 
-    const matchedAs = candidates.find(
-      (candidate) =>
-        phraseExists(
-          candidate,
-          certificateText
-        )
+    const matchedAs = candidates.find((candidate) =>
+      phraseExists(candidate, certificateText)
     );
 
     if (!matchedAs) {
@@ -222,7 +190,7 @@ function findCertificateEvidence(term) {
       type: "certificate",
       name: certificate.name,
       issuer: certificate.issuer ?? null,
-      matchedAs
+      matchedAs,
     });
   }
 
@@ -238,16 +206,9 @@ function findCertificateEvidence(term) {
 function findEvidenceSkillIndex(term) {
   const candidates = aliasesFor(term);
 
-  for (
-    const [skillName, value]
-    of Object.entries(
-      evidence.skills ?? {}
-    )
-  ) {
+  for (const [skillName, value] of Object.entries(evidence.skills ?? {})) {
     const matchedAs = candidates.find(
-      (candidate) =>
-        normalize(candidate) ===
-        normalize(skillName)
+      (candidate) => normalize(candidate) === normalize(skillName)
     );
 
     if (!matchedAs) {
@@ -258,7 +219,7 @@ function findEvidenceSkillIndex(term) {
       type: "evidence-skill",
       skill: skillName,
       level: value.level ?? null,
-      matchedAs
+      matchedAs,
     };
   }
 
@@ -275,19 +236,10 @@ function findExperienceEvidence(term) {
   const candidates = aliasesFor(term);
   const results = [];
 
-  for (
-    const experience
-    of evidence.experiences ?? []
-  ) {
-    const matchedSkill =
-      (experience.skills ?? []).find(
-        (skill) =>
-          candidates.some(
-            (candidate) =>
-              normalize(candidate) ===
-              normalize(skill)
-          )
-      );
+  for (const experience of evidence.experiences ?? []) {
+    const matchedSkill = (experience.skills ?? []).find((skill) =>
+      candidates.some((candidate) => normalize(candidate) === normalize(skill))
+    );
 
     if (!matchedSkill) {
       continue;
@@ -299,11 +251,10 @@ function findExperienceEvidence(term) {
       company: experience.company,
       position: experience.position,
       period: experience.period ?? null,
-      experienceType:
-        experience.type ?? null,
+      experienceType: experience.type ?? null,
       matchedAs: matchedSkill,
       facts: experience.facts ?? [],
-      skills: experience.skills ?? []
+      skills: experience.skills ?? [],
     });
   }
 
@@ -317,23 +268,20 @@ function findExperienceEvidence(term) {
  */
 
 const requirements = [
-  ...(job.requirements?.required ?? [])
-    .map((term) => ({
-      term,
-      category: "required"
-    })),
+  ...(job.requirements?.required ?? []).map((term) => ({
+    term,
+    category: "required",
+  })),
 
-  ...(job.requirements?.preferred ?? [])
-    .map((term) => ({
-      term,
-      category: "preferred"
-    })),
+  ...(job.requirements?.preferred ?? []).map((term) => ({
+    term,
+    category: "preferred",
+  })),
 
-  ...(job.requirements?.competencies ?? [])
-    .map((term) => ({
-      term,
-      category: "competency"
-    }))
+  ...(job.requirements?.competencies ?? []).map((term) => ({
+    term,
+    category: "competency",
+  })),
 ];
 
 /*
@@ -343,40 +291,28 @@ const requirements = [
  */
 
 function analyzeRequirement(requirement) {
-  const {
-    term,
-    category
-  } = requirement;
+  const { term, category } = requirement;
 
-  const resumeSkill =
-    findResumeSkill(term);
+  const resumeSkill = findResumeSkill(term);
 
-  const resumeWork =
-    findResumeWorkEvidence(term);
+  const resumeWork = findResumeWorkEvidence(term);
 
-  const certificateEvidence =
-    findCertificateEvidence(term);
+  const certificateEvidence = findCertificateEvidence(term);
 
-  const evidenceSkill =
-    findEvidenceSkillIndex(term);
+  const evidenceSkill = findEvidenceSkillIndex(term);
 
-  const experiences =
-    findExperienceEvidence(term);
+  const experiences = findExperienceEvidence(term);
 
   const allEvidence = [
-    ...(resumeSkill
-      ? [resumeSkill]
-      : []),
+    ...(resumeSkill ? [resumeSkill] : []),
 
     ...resumeWork,
 
     ...certificateEvidence,
 
-    ...(evidenceSkill
-      ? [evidenceSkill]
-      : []),
+    ...(evidenceSkill ? [evidenceSkill] : []),
 
-    ...experiences
+    ...experiences,
   ];
 
   /*
@@ -385,8 +321,7 @@ function analyzeRequirement(requirement) {
    */
   if (
     resumeSkill?.level &&
-    normalize(resumeSkill.level) ===
-      "familiar" &&
+    normalize(resumeSkill.level) === "familiar" &&
     experiences.length === 0
   ) {
     return {
@@ -394,14 +329,8 @@ function analyzeRequirement(requirement) {
       category,
       status: "related",
       confidence: "familiar",
-      evidenceTypes:
-        unique(
-          allEvidence.map(
-            (item) =>
-              item.type
-          )
-        ),
-      evidence: allEvidence
+      evidenceTypes: unique(allEvidence.map((item) => item.type)),
+      evidence: allEvidence,
     };
   }
 
@@ -409,35 +338,21 @@ function analyzeRequirement(requirement) {
    * Atomic professional evidence is strongest.
    */
   if (experiences.length > 0) {
-    const canonicalMatch =
-      experiences.some(
-        (item) =>
-          normalize(
-            item.matchedAs
-          ) ===
-          normalize(term)
-      );
+    const canonicalMatch = experiences.some(
+      (item) => normalize(item.matchedAs) === normalize(term)
+    );
 
     return {
       term,
       category,
 
-      status:
-        canonicalMatch
-          ? "exact"
-          : "equivalent",
+      status: canonicalMatch ? "exact" : "equivalent",
 
       confidence: "professional",
 
-      evidenceTypes:
-        unique(
-          allEvidence.map(
-            (item) =>
-              item.type
-          )
-        ),
+      evidenceTypes: unique(allEvidence.map((item) => item.type)),
 
-      evidence: allEvidence
+      evidence: allEvidence,
     };
   }
 
@@ -451,15 +366,9 @@ function analyzeRequirement(requirement) {
       status: resumeSkill.status,
       confidence: "declared",
 
-      evidenceTypes:
-        unique(
-          allEvidence.map(
-            (item) =>
-              item.type
-          )
-        ),
+      evidenceTypes: unique(allEvidence.map((item) => item.type)),
 
-      evidence: allEvidence
+      evidence: allEvidence,
     };
   }
 
@@ -472,19 +381,11 @@ function analyzeRequirement(requirement) {
       term,
       category,
       status: "related",
-      confidence:
-        evidenceSkill.level ??
-        "declared",
+      confidence: evidenceSkill.level ?? "declared",
 
-      evidenceTypes:
-        unique(
-          allEvidence.map(
-            (item) =>
-              item.type
-          )
-        ),
+      evidenceTypes: unique(allEvidence.map((item) => item.type)),
 
-      evidence: allEvidence
+      evidence: allEvidence,
     };
   }
 
@@ -492,24 +393,16 @@ function analyzeRequirement(requirement) {
    * Certification proves exposure/training,
    * not professional hands-on experience.
    */
-  if (
-    certificateEvidence.length > 0
-  ) {
+  if (certificateEvidence.length > 0) {
     return {
       term,
       category,
       status: "related",
       confidence: "certification",
 
-      evidenceTypes:
-        unique(
-          allEvidence.map(
-            (item) =>
-              item.type
-          )
-        ),
+      evidenceTypes: unique(allEvidence.map((item) => item.type)),
 
-      evidence: allEvidence
+      evidence: allEvidence,
     };
   }
 
@@ -518,21 +411,16 @@ function analyzeRequirement(requirement) {
    * skill still counts as related professional
    * evidence.
    */
-  if (
-    resumeWork.length > 0
-  ) {
+  if (resumeWork.length > 0) {
     return {
       term,
       category,
       status: "related",
       confidence: "professional",
 
-      evidenceTypes: [
-        "resume-work"
-      ],
+      evidenceTypes: ["resume-work"],
 
-      evidence:
-        resumeWork
+      evidence: resumeWork,
     };
   }
 
@@ -542,14 +430,11 @@ function analyzeRequirement(requirement) {
     status: "missing",
     confidence: "none",
     evidenceTypes: [],
-    evidence: []
+    evidence: [],
   };
 }
 
-const results =
-  requirements.map(
-    analyzeRequirement
-  );
+const results = requirements.map(analyzeRequirement);
 
 /*
  * ----------------------------------------
@@ -561,82 +446,39 @@ const statusScore = {
   exact: 1,
   equivalent: 1,
   related: 0.5,
-  missing: 0
+  missing: 0,
 };
 
 function scoreCategory(category) {
-  const items =
-    results.filter(
-      (item) =>
-        item.category ===
-        category
-    );
+  const items = results.filter((item) => item.category === category);
 
-  if (
-    items.length === 0
-  ) {
+  if (items.length === 0) {
     return 0;
   }
 
-  const total =
-    items.reduce(
-      (sum, item) =>
-        sum +
-        (
-          statusScore[
-            item.status
-          ] ?? 0
-        ),
-      0
-    );
-
-  return Math.round(
-    (
-      total /
-      items.length
-    ) * 100
+  const total = items.reduce(
+    (sum, item) => sum + (statusScore[item.status] ?? 0),
+    0
   );
+
+  return Math.round((total / items.length) * 100);
 }
 
 const scores = {
-  coreRequirements:
-    scoreCategory(
-      "required"
-    ),
+  coreRequirements: scoreCategory("required"),
 
-  preferred:
-    scoreCategory(
-      "preferred"
-    ),
+  preferred: scoreCategory("preferred"),
 
-  engineeringCompetencies:
-    scoreCategory(
-      "competency"
-    )
+  engineeringCompetencies: scoreCategory("competency"),
 };
 
-const strong =
-  results.filter(
-    (item) =>
-      item.status ===
-        "exact" ||
-      item.status ===
-        "equivalent"
-  );
+const strong = results.filter(
+  (item) => item.status === "exact" || item.status === "equivalent"
+);
 
-const related =
-  results.filter(
-    (item) =>
-      item.status ===
-      "related"
-  );
+const related = results.filter((item) => item.status === "related");
 
-const missing =
-  results.filter(
-    (item) =>
-      item.status ===
-      "missing"
-  );
+const missing = results.filter((item) => item.status === "missing");
 
 /*
  * ----------------------------------------
@@ -646,98 +488,56 @@ const missing =
 
 function summarizeEvidence(item) {
   return item.evidence
-    .filter(
-      (entry) =>
-        entry.type !==
-        "resume-skill"
-    )
-    .map(
-      (entry) => ({
-        type:
-          entry.type,
+    .filter((entry) => entry.type !== "resume-skill")
+    .map((entry) => ({
+      type: entry.type,
 
-        id:
-          entry.id ??
-          null,
+      id: entry.id ?? null,
 
-        company:
-          entry.company ??
-          null,
+      company: entry.company ?? null,
 
-        position:
-          entry.position ??
-          null,
+      position: entry.position ?? null,
 
-        period:
-          entry.period ??
-          null,
+      period: entry.period ?? null,
 
-        matchedAs:
-          entry.matchedAs ??
-          null,
+      matchedAs: entry.matchedAs ?? null,
 
-        text:
-          entry.text ??
-          null,
+      text: entry.text ?? null,
 
-        facts:
-          entry.facts ??
-          [],
+      facts: entry.facts ?? [],
 
-        certificate:
-          entry.type ===
-          "certificate"
-            ? {
-                name:
-                  entry.name,
-                issuer:
-                  entry.issuer
-              }
-            : null
-      })
-    );
+      certificate:
+        entry.type === "certificate"
+          ? {
+              name: entry.name,
+              issuer: entry.issuer,
+            }
+          : null,
+    }));
 }
 
-const recommendedEmphasis = [
-  ...strong,
-  ...related
-].map(
-  (item) => ({
-    term:
-      item.term,
+const recommendedEmphasis = [...strong, ...related].map((item) => ({
+  term: item.term,
 
-    category:
-      item.category,
+  category: item.category,
 
-    status:
-      item.status,
+  status: item.status,
 
-    confidence:
-      item.confidence,
+  confidence: item.confidence,
 
-    evidenceTypes:
-      item.evidenceTypes,
+  evidenceTypes: item.evidenceTypes,
 
-    evidence:
-      summarizeEvidence(
-        item
-      )
-  })
-);
+  evidence: summarizeEvidence(item),
+}));
 
-const doNotAdd =
-  missing.map(
-    (item) => ({
-      term:
-        item.term,
+const doNotAdd = missing.map((item) => ({
+  term: item.term,
 
-      category:
-        item.category,
+  category: item.category,
 
-      reason:
-        "No supporting evidence found in resume, certificates, or evidence database"
-    })
-  );
+  reason:
+    "No supporting evidence found in resume, certificates, or evidence database",
+}));
 
 /*
  * ----------------------------------------
@@ -748,46 +548,29 @@ const doNotAdd =
 function slug(value) {
   return String(value)
     .normalize("NFKD")
-    .replace(
-      /[\u0300-\u036f]/g,
-      ""
-    )
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .replace(
-      /[^a-z0-9]+/g,
-      "-"
-    )
-    .replace(
-      /^-|-$/g,
-      ""
-    );
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 const analysis = {
   job: {
-    title:
-      job.title,
+    title: job.title,
 
-    company:
-      job.company,
+    company: job.company,
 
-    source:
-      job.source ??
-      null
+    source: job.source ?? null,
   },
 
   sources: {
-    resume:
-      resumePath,
+    resume: resumePath,
 
-    job:
-      jobPath,
+    job: jobPath,
 
-    aliases:
-      aliasesPath,
+    aliases: aliasesPath,
 
-    evidence:
-      evidencePath
+    evidence: evidencePath,
   },
 
   scores,
@@ -795,37 +578,25 @@ const analysis = {
   matches: {
     strong,
     related,
-    missing
+    missing,
   },
 
   tailoring: {
     recommendedEmphasis,
-    doNotAdd
-  }
+    doNotAdd,
+  },
 };
 
-await fs.mkdir(
+await fs.mkdir("output", {
+  recursive: true,
+});
+
+const outputPath = path.join(
   "output",
-  {
-    recursive: true
-  }
+  `${slug(job.company)}-${slug(job.title)}-analysis.json`
 );
 
-const outputPath =
-  path.join(
-    "output",
-    `${slug(job.company)}-${slug(job.title)}-analysis.json`
-  );
-
-await fs.writeFile(
-  outputPath,
-  JSON.stringify(
-    analysis,
-    null,
-    2
-  ),
-  "utf8"
-);
+await fs.writeFile(outputPath, JSON.stringify(analysis, null, 2), "utf8");
 
 /*
  * ----------------------------------------
@@ -834,109 +605,56 @@ await fs.writeFile(
  */
 
 function symbol(status) {
-  if (
-    status === "exact" ||
-    status === "equivalent"
-  ) {
+  if (status === "exact" || status === "equivalent") {
     return "✓";
   }
 
-  if (
-    status === "related"
-  ) {
+  if (status === "related") {
     return "~";
   }
 
   return "✗";
 }
 
-function printCategory(
-  title,
-  category,
-  score
-) {
-  console.log(
-    `\n${title} ${score}%`
-  );
+function printCategory(title, category, score) {
+  console.log(`\n${title} ${score}%`);
 
-  console.log(
-    "-".repeat(
-      title.length +
-      String(score).length +
-      2
-    )
-  );
+  console.log("-".repeat(title.length + String(score).length + 2));
 
-  for (
-    const item
-    of results.filter(
-      (entry) =>
-        entry.category ===
-        category
-    )
-  ) {
+  for (const item of results.filter((entry) => entry.category === category)) {
     console.log(
       `${symbol(item.status)} ${item.term} — ${item.status.toUpperCase()} [${item.confidence}]`
     );
 
-    const contextual =
-      item.evidence.filter(
-        (entry) =>
-          entry.type ===
-            "experience" ||
-          entry.type ===
-            "certificate"
-      );
+    const contextual = item.evidence.filter(
+      (entry) => entry.type === "experience" || entry.type === "certificate"
+    );
 
-    for (
-      const entry
-      of contextual
-    ) {
-      if (
-        entry.type ===
-        "certificate"
-      ) {
+    for (const entry of contextual) {
+      if (entry.type === "certificate") {
         console.log(
           `    ↳ certificate: ${entry.name}${
-            entry.issuer
-              ? ` · ${entry.issuer}`
-              : ""
+            entry.issuer ? ` · ${entry.issuer}` : ""
           }`
         );
 
         continue;
       }
 
-      const context = [
-        entry.company,
-        entry.position,
-        entry.period
-      ]
+      const context = [entry.company, entry.position, entry.period]
         .filter(Boolean)
         .join(" · ");
 
-      console.log(
-        `    ↳ ${entry.id}: ${context}`
-      );
+      console.log(`    ↳ ${entry.id}: ${context}`);
     }
   }
 }
 
-console.log(
-  `\nAnalysis: ${job.company} — ${job.title}`
-);
+console.log(`\nAnalysis: ${job.company} — ${job.title}`);
 
-printCategory(
-  "CORE REQUIREMENTS",
-  "required",
-  scores.coreRequirements
-);
+printCategory("CORE REQUIREMENTS", "required", scores.coreRequirements);
 
-printCategory(
-  "PREFERRED",
-  "preferred",
-  scores.preferred
-);
+printCategory("PREFERRED", "preferred", scores.preferred);
 
 printCategory(
   "ENGINEERING COMPETENCIES",
@@ -944,23 +662,12 @@ printCategory(
   scores.engineeringCompetencies
 );
 
-console.log(
-  "\nDO NOT ADD"
-);
+console.log("\nDO NOT ADD");
 
-console.log(
-  "----------"
-);
+console.log("----------");
 
-for (
-  const item
-  of doNotAdd
-) {
-  console.log(
-    `✗ ${item.term}`
-  );
+for (const item of doNotAdd) {
+  console.log(`✗ ${item.term}`);
 }
 
-console.log(
-  `\nAnalysis written to ${outputPath}`
-);
+console.log(`\nAnalysis written to ${outputPath}`);

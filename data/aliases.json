@@ -1,19 +1,12 @@
 {
-  "REST APIs": [
-    "REST APIs",
-    "RESTful APIs",
-    "REST API"
-  ],
+  "REST APIs": ["REST APIs", "RESTful APIs", "REST API"],
   "GCP": [
-  "GCP",
-  "Google Cloud Platform",
-  "Google Cloud Platform (GCP)",
-  "Google Cloud"
+    "GCP",
+    "Google Cloud Platform",
+    "Google Cloud Platform (GCP)",
+    "Google Cloud"
   ],
-  "RPC": [
-  "RPC",
-  "gRPC"
-  ],
+  "RPC": ["RPC", "gRPC"],
   "CI/CD": [
     "CI/CD",
     "Continuous Integration",
@@ -21,12 +14,7 @@
     "GitLab CI",
     "GitHub Actions"
   ],
-  "Mentoring": [
-    "Mentoring",
-    "Mentor",
-    "Mentored",
-    "Technical Coaching"
-  ],
+  "Mentoring": ["Mentoring", "Mentor", "Mentored", "Technical Coaching"],
   "Event-Driven Architecture": [
     "Event-Driven Architecture",
     "Event-Driven",
@@ -70,20 +58,8 @@
     "Quality Gates",
     "Quality Regressions"
   ],
-  "Domain-Driven Design": [
-    "Domain-Driven Design",
-    "DDD"
-  ],
-  "Clean Architecture": [
-    "Clean Architecture"
-  ],
-  "Node.js": [
-    "Node.js",
-    "NodeJS",
-    "Node"
-  ],
-  "MongoDB": [
-    "MongoDB",
-    "Mongo DB"
-  ]
+  "Domain-Driven Design": ["Domain-Driven Design", "DDD"],
+  "Clean Architecture": ["Clean Architecture"],
+  "Node.js": ["Node.js", "NodeJS", "Node"],
+  "MongoDB": ["MongoDB", "Mongo DB"]
 }
