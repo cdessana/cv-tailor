@@ -1,9 +1,13 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { loadConfig } from "../config/load-config.mjs";
+
+const config = await loadConfig();
 
 const jobPath = process.argv[2];
-const skipRewrite = process.argv.includes("--skip-rewrite");
+const hasSkipRewriteCli = process.argv.includes("--skip-rewrite");
+const skipRewrite = hasSkipRewriteCli ? false : config.pipeline.rewriteEnabled;
 
 if (!jobPath) {
   console.error("Usage: node scripts/run.mjs <job.json> [--skip-rewrite]");

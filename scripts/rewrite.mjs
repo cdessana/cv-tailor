@@ -1,9 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-
-const MODEL = process.env.OLLAMA_MODEL || "granite4.2:3b-q4_K_S";
-
-const OLLAMA_URL = process.env.OLLAMA_URL || "http://127.0.0.1:11434/api/chat";
+import { generateText, currentProvider } from "./llm.mjs";
 
 const MAX_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 1200;
@@ -27,6 +24,15 @@ const reportPath = reportPathArg || path.join(planDir, "rewrite-report.json");
 const resume = JSON.parse(await fs.readFile(resumePath, "utf8"));
 
 const plan = JSON.parse(await fs.readFile(planPath, "utf8"));
+
+const rewriteJsonSchema = {
+  type: "object",
+  properties: {
+    rewritten: { type: "string" },
+  },
+  required: ["rewritten"],
+  additionalProperties: false,
+};
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -299,78 +305,6 @@ function deterministicEvidenceFallback(candidate) {
   return selected.slice(0, 3).map(sentence).join(" ");
 }
 
-function extractJsonObject(raw) {
-  const text = String(raw || "").trim();
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    // continue
-  }
-
-  const match = text.match(/\{[\s\S]*\}/);
-
-  if (!match) {
-    throw new Error("Model response did not contain JSON.");
-  }
-
-  return JSON.parse(match[0]);
-}
-
-async function callOllama(messages) {
-  let lastError;
-
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    try {
-      const response = await fetch(OLLAMA_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: MODEL,
-          stream: false,
-          format: "json",
-          messages,
-          options: {
-            temperature: 0.1,
-          },
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Ollama returned HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      const content = data.message?.content;
-
-      if (!content) {
-        throw new Error("Ollama returned an empty response.");
-      }
-
-      const parsed = extractJsonObject(content);
-
-      if (typeof parsed.rewritten !== "string") {
-        throw new Error('Expected {"rewritten":"..."}');
-      }
-
-      return parsed.rewritten.trim();
-    } catch (error) {
-      lastError = error;
-
-      if (attempt < MAX_ATTEMPTS) {
-        console.log(`      Ollama attempt ${attempt} failed; retrying...`);
-
-        await sleep(RETRY_DELAY_MS);
-      }
-    }
-  }
-
-  throw lastError;
-}
-
 function causalStrengtheningIssues(source, proposed) {
   const issues = [];
 
@@ -445,6 +379,38 @@ function causalStrengtheningIssues(source, proposed) {
   }
 
   return issues;
+}
+
+async function generateRewrite(systemContent, userContent) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const rawResponse = await generateText({
+        systemPrompt: systemContent,
+        userPrompt: userContent,
+        jsonSchema: rewriteJsonSchema,
+        temperature: 0.1,
+      });
+
+      const parsed = JSON.parse(rawResponse);
+
+      if (typeof parsed.rewritten !== "string") {
+        throw new Error('Expected {"rewritten":"..."}');
+      }
+
+      return parsed.rewritten.trim();
+    } catch (error) {
+      lastError = error;
+
+      if (attempt < MAX_ATTEMPTS) {
+        console.log(`      LLM attempt ${attempt} failed; retrying...`);
+        await sleep(RETRY_DELAY_MS);
+      }
+    }
+  }
+
+  throw lastError;
 }
 
 function validateRewrite(candidate, proposed) {
@@ -631,19 +597,12 @@ async function rewriteCandidate(candidate) {
   let generationError = null;
 
   try {
-    proposed = await callOllama([
-      {
-        role: "system",
-        content: systemPrompt(),
-      },
-      {
-        role: "user",
-        content:
-          candidate.type === "evidence"
-            ? userPromptForEvidence(candidate)
-            : userPromptForResumeBullet(candidate),
-      },
-    ]);
+    proposed = await generateRewrite(
+      systemPrompt(),
+      candidate.type === "evidence"
+        ? userPromptForEvidence(candidate)
+        : userPromptForResumeBullet(candidate)
+    );
   } catch (error) {
     generationError = error instanceof Error ? error.message : String(error);
   }
@@ -800,7 +759,7 @@ function sameRole(work, role) {
 const rewrittenResume = structuredClone(resume);
 
 const report = {
-  model: MODEL,
+  model: currentProvider(),
   generatedAt: new Date().toISOString(),
   roles: [],
 };

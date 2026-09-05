@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
-import ollama from "ollama";
 import { z } from "zod";
+import { generateText, currentProvider } from "./llm.mjs";
 
 const [
   resumePath,
@@ -19,8 +19,6 @@ if (!resumePath || !planPath) {
 const resume = JSON.parse(await fs.readFile(resumePath, "utf8"));
 
 const plan = JSON.parse(await fs.readFile(planPath, "utf8"));
-
-const model = process.env.OLLAMA_MODEL ?? "granite4.2:3b-q4_K_S";
 
 function normalize(value) {
   return String(value)
@@ -595,43 +593,27 @@ function compoundClaimIssues(text) {
 async function generate(prompt, { attempts = 3, retryDelayMs = 1200 } = {}) {
   let lastError;
 
+  const systemPrompt =
+    "You write conservative professional resume summaries. Never invent experience, technologies, metrics, responsibilities, outcomes, frequency, causal relationships, seniority, expertise level, or company-specific technology combinations. Prefer descriptive career-wide statements over inferred outcomes. Use only the supplied verified professional evidence. Return only valid JSON matching the provided schema.";
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      const response = await ollama.chat({
-        model,
-
-        messages: [
-          {
-            role: "system",
-
-            content:
-              "You write conservative professional resume summaries. Never invent experience, technologies, metrics, responsibilities, outcomes, frequency, causal relationships, seniority, expertise level, or company-specific technology combinations. Prefer descriptive career-wide statements over inferred outcomes. Use only the supplied verified professional evidence. Return only valid JSON matching the provided schema.",
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-
-        format: summaryJsonSchema,
-
-        options: {
-          temperature: 0.1,
-        },
+      // The script no longer cares who fulfills this request
+      const rawResponse = await generateText({
+        systemPrompt,
+        userPrompt: prompt,
+        jsonSchema: summaryJsonSchema,
       });
 
-      const parsed = summarySchema.parse(JSON.parse(response.message.content));
-
+      const parsed = summarySchema.parse(JSON.parse(rawResponse));
       return parsed.summary.trim();
     } catch (error) {
       lastError = error;
 
-      if (attempt >= attempts) {
-        break;
-      }
+      if (attempt >= attempts) break;
 
-      console.log(`Ollama attempt ${attempt} failed; retrying...`);
-
+      console.log(
+        `LLM attempt ${attempt} failed; retrying in ${retryDelayMs}ms...`
+      );
       await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
     }
   }
@@ -783,7 +765,7 @@ const finalResume = {
 };
 
 const report = {
-  model,
+  model: currentProvider(),
 
   generatedAt: new Date().toISOString(),
 
