@@ -37,26 +37,15 @@
   "skills": [
     {
       "name": "Backend",
-      "keywords": [
-        "Node.js",
-        "REST APIs",
-        "RPC",
-        "GraphQL"
-      ]
+      "keywords": ["Node.js", "REST APIs", "RPC", "GraphQL"]
     },
     {
       "name": "Frontend",
-      "keywords": [
-        "React",
-        "JavaScript"
-      ]
+      "keywords": ["React", "JavaScript"]
     },
     {
       "name": "Data",
-      "keywords": [
-        "MongoDB",
-        "RDS"
-      ]
+      "keywords": ["MongoDB", "RDS"]
     },
     {
       "name": "Architecture",
@@ -124,19 +113,12 @@
     },
     {
       "topic": "Cloud platforms",
-      "keywords": [
-        "AWS",
-        "GCP",
-        "Azure"
-      ],
+      "keywords": ["AWS", "GCP", "Azure"],
       "type": "level"
     },
     {
       "topic": "Containers and orchestration",
-      "keywords": [
-        "Docker",
-        "Kubernetes"
-      ],
+      "keywords": ["Docker", "Kubernetes"],
       "type": "boolean"
     },
     {

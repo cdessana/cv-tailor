@@ -163,13 +163,7 @@
         "Developed desktop applications using WPF.",
         "Developed web applications using Angular."
       ],
-      "skills": [
-        "Python",
-        "REST APIs",
-        ".NET Core",
-        "WPF",
-        "Angular"
-      ]
+      "skills": ["Python", "REST APIs", ".NET Core", "WPF", "Angular"]
     },
 
     {
@@ -184,10 +178,7 @@
         "Helped configure continuous integration environments for new projects.",
         "Supported colleagues with technical questions and difficulties."
       ],
-      "skills": [
-        "CI/CD",
-        "Mentoring"
-      ]
+      "skills": ["CI/CD", "Mentoring"]
     }
   ]
 }
