@@ -1,5 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { loadConfig } from "../config/load-config.mjs";
+
+const config = await loadConfig();
 
 const [
   resumePath,
@@ -298,13 +301,15 @@ function candidatesForRole(work) {
 
 function roleLimit(index) {
   if (index === 0) {
-    return 7;
+    return config.pipeline.maxBulletsPerRole;
   }
 
   if (index === 1) {
-    return 6;
+    // Taper down by 1 for the second role, ensuring it doesn't drop below 1
+    return Math.max(config.pipeline.maxBulletsPerRole - 1, 1);
   }
 
+  // Keep older roles strictly limited to 2 bullets to prevent resume bloat
   return 2;
 }
 

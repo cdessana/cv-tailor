@@ -3,8 +3,11 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import os from "node:os";
 import { existsSync } from "node:fs";
+import { loadConfig } from "../config/load-config.mjs";
 
 const platform = os.platform().toLocaleLowerCase();
+
+const config = await loadConfig();
 
 const resumePath = process.argv[2];
 const themeArg = process.argv[3];
@@ -14,7 +17,7 @@ if (!resumePath) {
   process.exit(1);
 }
 
-const theme = themeArg || "jsonresume-theme-stackoverflow";
+const theme = themeArg || config.render.theme;
 const themeDisplay = theme.replace("jsonresume-theme-", "").toUpperCase();
 
 const outputDir = path.dirname(resumePath);
