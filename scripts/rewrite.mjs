@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { generateText, currentProvider } from "./llm.mjs";
+import { generateText, currentModel } from "./llm.mjs";
 
 const MAX_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 1200;
@@ -393,7 +393,11 @@ async function generateRewrite(systemContent, userContent) {
         temperature: 0.1,
       });
 
-      const parsed = JSON.parse(rawResponse);
+      const sanitized = rawResponse
+        .trim()
+        .replace(/^```(?:json)?\s*|\s*```$/g, "")
+        .trim();
+      const parsed = JSON.parse(sanitized);
 
       if (typeof parsed.rewritten !== "string") {
         throw new Error('Expected {"rewritten":"..."}');
@@ -759,7 +763,7 @@ function sameRole(work, role) {
 const rewrittenResume = structuredClone(resume);
 
 const report = {
-  model: currentProvider(),
+  model: currentModel(),
   generatedAt: new Date().toISOString(),
   roles: [],
 };
