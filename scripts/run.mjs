@@ -7,7 +7,7 @@ const config = await loadConfig();
 
 const jobPath = process.argv[2];
 const hasSkipRewriteCli = process.argv.includes("--skip-rewrite");
-const skipRewrite = hasSkipRewriteCli ? false : config.pipeline.rewriteEnabled;
+const skipRewrite = hasSkipRewriteCli || !config.pipeline.rewriteEnabled;
 
 if (!jobPath) {
   console.error("Usage: node scripts/run.mjs <job.json> [--skip-rewrite]");
