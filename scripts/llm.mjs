@@ -1,4 +1,4 @@
-import ollama from "ollama";
+import { Ollama } from "ollama";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -7,7 +7,7 @@ import { loadConfig } from "../config/load-config.mjs";
 const localConfig = await loadConfig();
 
 export function currentProvider() {
-  return process.env.LLM_PROVIDER || localConfig.provider;
+  return process.env.LLM_PROVIDER || localConfig.llm.provider;
 }
 
 export async function generateText({
@@ -25,7 +25,10 @@ export async function generateText({
   // OLLAMA
   // ---------------------------------------------------------
   if (provider === "ollama") {
-    const response = await ollama.chat({
+    const ollamaClient = new Ollama({
+      host: process.env.OLLAMA_HOST || config.llm.ollama.url,
+    });
+    const response = await ollamaClient.chat({
       model: process.env.OLLAMA_MODEL || config.llm.ollama.model,
       messages: [
         { role: "system", content: systemPrompt },
