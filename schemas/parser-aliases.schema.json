@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Reviewed parser aliases",
+  "type": "object",
+  "propertyNames": { "$ref": "#/definitions/spelling" },
+  "additionalProperties": {
+    "type": "array",
+    "uniqueItems": true,
+    "items": { "$ref": "#/definitions/spelling" }
+  },
+  "definitions": {
+    "spelling": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^\\S+(?: \\S+)*$"
+    }
+  }
+}
