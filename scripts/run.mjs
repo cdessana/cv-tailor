@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { loadConfig } from "../config/load-config.mjs";
 
-const config = await loadConfig();
+const config = loadConfig();
 
 const jobPath = process.argv[2];
 const hasSkipRewriteCli = process.argv.includes("--skip-rewrite");
@@ -14,9 +14,9 @@ if (!jobPath) {
   process.exit(1);
 }
 
-const resumePath = "data/resumes/base.json";
-const aliasesPath = "data/aliases.json";
-const evidencePath = "data/evidence.json";
+const resumePath = config.paths.baseResume;
+const aliasesPath = config.paths.aliases;
+const evidencePath = config.paths.evidence;
 
 function slug(value = "") {
   return value

@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import { z } from "zod";
-import { generateText, currentProvider } from "./llm.mjs";
+import { generateText, currentModel } from "./llm.mjs";
 
 const [
   resumePath,
@@ -604,7 +604,12 @@ async function generate(prompt, { attempts = 3, retryDelayMs = 1200 } = {}) {
         jsonSchema: summaryJsonSchema,
       });
 
-      const parsed = summarySchema.parse(JSON.parse(rawResponse));
+      const sanitized = rawResponse
+      .trim()
+        .replace(/^```(?:json)?\s*|\s*```$/g, "")
+        .trim();
+      const parsed = summarySchema.parse(JSON.parse(sanitized));
+
       return parsed.summary.trim();
     } catch (error) {
       lastError = error;
@@ -765,7 +770,7 @@ const finalResume = {
 };
 
 const report = {
-  model: currentProvider(),
+  model: currentModel(),
 
   generatedAt: new Date().toISOString(),
 
