@@ -6,6 +6,7 @@
   "scripts": {
     "lint": "eslint .",
     "test:llm": "node --test test/llm-adapter.test.mjs",
+    "test:schemas": "node --test tests/job-schemas.test.mjs",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "validate": "node scripts/validate.mjs data/resumes/base.json",

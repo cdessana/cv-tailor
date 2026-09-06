@@ -1,0 +1,120 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Pipeline-compatible job output",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "company": {
+      "$ref": "#/definitions/text"
+    },
+    "title": {
+      "$ref": "#/definitions/text"
+    },
+    "type": {
+      "$ref": "#/definitions/text"
+    },
+    "remote": {
+      "$ref": "#/definitions/text"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "platform": {
+          "$ref": "#/definitions/text"
+        },
+        "url": {
+          "$ref": "#/definitions/text"
+        },
+        "applicationUrl": {
+          "$ref": "#/definitions/text"
+        }
+      }
+    },
+    "description": {
+      "$ref": "#/definitions/text"
+    },
+    "responsibilities": {
+      "$ref": "#/definitions/strings"
+    },
+    "qualifications": {
+      "$ref": "#/definitions/strings"
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "$ref": "#/definitions/text"
+          },
+          "keywords": {
+            "$ref": "#/definitions/strings"
+          }
+        },
+        "required": ["name", "keywords"]
+      }
+    },
+    "requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "required": {
+          "$ref": "#/definitions/strings"
+        },
+        "preferred": {
+          "$ref": "#/definitions/strings"
+        },
+        "competencies": {
+          "$ref": "#/definitions/strings"
+        }
+      }
+    },
+    "screening": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "topic": {
+            "$ref": "#/definitions/text"
+          },
+          "type": {
+            "$ref": "#/definitions/text"
+          },
+          "keywords": {
+            "$ref": "#/definitions/strings"
+          }
+        },
+        "required": ["topic", "type"]
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "language": {
+          "$ref": "#/definitions/text"
+        },
+        "status": {
+          "$ref": "#/definitions/text"
+        }
+      }
+    }
+  },
+  "required": ["company", "title"],
+  "definitions": {
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "strings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/text"
+      }
+    }
+  }
+}
