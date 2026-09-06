@@ -7,7 +7,7 @@ import { loadConfig } from "../config/load-config.mjs";
 
 const platform = os.platform().toLocaleLowerCase();
 
-const config = await loadConfig();
+const config = loadConfig();
 
 const resumePath = process.argv[2];
 const themeArg = process.argv[3];

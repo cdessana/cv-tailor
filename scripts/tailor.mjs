@@ -2,13 +2,13 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { loadConfig } from "../config/load-config.mjs";
 
-const config = await loadConfig();
+const config = loadConfig();
 
 const [
   resumePath,
   analysisPath,
-  aliasesPath = "data/aliases.json",
-  evidencePath = "data/evidence.json",
+  aliasesPath = config.paths.aliases,
+  evidencePath = config.paths.evidence,
 ] = process.argv.slice(2);
 
 if (!resumePath || !analysisPath) {
@@ -310,7 +310,7 @@ function roleLimit(index) {
   }
 
   // Keep older roles strictly limited to 2 bullets to prevent resume bloat
-  return 2;
+  return Math.min(2, config.pipeline.maxBulletsPerRole);
 }
 
 /*

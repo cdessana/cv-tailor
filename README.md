@@ -302,11 +302,11 @@ CLI Arguments / Environment Variables
     "provider": "ollama",
     "ollama": {
       "model": "granite4.2:3b-q4_K_S",
-      "url": "[http://127.0.0.1:11434](http://127.0.0.1:11434)"
+      "url": "http://127.0.0.1:11434"
     },
     "local": {
       "model": "local-model",
-      "baseURL": "[http://127.0.0.1:1234/v1](http://127.0.0.1:1234/v1)",
+      "baseURL": "http://127.0.0.1:1234/v1",
       "apiKey": "not-needed"
     },
     "openai": {
@@ -315,7 +315,7 @@ CLI Arguments / Environment Variables
     },
     "groq": {
       "model": "llama-3.1-70b-versatile",
-      "baseURL": "[https://api.groq.com/openai/v1](https://api.groq.com/openai/v1)",
+      "baseURL": "https://api.groq.com/openai/v1",
       "apiKey": ""
     },
     "anthropic": {

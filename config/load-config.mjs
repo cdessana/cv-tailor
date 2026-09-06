@@ -1,10 +1,10 @@
-import fs from "node:fs/promises";
 import path from "node:path";
 import { ConfigSchema } from "./schema.mjs";
+import { readFileSync } from "node:fs";
 
 const PROJECT_ROOT = process.cwd();
 
-export async function loadConfig(options = {}) {
+export function loadConfig(options = {}) {
   const customPath = options.configPath || process.env.CV_TAILOR_CONFIG;
   const targetPath = customPath
     ? path.resolve(PROJECT_ROOT, customPath)
@@ -13,7 +13,7 @@ export async function loadConfig(options = {}) {
   let rawData = {};
 
   try {
-    const fileContent = await fs.readFile(targetPath, "utf8");
+    const fileContent = readFileSync(targetPath, "utf8");
     rawData = JSON.parse(fileContent);
   } catch (error) {
     if (customPath || error.code !== "ENOENT") {
@@ -28,7 +28,7 @@ export async function loadConfig(options = {}) {
   const result = ConfigSchema.safeParse(rawData);
 
   if (!result.success) {
-    const errorDetails = result.error.errors
+    const errorDetails = result.error.issues
       .map((err) => `  - ${err.path.join(".")}: ${err.message}`)
       .join("\n");
     throw new Error(`Invalid configuration:\n${errorDetails}`);
