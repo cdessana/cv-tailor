@@ -1,0 +1,226 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Intermediate job parser extraction",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "company": {
+          "$ref": "#/definitions/metadataValue"
+        },
+        "title": {
+          "$ref": "#/definitions/metadataValue"
+        },
+        "location": {
+          "$ref": "#/definitions/metadataValue"
+        },
+        "employmentType": {
+          "$ref": "#/definitions/metadataValue"
+        },
+        "sourceUrl": {
+          "$ref": "#/definitions/metadataValue"
+        }
+      }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/definitions/item"
+          },
+          {
+            "$ref": "#/definitions/alternative"
+          }
+        ]
+      }
+    }
+  },
+  "required": ["items"],
+  "definitions": {
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "quote": {
+          "$ref": "#/definitions/text"
+        }
+      },
+      "required": ["quote"]
+    },
+    "metadataValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "$ref": "#/definitions/text"
+        },
+        "evidence": {
+          "$ref": "#/definitions/evidence"
+        },
+        "sourceSection": {
+          "$ref": "#/definitions/text"
+        }
+      },
+      "required": ["value", "evidence"]
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "item"
+        },
+        "value": {
+          "$ref": "#/definitions/text"
+        },
+        "kind": {
+          "enum": [
+            "skill",
+            "requirement",
+            "responsibility",
+            "competency",
+            "ambiguous"
+          ]
+        },
+        "classification": {
+          "enum": ["required", "preferred", "ambiguous", "not-applicable"]
+        },
+        "evidence": {
+          "$ref": "#/definitions/evidence"
+        },
+        "sourceSection": {
+          "$ref": "#/definitions/text"
+        }
+      },
+      "required": ["type", "value", "kind", "classification", "evidence"],
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "kind": {
+                  "enum": ["skill", "requirement", "competency"]
+                },
+                "classification": {
+                  "enum": ["required", "preferred", "ambiguous"]
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "responsibility"
+                },
+                "classification": {
+                  "const": "not-applicable"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "ambiguous"
+                },
+                "classification": {
+                  "const": "ambiguous"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "alternative": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "alternative"
+        },
+        "operator": {
+          "const": "anyOf"
+        },
+        "values": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/text"
+          }
+        },
+        "kind": {
+          "enum": [
+            "skill",
+            "requirement",
+            "responsibility",
+            "competency",
+            "ambiguous"
+          ]
+        },
+        "classification": {
+          "enum": ["required", "preferred", "ambiguous", "not-applicable"]
+        },
+        "evidence": {
+          "$ref": "#/definitions/evidence"
+        },
+        "sourceSection": {
+          "$ref": "#/definitions/text"
+        }
+      },
+      "required": [
+        "type",
+        "operator",
+        "values",
+        "kind",
+        "classification",
+        "evidence"
+      ],
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "kind": {
+                  "enum": ["skill", "requirement", "competency"]
+                },
+                "classification": {
+                  "enum": ["required", "preferred", "ambiguous"]
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "responsibility"
+                },
+                "classification": {
+                  "const": "not-applicable"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "ambiguous"
+                },
+                "classification": {
+                  "const": "ambiguous"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "description": "One source-supported any-of group; kind and classification apply to the whole group. Not independently mandatory entries."
+    }
+  }
+}
