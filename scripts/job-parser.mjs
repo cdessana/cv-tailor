@@ -69,15 +69,31 @@ export async function runJobParser({ input, output, semanticProvider } = {}) {
   let extraction = deterministic.extraction;
   if (deterministic.unresolved.length > 0) {
     console.info("[job-parser] Semantic extraction required.");
-    semanticProvider ??= process.env.GEMINI_API_KEY ? createGeminiProvider() : undefined;
+    semanticProvider ??= process.env.GEMINI_API_KEY ? createGeminiProvider({
+      onRawResponse: process.env.JOB_PARSER_DEBUG === "1"
+        ? (response) => fs.writeFile(`${output}.provider-response.json`, `${response}\n`, "utf8")
+        : undefined,
+    }) : undefined;
     if (!semanticProvider) {
       throw new Error("SEMANTIC_ERROR: Unresolved content requires a semantic provider.");
     }
     try {
-      extraction = await semanticExtract(document, deterministic, semanticProvider);
+      extraction = await semanticExtract(document, deterministic, semanticProvider, {
+        onResponse: process.env.JOB_PARSER_DEBUG === "1"
+          ? (response) => fs.writeFile(`${output}.intermediate.json`, `${JSON.stringify(response, null, 2)}\n`, "utf8")
+          : undefined,
+      });
       console.info(`[job-parser] Semantic extraction complete (${extraction.items.length} items).`);
     } catch (error) {
       throw new Error(`SEMANTIC_ERROR: ${error.message}`);
+    }
+  }
+  if (process.env.JOB_PARSER_DEBUG === "1" && deterministic.unresolved.length === 0) {
+    try {
+      await fs.writeFile(`${output}.intermediate.json`, `${JSON.stringify(extraction, null, 2)}\n`, "utf8");
+      console.info(`[job-parser] Debug intermediate extraction written: ${output}.intermediate.json`);
+    } catch (error) {
+      console.warn(`[job-parser] Could not write debug intermediate extraction: ${error.message}`);
     }
   }
   let mapped;
@@ -89,6 +105,9 @@ export async function runJobParser({ input, output, semanticProvider } = {}) {
   }
   if (!mapped.valid) {
     throw new Error(`MAPPING_ERROR: ${JSON.stringify(mapped.errors)}`);
+  }
+  if (mapped.warnings?.length) {
+    console.warn(`[job-parser] ${mapped.warnings.length} extraction warning(s): ${JSON.stringify(mapped.warnings)}`);
   }
   try {
     console.info(`[job-parser] Writing validated output: ${output}`);
