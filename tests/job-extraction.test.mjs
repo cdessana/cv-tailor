@@ -7,6 +7,7 @@ import { normalizeExtraction } from "../lib/job-parser/normalize.mjs";
 for (const [text, value, classification] of [
   ["Experience with Node.js is required", "Node.js", "required"],
   ["Node.js is required.", "Node.js", "required"],
+  ["Node.js is required!!", "Node.js", "required"],
   ["Required: nodejs!", "nodejs", "required"],
   ["Nice to have: Kubernetes", "Kubernetes", "preferred"],
   ["Preferred: postgres", "postgres", "preferred"],
