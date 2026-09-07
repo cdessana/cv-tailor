@@ -15,6 +15,7 @@
     "test:map-job": "node --test tests/job-map.test.mjs",
     "test:job-parser": "node --test tests/job-parser-cli.test.mjs",
     "test:job-parser-e2e": "node --test tests/job-parser-e2e.test.mjs",
+    "test:gemini-provider": "node --test tests/gemini-provider.test.mjs",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "validate": "node scripts/validate.mjs data/resumes/base.json",
