@@ -69,3 +69,11 @@ test("drops model-grouped lists without source choice wording", () => {
   assert.equal(result.valid, true);
   assert.equal(result.job.alternativeRequirements, undefined);
 });
+
+for (const value of ["Degree or equivalent", "Bacharelado ou superior"]) {
+  test(`retains qualification wording: ${value}`, () => {
+    const result = mapToJob({ metadata: { company: { value: "Example", ...evidence("Example") }, title: { value: "Engineer", ...evidence("Engineer") } }, items: [item(value, "requirement", "required")] });
+    assert.equal(result.valid, true);
+    assert.deepEqual(result.job.requirements.required, [value]);
+  });
+}

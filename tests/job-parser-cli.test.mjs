@@ -13,6 +13,21 @@ test("parses positional and flag arguments", () => {
   for (const args of [["--input"], ["--unknown"], ["a", "b"], ["--input", "a", "b"]]) assert.throws(() => parseArguments(args));
 });
 
+test("programmatic parser calls default the output path", async () => {
+  const directory = await tempDir();
+  const input = path.join(directory, "job.txt");
+  await fs.writeFile(input, "Example is hiring a Senior Engineer\nRequirements\n- Node.js is required", "utf8");
+  const previous = process.cwd();
+  process.chdir(directory);
+  try {
+    const result = await runJobParser({ input });
+    assert.equal(result.output, path.join("data", "jobs", "job.json"));
+    await fs.access(result.output);
+  } finally {
+    process.chdir(previous);
+  }
+});
+
 test("runs the full flow with an injected semantic provider and writes valid output", async () => {
   const directory = await tempDir();
   const input = path.join(directory, "job.txt");
