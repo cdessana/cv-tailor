@@ -60,6 +60,16 @@ test("rejects fabricated evidence", async () => {
   await assert.rejects(() => run("Requirements\n- X", { items: [{ type: "item", value: "X", kind: "skill", classification: "required", evidence: { quote: "Not in source" } }] }), /not present in source/);
 });
 
+test("writes intermediate callback only after schema and evidence validation", async () => {
+  let calls = 0;
+  const document = preprocess("Requirements\n- Node.js");
+  const deterministic = extract(document);
+  await semanticExtract(document, deterministic, () => ({ items: [{ type: "item", value: "Node.js", kind: "skill", classification: "required", evidence: { quote: "Node.js" } }] }), { onResponse: () => { calls += 1; } });
+  assert.equal(calls, 1);
+  await assert.rejects(() => semanticExtract(document, deterministic, () => ({ items: [{ type: "item", value: "AWS", kind: "skill", classification: "required", evidence: { quote: "AWS" } }] }), { onResponse: () => { calls += 1; } }));
+  assert.equal(calls, 1);
+});
+
 test("rejects conflicting metadata and preserves ambiguity", async () => {
   const document = preprocess("Example");
   await assert.rejects(() => semanticExtract(document, { metadata: { company: { value: "Example", evidence: { quote: "Example" } } }, items: [] }, () => ({ metadata: { company: { value: "Other", evidence: { quote: "Example" } } }, items: [] })), /Conflicting semantic metadata/);

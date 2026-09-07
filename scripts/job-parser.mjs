@@ -52,6 +52,9 @@ async function writeAtomically(outputPath, value) {
 }
 
 export async function runJobParser({ input, output, semanticProvider } = {}) {
+  // A failed replacement must not leave an older job looking like the result
+  // of the current run.
+  if (output) await fs.rm(output, { force: true });
   console.info(`[job-parser] Reading input: ${input}`);
   let source;
   try {
