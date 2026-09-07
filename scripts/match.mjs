@@ -1,3 +1,4 @@
+import { validateAlternatives, evaluateAlternative } from "../lib/job-requirements/alternatives.mjs";
 import fs from "node:fs/promises";
 
 const [resumePath, jobPath, aliasesPath = "data/aliases.json"] =
@@ -227,6 +228,7 @@ function printSection(title, results) {
   for (const item of results) {
     console.log(`${icon(item.status)} ${item.term} [${label(item.status)}]`);
 
+    if (item.alternative) console.log(`  anyOf: ${item.alternative.values.join(" OR ")}; context: ${item.alternative.context}`);
     if (item.reason) {
       console.log(`  ${item.reason}`);
     }
@@ -248,6 +250,10 @@ const requirements = job.requirements ?? {};
 const required = analyze(requirements.required ?? []);
 
 const preferred = analyze(requirements.preferred ?? []);
+for (const group of validateAlternatives(job.alternativeRequirements)) {
+  const result = evaluateAlternative(group, (term) => ({ term, ...classify(term) }));
+  (group.classification === "required" ? required : preferred).push(result);
+}
 
 const competencies = analyze(requirements.competencies ?? []);
 

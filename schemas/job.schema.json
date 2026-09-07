@@ -56,7 +56,10 @@
             "$ref": "#/definitions/strings"
           }
         },
-        "required": ["name", "keywords"]
+        "required": [
+          "name",
+          "keywords"
+        ]
       }
     },
     "requirements": {
@@ -90,7 +93,10 @@
             "$ref": "#/definitions/strings"
           }
         },
-        "required": ["topic", "type"]
+        "required": [
+          "topic",
+          "type"
+        ]
       }
     },
     "metadata": {
@@ -104,9 +110,55 @@
           "$ref": "#/definitions/text"
         }
       }
+    },
+    "alternativeRequirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operator",
+          "classification",
+          "kind",
+          "values",
+          "context"
+        ],
+        "properties": {
+          "operator": {
+            "const": "anyOf"
+          },
+          "classification": {
+            "enum": [
+              "required",
+              "preferred"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "skill",
+              "requirement",
+              "competency"
+            ]
+          },
+          "values": {
+            "type": "array",
+            "minItems": 2,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/definitions/text"
+            }
+          },
+          "context": {
+            "$ref": "#/definitions/text"
+          }
+        }
+      }
     }
   },
-  "required": ["company", "title"],
+  "required": [
+    "company",
+    "title"
+  ],
   "definitions": {
     "text": {
       "type": "string",

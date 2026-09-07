@@ -73,6 +73,7 @@ const supportedTerms = [
   ...(analysis.matches?.related ?? []),
 ].map((item) => ({
   term: item.term,
+  ...(item.alternative ? { alternative: item.alternative } : {}),
   category: item.category,
   status: item.status,
   confidence: item.confidence ?? null,
@@ -735,6 +736,7 @@ await fs.writeFile(
   JSON.stringify(
     {
       job: analysis.job,
+      alternativeRequirements: [...(analysis.matches?.strong ?? []), ...(analysis.matches?.related ?? []), ...(analysis.matches?.missing ?? [])].filter((item) => item.alternative).map((item) => item.alternative),
 
       scores: analysis.scores,
 
@@ -795,6 +797,7 @@ await fs.writeFile(
   JSON.stringify(
     {
       job: analysis.job,
+      alternativeRequirements: [...(analysis.matches?.strong ?? []), ...(analysis.matches?.related ?? []), ...(analysis.matches?.missing ?? [])].filter((item) => item.alternative).map((item) => item.alternative),
 
       scores: analysis.scores,
 

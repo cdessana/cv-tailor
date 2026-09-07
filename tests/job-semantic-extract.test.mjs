@@ -23,8 +23,8 @@ test("accepts responsibilities, competencies, ambiguity, alternatives, and metad
       title: { value: "Senior Engineer", evidence: { quote: "Senior Engineer" } },
     },
     items: [
-      { type: "item", value: "Mentor engineers", kind: "responsibility", classification: "not-applicable", evidence: { quote: "You will mentor engineers" }, sourceSection: "Responsibilities" },
-      { type: "item", value: "Communication", kind: "competency", classification: "ambiguous", evidence: { quote: "Strong communication skills" }, sourceSection: "Requirements" },
+      { type: "item", value: "You will mentor engineers", kind: "responsibility", classification: "not-applicable", evidence: { quote: "You will mentor engineers" }, sourceSection: "Responsibilities" },
+      { type: "item", value: "Strong communication skills", kind: "competency", classification: "ambiguous", evidence: { quote: "Strong communication skills" }, sourceSection: "Requirements" },
       { type: "alternative", operator: "anyOf", values: ["Java", "Kotlin"], kind: "skill", classification: "required", evidence: { quote: "Java or Kotlin" }, sourceSection: "Requirements" },
     ],
   };
@@ -40,7 +40,7 @@ test("merges semantic items without modifying deterministic extraction", async (
   const deterministic = extract(document);
   const before = structuredClone(deterministic.extraction);
   const result = await semanticExtract(document, deterministic, () => ({
-    items: [{ type: "item", value: "Mentor engineers", kind: "responsibility", classification: "not-applicable", evidence: { quote: "You will mentor engineers" } }],
+    items: [{ type: "item", value: "You will mentor engineers", kind: "responsibility", classification: "not-applicable", evidence: { quote: "You will mentor engineers" } }],
   }));
   assert.deepEqual(deterministic.extraction, before);
   assert.equal(result.items.length, 2);
@@ -71,9 +71,9 @@ test("writes intermediate callback only after schema and evidence validation", a
 });
 
 test("rejects conflicting metadata and preserves ambiguity", async () => {
-  const document = preprocess("Example");
-  await assert.rejects(() => semanticExtract(document, { metadata: { company: { value: "Example", evidence: { quote: "Example" } } }, items: [] }, () => ({ metadata: { company: { value: "Other", evidence: { quote: "Example" } } }, items: [] })), /Conflicting semantic metadata/);
-  const { result } = await run("Requirements\n- Modern cloud experience", { items: [{ type: "item", value: "modern cloud experience", kind: "ambiguous", classification: "ambiguous", evidence: { quote: "Modern cloud experience" } }] });
+  const document = preprocess("Example Other");
+  await assert.rejects(() => semanticExtract(document, { metadata: { company: { value: "Example", evidence: { quote: "Example" } } }, items: [] }, () => ({ metadata: { company: { value: "Other", evidence: { quote: "Other" } } }, items: [] })), /Conflicting semantic metadata/);
+  const { result } = await run("Requirements\n- Modern cloud experience", { items: [{ type: "item", value: "Modern cloud experience", kind: "ambiguous", classification: "ambiguous", evidence: { quote: "Modern cloud experience" } }] });
   assert.equal(result.items[0].classification, "ambiguous");
 });
 
