@@ -263,3 +263,17 @@ represent/project explicit alternatives. Responsibilities can remain persisted
 without entering scoring. Schema design, parser implementation, alias refactoring,
 validation changes, and responsibility scoring are outside this documentation
 subissue.
+
+## Parser location extension
+
+Final jobs may include an optional `location` string containing at least one
+non-whitespace character. The parser preserves validated `metadata.location.value`
+exactly and omits the field when absent. Null, empty, whitespace-only, and
+non-string values are rejected by the final schema. Multiple locations remain
+one source-supported string. This additive field is ignored by `analyse.mjs`;
+existing manually authored jobs need no changes.
+
+Only explicitly stated job locations should be extracted, not unrelated corporate
+footer addresses. Existing evidence validation checks textual support; it cannot
+independently establish an address's semantic role. Geographic normalization,
+remote/hybrid classification, and candidate filtering remain out of scope.

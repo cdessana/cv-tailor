@@ -16,6 +16,9 @@
     "remote": {
       "$ref": "#/definitions/text"
     },
+    "location": {
+      "$ref": "#/definitions/text"
+    },
     "source": {
       "type": "object",
       "additionalProperties": false,
