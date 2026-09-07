@@ -113,6 +113,58 @@ for (const [signal, headings] of Object.entries(groups)) {
   }
 }
 
+const portugueseGroups = {
+  required: [
+    "Requisitos",
+    "Requisitos obrigatórios",
+    "Qualificações obrigatórias",
+    "O que esperamos de você",
+    "Conhecimentos necessários",
+  ],
+  preferred: [
+    "Será um diferencial",
+    "Será um diferencial se você tiver",
+    "Diferenciais",
+    "Desejável",
+    "Conhecimentos desejáveis",
+    "Requisitos desejáveis",
+  ],
+  responsibilities: [
+    "Responsabilidades",
+    "Atividades",
+    "Principais atividades",
+    "Como será seu dia a dia",
+    "O que você fará",
+  ],
+  competencies: [
+    "Perfil que buscamos",
+    "Competências",
+    "Habilidades comportamentais",
+  ],
+};
+for (const [signal, headings] of Object.entries(portugueseGroups)) {
+  for (const heading of headings) {
+    test(`detects Portuguese heading ${heading}`, () => {
+      for (const suffix of ["", ":", "?", "!", " -"]) {
+      const result = preprocess(`${heading.toUpperCase()}${suffix}\n- Source statement`);
+      assert.equal(result.sections[0].signal, signal);
+      assert.equal(result.sections[0].heading.text, heading.toUpperCase());
+      assert.equal(result.sections[0].units[0].text, "Source statement");
+      checkRanges(result);
+      }
+    });
+  }
+}
+
+test("Portuguese headings preserve accents and tolerate dash punctuation", () => {
+  const input = "Requisitos obrigatórios -\n- Java\nSerá um diferencial:\n- Azure";
+  const result = preprocess(input);
+  assert.deepEqual(result.sections.map(({ signal }) => signal), ["required", "preferred"]);
+  assert.equal(result.sections[0].heading.text, "Requisitos obrigatórios");
+  assert.equal(result.sections[1].heading.text, "Será um diferencial");
+  checkRanges(result);
+});
+
 test("unknown headings end prior signals and retain original heading text", () => {
   const result = preprocess(
     "Requirements\n- Node.js\n## Our benefits\n- Holidays\nAbout us:\nWe build tools\nBonus\n- GCP"
