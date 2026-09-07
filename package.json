@@ -9,6 +9,7 @@
     "test:schemas": "node --test tests/job-schemas.test.mjs",
     "test:preprocess": "node --test tests/job-preprocess.test.mjs",
     "test:parser-aliases": "node --test tests/parser-aliases.test.mjs",
+    "test:extraction": "node --test tests/job-extraction.test.mjs",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "validate": "node scripts/validate.mjs data/resumes/base.json",
