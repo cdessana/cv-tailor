@@ -46,6 +46,14 @@ test("merges semantic items without modifying deterministic extraction", async (
   assert.equal(result.items.length, 2);
 });
 
+test("merges identical metadata and items despite different evidence", async () => {
+  const document = preprocess("Example is hiring a Senior Engineer\nRequirements\n- Node.js");
+  const deterministic = { metadata: { company: { value: "Example", evidence: { quote: "Example" } } }, items: [{ type: "item", value: "Node.js", kind: "skill", classification: "required", evidence: { quote: "Node.js" } }] };
+  const result = await semanticExtract(document, deterministic, () => ({ metadata: { company: { value: "Example", evidence: { quote: "Example is hiring a Senior Engineer" } } }, items: [{ type: "item", value: "Node.js", kind: "skill", classification: "required", evidence: { quote: "Example is hiring a Senior Engineer\nRequirements\n- Node.js" } }] }));
+  assert.equal(result.items.length, 1);
+  assert.equal(result.metadata.company.value, "Example");
+});
+
 for (const [name, response] of [
   ["unexpected fields", { items: [{ type: "item", value: "X", kind: "skill", classification: "required", evidence: { quote: "X" }, extra: true }] }],
   ["invalid classification", { items: [{ type: "item", value: "X", kind: "responsibility", classification: "required", evidence: { quote: "X" } }] }],
