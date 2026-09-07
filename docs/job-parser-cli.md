@@ -9,11 +9,20 @@ node scripts/job-parser.mjs job-description.txt
 node scripts/job-parser.mjs --input job-description.txt --output data/jobs/example.json
 ```
 
+For troubleshooting semantic output, set `JOB_PARSER_DEBUG=1`. The CLI then
+captures the provider's schema-valid intermediate extraction to
+`<output>.intermediate.json` before compatibility mapping. This file may contain
+source excerpts and is written before evidence or compatibility failures, so it
+can be inspected even when a semantic response is rejected. Treat it as local
+diagnostic output; it is never written during normal runs. The raw model text is
+also captured as `<output>.provider-response.json` before JSON/schema validation,
+so malformed semantic responses can be inspected too.
+
 Positional input is equivalent to `--input`. Without `--output`, the CLI writes
-`data/jobs/<input-basename>.json`. The CLI currently has no live semantic provider;
-fully deterministic descriptions with explicit metadata can succeed without one.
-When unresolved content exists it exits with `SEMANTIC_ERROR` rather than dropping
-content. Programmatic callers can inject a provider through `runJobParser`.
+`data/jobs/<input-basename>.json`. When unresolved content exists, the CLI uses
+Gemini when `GEMINI_API_KEY` is configured; otherwise it exits with
+`SEMANTIC_ERROR` rather than dropping content. Programmatic callers can inject a
+provider through `runJobParser`.
 
 Output is written only after all stages pass. It is first written to a temporary
 file in the destination directory and renamed into place atomically. Input,

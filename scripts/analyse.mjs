@@ -1,3 +1,4 @@
+import { validateAlternatives, evaluateAlternative } from "../lib/job-requirements/alternatives.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
 
@@ -435,7 +436,11 @@ function analyzeRequirement(requirement) {
   };
 }
 
-const results = requirements.map(analyzeRequirement);
+const results = [
+  ...requirements.map(analyzeRequirement),
+  ...validateAlternatives(job.alternativeRequirements).map((group) =>
+    evaluateAlternative(group, (term) => analyzeRequirement({ term, category: group.classification }))),
+];
 
 /*
  * ----------------------------------------
@@ -519,6 +524,7 @@ function summarizeEvidence(item) {
 
 const recommendedEmphasis = [...strong, ...related].map((item) => ({
   term: item.term,
+  ...(item.alternative ? { alternative: item.alternative } : {}),
 
   category: item.category,
 
@@ -533,6 +539,7 @@ const recommendedEmphasis = [...strong, ...related].map((item) => ({
 
 const doNotAdd = missing.map((item) => ({
   term: item.term,
+  ...(item.alternative ? { alternative: item.alternative } : {}),
 
   category: item.category,
 

@@ -73,6 +73,15 @@ test("metadata values must be supported by their own evidence", () => {
   assert.equal(result.errors[0].path, "/metadata/company/value");
 });
 
+test("all item kinds require value grounding", () => {
+  const document = preprocess("Responsibilities\n- Mentor engineers\nRequirements\n- Strong communication");
+  for (const [kind, classification] of [["competency", "required"], ["responsibility", "not-applicable"], ["ambiguous", "ambiguous"]]) {
+    const result = validateEvidence(document, { items: [{ type: "item", value: "Fabricated value", kind, classification, evidence: { quote: "Mentor engineers" } }] });
+    assert.equal(result.valid, false);
+    assert.equal(result.errors[0].code, "value_not_supported_by_evidence");
+  }
+});
+
 test("validation does not mutate extraction", () => {
   const document = preprocess("Experience with Node.js is required");
   const extraction = item("Node.js", "Experience with Node.js is required");

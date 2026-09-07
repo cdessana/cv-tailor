@@ -19,8 +19,8 @@ test("runs the full flow with an injected semantic provider and writes valid out
   const output = path.join(directory, "out", "job.json");
   await fs.writeFile(input, "Example role\nRequirements\n- Experience with Node.js is required\nResponsibilities\n- You will mentor engineers", "utf8");
   const result = await runJobParser({ input, output, semanticProvider: ({ unresolved }) => ({
-    metadata: { company: { value: "Example", evidence: { quote: "Example" } }, title: { value: "Senior Engineer", evidence: { quote: "Example role" } } },
-    items: [{ type: "item", value: "Mentor engineers", kind: "responsibility", classification: "not-applicable", evidence: { quote: "You will mentor engineers" }, sourceSection: "Responsibilities" }],
+    metadata: { company: { value: "Example", evidence: { quote: "Example" } }, title: { value: "Example role", evidence: { quote: "Example role" } } },
+    items: [{ type: "item", value: "You will mentor engineers", kind: "responsibility", classification: "not-applicable", evidence: { quote: "You will mentor engineers" }, sourceSection: "Responsibilities" }],
     ...(unresolved.length ? {} : {}),
   }) });
   assert.equal(result.job.company, "Example");

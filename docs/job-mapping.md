@@ -17,9 +17,12 @@ Responsibilities map to the existing `responsibilities` array and are never
 converted into competencies.
 
 Ambiguous items, unsupported classifications, missing company/title, and
-unsupported metadata return explicit errors. Alternative groups return an
-`unsupported_alternative` error because flat legacy arrays cannot preserve OR
-semantics. They are never flattened into AND requirements.
+unsupported metadata return explicit errors. Required and preferred alternative groups map to `alternativeRequirements`.
+Their original evidence wording is retained as `context` to preserve shared
+phrasing. Ambiguous or responsibility alternatives remain unsupported. Plain
+skill, requirement, or competency items containing standalone `or` or `ou` fail
+with `unstructured_alternative`; this conservative check can require refinement
+for non-alternative uses of those words.
 
 Successful output is validated with the existing final job schema. Invalid or
 incompatible mapping returns `job: null`, so unsupported content cannot reach a
