@@ -65,8 +65,8 @@ async function writeTextAtomically(outputPath, text) {
 }
 
 export async function runJobParser({ input, output, semanticProvider } = {}) {
-  // A failed replacement must not leave an older job looking like the result
-  // of the current run.
+  if (!input) throw new Error("INPUT_ERROR: An input file is required.");
+  output ??= path.join("data", "jobs", `${path.basename(input, path.extname(input))}.json`);
   if (output) await fs.mkdir(path.dirname(output), { recursive: true });
   console.info(`[job-parser] Reading input: ${input}`);
   let source;
