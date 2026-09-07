@@ -8,19 +8,23 @@ const valid = { items: [{ type: "item", value: "Node.js", kind: "skill", classif
 
 test("returns schema-valid structured Gemini output without network", async () => {
   let request;
-  const provider = createGeminiProvider({ apiKey: "test-secret", fetchImpl: async (url, options) => { request = { url, options }; return response({ candidates: [{ content: { parts: [{ text: JSON.stringify(valid) }] } }] }); } });
+  let rawResponse;
+  const provider = createGeminiProvider({ apiKey: "test-secret", onRawResponse: (text) => { rawResponse = text; }, fetchImpl: async (url, options) => { request = { url, options }; return response({ candidates: [{ content: { parts: [{ text: JSON.stringify(valid) }] } }] }); } });
   assert.deepEqual(await provider(input), valid);
+  assert.equal(rawResponse, JSON.stringify(valid));
   assert.match(request.url, /key=test-secret/);
   assert.match(request.options.body, /application\/json/);
+  assert.match(request.options.body, /Review every unresolved source unit/);
+  assert.match(request.options.body, /explicit OR\/OU relationship/);
   const requestBody = JSON.parse(request.options.body);
-  assert.deepEqual(requestBody.generationConfig.responseJsonSchema, {
+  assert.deepEqual(requestBody.generationConfig.responseSchema, {
     $schema: "http://json-schema.org/draft-07/schema#",
     title: "Intermediate job parser extraction",
     type: "object",
     additionalProperties: false,
-    properties: requestBody.generationConfig.responseJsonSchema.properties,
+    properties: requestBody.generationConfig.responseSchema.properties,
     required: ["items"],
-    definitions: requestBody.generationConfig.responseJsonSchema.definitions,
+    definitions: requestBody.generationConfig.responseSchema.definitions,
   });
   assert.equal(request.options.body.includes("resume"), false);
 });
@@ -31,6 +35,13 @@ test("requires configuration and rejects malformed/schema-invalid responses", as
     const provider = createGeminiProvider({ apiKey: "x", fetchImpl: async () => response(body) });
     await assert.rejects(() => provider(input), /GEMINI_(RESPONSE|SCHEMA)_ERROR/);
   }
+});
+
+test("repairs only the model's responsibility type/kind mix-up", async () => {
+  const provider = createGeminiProvider({ apiKey: "x", fetchImpl: async () => response({ candidates: [{ content: { parts: [{ text: JSON.stringify({ items: [{ type: "responsibility", value: "Mentor engineers", kind: "responsibility", classification: "not-applicable", evidence: { quote: "Mentor engineers" } }] }) }] } }] }) });
+  const result = await provider(input);
+  assert.equal(result.items[0].type, "item");
+  assert.equal(result.items[0].kind, "responsibility");
 });
 
 for (const [status, code] of [[401, "GEMINI_AUTH_ERROR"], [429, "GEMINI_RATE_LIMIT"], [500, "GEMINI_REQUEST_ERROR"]]) {
