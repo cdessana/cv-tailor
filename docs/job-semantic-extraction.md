@@ -10,7 +10,11 @@ data, resumes, scores, and final job objects are outside this interface. Provide
 output must conform to `schemas/job-parser.schema.json`.
 
 Every semantic item and present metadata value must include an evidence quote that
-occurs exactly in the original source text. Fabricated evidence is rejected.
+occurs in the original source text. Exact matching is attempted first, followed
+by matching with normalized whitespace. Approved parser aliases may support a
+canonical value such as `Kubernetes` when the source explicitly says `k8s`;
+related matching aliases are never used. Fabricated evidence is rejected with
+structured validation errors before merging.
 Responsibilities remain separate from competencies, ambiguous classifications
 remain ambiguous, and alternatives remain one `anyOf` item.
 
@@ -22,6 +26,7 @@ modified, and no final job JSON is generated.
 Run the offline tests with:
 
 ```sh
+npm run test:evidence
 npm run test:semantic-extraction
 npm run test:extraction
 npm run test:parser-aliases
