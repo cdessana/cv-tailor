@@ -5,6 +5,7 @@ import { preprocessJobDescription } from "../lib/job-parser/preprocess.mjs";
 import { semanticExtract } from "../lib/job-parser/semantic-extract.mjs";
 import { normalizeExtraction } from "../lib/job-parser/normalize.mjs";
 import { mapToJob } from "../lib/job-parser/map-to-job.mjs";
+import { createGeminiProvider } from "../lib/job-parser/providers/gemini.mjs";
 
 export function parseArguments(argv) {
   let input;
@@ -51,27 +52,37 @@ async function writeAtomically(outputPath, value) {
 }
 
 export async function runJobParser({ input, output, semanticProvider } = {}) {
+  console.info(`[job-parser] Reading input: ${input}`);
   let source;
   try {
     source = await fs.readFile(input, "utf8");
   } catch (error) {
     throw new Error(`INPUT_ERROR: Could not read ${input}: ${error.message}`);
   }
+  console.info(`[job-parser] Read ${source.length} characters.`);
+  console.info("[job-parser] Preprocessing job description.");
   const document = preprocessJobDescription(source);
+  console.info(`[job-parser] Preprocessing complete (${document.sections.length} sections).`);
+  console.info("[job-parser] Running deterministic extraction.");
   const deterministic = extract(document);
+  console.info(`[job-parser] Deterministic extraction complete (${deterministic.extraction.items.length} items, ${deterministic.unresolved.length} unresolved).`);
   let extraction = deterministic.extraction;
   if (deterministic.unresolved.length > 0) {
+    console.info("[job-parser] Semantic extraction required.");
+    semanticProvider ??= process.env.GEMINI_API_KEY ? createGeminiProvider() : undefined;
     if (!semanticProvider) {
       throw new Error("SEMANTIC_ERROR: Unresolved content requires a semantic provider.");
     }
     try {
       extraction = await semanticExtract(document, deterministic, semanticProvider);
+      console.info(`[job-parser] Semantic extraction complete (${extraction.items.length} items).`);
     } catch (error) {
       throw new Error(`SEMANTIC_ERROR: ${error.message}`);
     }
   }
   let mapped;
   try {
+    console.info("[job-parser] Normalizing and mapping extraction.");
     mapped = mapToJob(normalizeExtraction(extraction));
   } catch (error) {
     throw new Error(`MAPPING_ERROR: ${error.message}`);
@@ -80,10 +91,12 @@ export async function runJobParser({ input, output, semanticProvider } = {}) {
     throw new Error(`MAPPING_ERROR: ${JSON.stringify(mapped.errors)}`);
   }
   try {
+    console.info(`[job-parser] Writing validated output: ${output}`);
     await writeAtomically(output, mapped.job);
   } catch (error) {
     throw new Error(`OUTPUT_ERROR: Could not write ${output}: ${error.message}`);
   }
+  console.info("[job-parser] Job parsing completed successfully.");
   return { output, job: mapped.job };
 }
 
