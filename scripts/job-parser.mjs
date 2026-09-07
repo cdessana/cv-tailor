@@ -54,7 +54,10 @@ async function writeAtomically(outputPath, value) {
 export async function runJobParser({ input, output, semanticProvider } = {}) {
   // A failed replacement must not leave an older job looking like the result
   // of the current run.
-  if (output) await fs.rm(output, { force: true });
+  if (output) {
+    await fs.rm(output, { force: true });
+    await fs.mkdir(path.dirname(output), { recursive: true });
+  }
   console.info(`[job-parser] Reading input: ${input}`);
   let source;
   try {

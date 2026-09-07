@@ -67,12 +67,12 @@ test("semantic provider output maps and feeds analyse directly", async () => {
         title: { value: "Senior Engineer", evidence: { quote: "Example is hiring a Senior Engineer" } },
       },
       items: [
-        { type: "item", value: "Mentor engineers", kind: "responsibility", classification: "not-applicable", evidence: { quote: "You will mentor engineers" }, sourceSection: "Responsibilities" },
-        { type: "item", value: "Communication", kind: "competency", classification: "required", evidence: { quote: "Strong communication and leadership skills" }, sourceSection: "Requirements" },
+        { type: "item", value: "You will mentor engineers", kind: "responsibility", classification: "not-applicable", evidence: { quote: "You will mentor engineers" }, sourceSection: "Responsibilities" },
+        { type: "item", value: "Strong communication and leadership skills", kind: "competency", classification: "required", evidence: { quote: "Strong communication and leadership skills" }, sourceSection: "Requirements" },
       ],
     }),
   });
-  assert.equal(result.job.responsibilities[0], "Mentor engineers");
+  assert.equal(result.job.responsibilities[0], "You will mentor engineers");
   const analysis = await analyze(output, directory);
   assert.equal(analysis.code, 0, analysis.stderr);
 });
@@ -132,19 +132,22 @@ test("hallucinated semantic extraction fails evidence validation", async () => {
   await assert.rejects(() => fs.access(output));
 });
 
-test("explicit alternatives fail at compatibility mapping rather than becoming AND", async () => {
+test("explicit alternatives map as one group and reach analyse", async () => {
   const directory = await tempDir();
   const input = path.join(root, "test/fixtures/jobs/raw/alternative.txt");
   const output = path.join(directory, "alternative.json");
-  await assert.rejects(() => runJobParser({
+  const result = await runJobParser({
     input,
     output,
     semanticProvider: () => ({
       metadata: { company: { value: "Example", evidence: { quote: "Example is hiring a Senior Engineer" } }, title: { value: "Senior Engineer", evidence: { quote: "Example is hiring a Senior Engineer" } } },
       items: [{ type: "alternative", operator: "anyOf", values: ["AWS", "GCP"], kind: "skill", classification: "required", evidence: { quote: "AWS or GCP" } }],
     }),
-  }), /MAPPING_ERROR/);
-  await assert.rejects(() => fs.access(output));
+  });
+  assert.deepEqual(result.job.alternativeRequirements[0].values, ["AWS", "GCP"]);
+  assert.equal(result.job.requirements, undefined);
+  const analysis = await analyze(output, directory);
+  assert.equal(analysis.code, 0, analysis.stderr);
 });
 
 test("manually authored fixture remains consumable by analyse", async () => {
@@ -186,3 +189,28 @@ for (const quote of ["Job location: London", "Job location: Osasco"]) {
     await assert.rejects(fs.access(output), { code: "ENOENT" });
   });
 }
+
+test("alternative analysis counts a selected option once and tailoring accepts it", async (t) => {
+  const directory = await tempDir();
+  t.after(() => fs.rm(directory, { recursive: true, force: true }));
+  const input = path.join(directory, "source.txt");
+  const output = path.join(directory, "job.json");
+  const source = "Example is hiring an Engineer\n\nNode.js or NeverSeenTechnology\nPrefer Node.js or Kubernetes";
+  await fs.writeFile(input, source);
+  await runJobParser({ input, output, semanticProvider: () => ({ items: [
+    { type: "alternative", operator: "anyOf", kind: "skill", classification: "required", values: ["Node.js", "NeverSeenTechnology"], evidence: { quote: "Node.js or NeverSeenTechnology" } },
+    { type: "alternative", operator: "anyOf", kind: "skill", classification: "preferred", values: ["Node.js", "Kubernetes"], evidence: { quote: "Prefer Node.js or Kubernetes" } },
+  ] }) });
+  const analyzed = await analyze(output, directory);
+  assert.equal(analyzed.code, 0, analyzed.stderr);
+  const reportPath = path.join(directory, "output/example-engineer-analysis.json");
+  const report = JSON.parse(await fs.readFile(reportPath, "utf8"));
+  const matches = [...report.matches.strong, ...report.matches.related, ...report.matches.missing];
+  assert.equal(matches.length, 2);
+  assert.equal(matches.filter((item) => item.category === "required").length, 1);
+  assert.equal(matches.filter((item) => item.category === "preferred").length, 1);
+  assert.ok(matches.every((item) => item.alternative));
+  assert.ok(matches.every((item) => item.term !== "NeverSeenTechnology"));
+  const tailored = await command([path.join(root, "scripts/tailor.mjs"), resume, reportPath, aliases, evidence], directory);
+  assert.equal(tailored.code, 0, tailored.stderr);
+});

@@ -277,3 +277,46 @@ Only explicitly stated job locations should be extracted, not unrelated corporat
 footer addresses. Existing evidence validation checks textual support; it cannot
 independently establish an address's semantic role. Geographic normalization,
 remote/hybrid classification, and candidate filtering remain out of scope.
+
+## Alternative requirement extension
+
+Final jobs may include `alternativeRequirements`, an optional array of objects:
+
+```json
+{
+  "operator": "anyOf",
+  "classification": "required",
+  "kind": "skill",
+  "values": ["Java", "Kotlin"],
+  "context": "Proficiency in Java or Kotlin"
+}
+```
+
+Each group requires these five fields and rejects additional fields. Classification
+is required or preferred; kind is skill, requirement, or competency. At least two
+unique, nonempty string options are required. Context retains source wording,
+including shared modifiers, rather than inventing expanded option labels. It is
+not a full provenance record. Unknown generic concepts are not expanded through
+inference. Existing jobs without groups retain their previous behavior.
+
+Both `analyse.mjs` and `match.mjs` evaluate options using their existing matching
+rules and select the strongest status (exact, equivalent, related, missing), with
+source order breaking ties. Each group contributes once in its required/preferred
+category. Related-only groups retain partial credit; unmatched groups receive
+zero. No scoring weights change. Competency groups retain required/preferred
+strength rather than using the legacy unclassified competency array.
+
+Analysis matches preserve `alternative` context/options and `selectedOption`.
+For a supported group the ordinary term is the selected option, so tailoring
+uses only that option's evidence; unmatched groups use the source context as
+the missing term and have no selected option. Recommendations retain group data,
+and tailoring output preserves alternative groups alongside its job summary.
+Unchosen siblings are not independently missing requirements.
+
+Matching remains lexical: preserving shared context does not add semantic
+understanding of phrases such as Backend or Integration Software Engineer.
+Nested Boolean expressions and taxonomy inference are not supported. Parser
+mapping conservatively rejects ordinary requirement strings with standalone
+English `or` or Portuguese `ou` instead of silently bypassing group handling.
+
+Run offline coverage with `node --test tests/*.test.mjs`.
