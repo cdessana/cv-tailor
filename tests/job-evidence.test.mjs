@@ -60,6 +60,19 @@ test("metadata evidence and malformed inputs are handled", () => {
   assert.throws(() => validateEvidence(document, {}), TypeError);
 });
 
+test("metadata values must be supported by their own evidence", () => {
+  const document = preprocess("Example is hiring a Senior Engineer");
+  const result = validateEvidence(document, {
+    metadata: {
+      company: { value: "Other Company", evidence: { quote: "Example" } },
+      title: { value: "Senior Engineer", evidence: { quote: "Example is hiring a Senior Engineer" } },
+    },
+    items: [],
+  });
+  assert.equal(result.valid, false);
+  assert.equal(result.errors[0].path, "/metadata/company/value");
+});
+
 test("validation does not mutate extraction", () => {
   const document = preprocess("Experience with Node.js is required");
   const extraction = item("Node.js", "Experience with Node.js is required");
@@ -67,3 +80,18 @@ test("validation does not mutate extraction", () => {
   validateEvidence(document, extraction);
   assert.deepEqual(extraction, before);
 });
+
+for (const [badValue, value, quote] of [
+  ["Academic background in Computer Science", "academic background in Computer Science", "ideally academic background in Computer Science or a related field."],
+  ["Experience gained in big tech environments", "gained in big tech environments", "ideally gained in big tech environments or similarly fast-moving organizations."],
+  ["Work onsite, five days a week", "work onsite, five days a week", "That’s why all of our office-based teams work onsite, five days a week."],
+]) {
+  test(`source wording is required: ${badValue}`, () => {
+    const document = preprocess(quote);
+    const extraction = item(badValue, quote);
+    extraction.items[0].kind = "requirement";
+    assert.equal(validateEvidence(document, extraction).errors[0].code, "value_not_supported_by_evidence");
+    extraction.items[0].value = value;
+    assert.equal(validateEvidence(document, extraction).valid, true);
+  });
+}
