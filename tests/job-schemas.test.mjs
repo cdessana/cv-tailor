@@ -344,7 +344,6 @@ for (const path of [
   ["required"],
   ["preferred"],
   ["competencies"],
-  ["location"],
   ["employmentType"],
   ["url"],
   ["source", "unexpected"],
@@ -365,6 +364,7 @@ for (const path of [
   ["title"],
   ["type"],
   ["remote"],
+  ["location"],
   ["description"],
   ["source", "platform"],
   ["source", "url"],
@@ -431,4 +431,11 @@ for (const key of ["skills", "screening"]) {
       false
     );
   }
+}
+
+for (const location of ["Osasco, SP", "Osasco (SP), Recife (PE)"]) {
+  check(`final: accepts location ${location}`, validateJob, { ...fixture, location }, true);
+}
+for (const location of [[], {}, true]) {
+  check(`final: rejects location ${JSON.stringify(location)}`, validateJob, { ...fixture, location }, false);
 }

@@ -5,8 +5,11 @@ the legacy job shape consumed by `analyse.mjs`. It returns `{ valid, job, errors
 and never mutates the extraction.
 
 Company and title map directly. `employmentType` maps to the observed `type`
-field and `sourceUrl` maps to `source.url`. Location has no established equivalent
-for the legacy `remote` field, so it returns an explicit compatibility error.
+field and `sourceUrl` maps to `source.url`. Validated `location.value` maps directly
+to the optional final `location` string, preserving its wording. Absent location
+is omitted. Multiple locations remain one string; no geographic normalization
+or remote/hybrid classification is performed. Evidence validation must precede
+mapping, as with other extracted metadata.
 
 Required and preferred items map to nested `requirements.required` and
 `requirements.preferred`. Competencies map to `requirements.competencies`.

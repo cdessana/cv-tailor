@@ -153,3 +153,36 @@ test("manually authored fixture remains consumable by analyse", async () => {
   const analysis = await analyze(fixture, directory);
   assert.equal(analysis.code, 0, analysis.stderr);
 });
+
+for (const location of [undefined, "Osasco, SP", "Osasco (SP), Recife (PE)"]) {
+  test(`location survives parser and analyse: ${location}`, async (t) => {
+    const directory = await tempDir();
+    t.after(() => fs.rm(directory, { recursive: true, force: true }));
+    const input = path.join(directory, "job.txt");
+    const output = path.join(directory, "job.json");
+    await fs.writeFile(input, `Example is hiring an Engineer\n\nJob location: ${location ?? "unspecified"}\nRequirements\n- Node.js`);
+    const result = await runJobParser({ input, output, semanticProvider: () => ({
+      items: [],
+      ...(location === undefined ? {} : { metadata: { location: { value: location, evidence: { quote: `Job location: ${location}` } } } }),
+    }) });
+    assert.equal(Object.hasOwn(result.job, "location"), location !== undefined);
+    assert.equal(result.job.location, location);
+    assert.deepEqual(JSON.parse(await fs.readFile(output, "utf8")), result.job);
+    const analysis = await analyze(output, directory);
+    assert.equal(analysis.code, 0, analysis.stderr);
+  });
+}
+
+for (const quote of ["Job location: London", "Job location: Osasco"]) {
+  test(`unsupported location blocks output with evidence ${quote}`, async (t) => {
+    const directory = await tempDir();
+    t.after(() => fs.rm(directory, { recursive: true, force: true }));
+    const input = path.join(directory, "job.txt");
+    const output = path.join(directory, "job.json");
+    await fs.writeFile(input, "Example is hiring an Engineer\n\nJob location: Osasco");
+    await assert.rejects(runJobParser({ input, output, semanticProvider: () => ({
+      items: [], metadata: { location: { value: "London", evidence: { quote } } },
+    }) }), /evidence validation failed/);
+    await assert.rejects(fs.access(output), { code: "ENOENT" });
+  });
+}
