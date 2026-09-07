@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { extract } from "../lib/job-parser/extract.mjs";
 import { preprocessJobDescription } from "../lib/job-parser/preprocess.mjs";
 import { semanticExtract } from "../lib/job-parser/semantic-extract.mjs";
@@ -140,7 +141,7 @@ export async function runJobParser({ input, output, semanticProvider } = {}) {
   return { output, job: mapped.job };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   try {
     const options = parseArguments(process.argv.slice(2));
     const result = await runJobParser(options);
