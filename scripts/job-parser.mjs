@@ -41,9 +41,22 @@ export function parseArguments(argv) {
 async function writeAtomically(outputPath, value) {
   const directory = path.dirname(outputPath);
   await fs.mkdir(directory, { recursive: true });
-  const temporary = path.join(directory, `.${path.basename(outputPath)}.${process.pid}.tmp`);
+  const temporary = path.join(directory, `.${path.basename(outputPath)}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`);
   try {
     await fs.writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+    await fs.rename(temporary, outputPath);
+  } catch (error) {
+    await fs.rm(temporary, { force: true }).catch(() => {});
+    throw error;
+  }
+}
+
+async function writeTextAtomically(outputPath, text) {
+  const directory = path.dirname(outputPath);
+  await fs.mkdir(directory, { recursive: true });
+  const temporary = path.join(directory, `.${path.basename(outputPath)}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`);
+  try {
+    await fs.writeFile(temporary, text, "utf8");
     await fs.rename(temporary, outputPath);
   } catch (error) {
     await fs.rm(temporary, { force: true }).catch(() => {});
@@ -54,10 +67,7 @@ async function writeAtomically(outputPath, value) {
 export async function runJobParser({ input, output, semanticProvider } = {}) {
   // A failed replacement must not leave an older job looking like the result
   // of the current run.
-  if (output) {
-    await fs.rm(output, { force: true });
-    await fs.mkdir(path.dirname(output), { recursive: true });
-  }
+  if (output) await fs.mkdir(path.dirname(output), { recursive: true });
   console.info(`[job-parser] Reading input: ${input}`);
   let source;
   try {
@@ -77,7 +87,7 @@ export async function runJobParser({ input, output, semanticProvider } = {}) {
     console.info("[job-parser] Semantic extraction required.");
     semanticProvider ??= process.env.GEMINI_API_KEY ? createGeminiProvider({
       onRawResponse: process.env.JOB_PARSER_DEBUG === "1"
-        ? (response) => fs.writeFile(`${output}.provider-response.json`, `${response}\n`, "utf8")
+        ? (response) => writeTextAtomically(`${output}.provider-response.json`, `${response}\n`)
         : undefined,
     }) : undefined;
     if (!semanticProvider) {
@@ -86,7 +96,7 @@ export async function runJobParser({ input, output, semanticProvider } = {}) {
     try {
       extraction = await semanticExtract(document, deterministic, semanticProvider, {
         onResponse: process.env.JOB_PARSER_DEBUG === "1"
-          ? (response) => fs.writeFile(`${output}.intermediate.json`, `${JSON.stringify(response, null, 2)}\n`, "utf8")
+          ? (response) => writeTextAtomically(`${output}.intermediate.json`, `${JSON.stringify(response, null, 2)}\n`)
           : undefined,
       });
       console.info(`[job-parser] Semantic extraction complete (${extraction.items.length} items).`);
@@ -96,7 +106,7 @@ export async function runJobParser({ input, output, semanticProvider } = {}) {
   }
   if (process.env.JOB_PARSER_DEBUG === "1" && deterministic.unresolved.length === 0) {
     try {
-      await fs.writeFile(`${output}.intermediate.json`, `${JSON.stringify(extraction, null, 2)}\n`, "utf8");
+      await writeTextAtomically(`${output}.intermediate.json`, `${JSON.stringify(extraction, null, 2)}\n`);
       console.info(`[job-parser] Debug intermediate extraction written: ${output}.intermediate.json`);
     } catch (error) {
       console.warn(`[job-parser] Could not write debug intermediate extraction: ${error.message}`);

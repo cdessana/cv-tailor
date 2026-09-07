@@ -10,11 +10,11 @@ node scripts/job-parser.mjs --input job-description.txt --output data/jobs/examp
 ```
 
 For troubleshooting semantic output, set `JOB_PARSER_DEBUG=1`. The CLI then
-captures the provider's schema-valid intermediate extraction to
-`<output>.intermediate.json` before compatibility mapping. This file may contain
-source excerpts and is written before evidence or compatibility failures, so it
-can be inspected even when a semantic response is rejected. Treat it as local
-diagnostic output; it is never written during normal runs. The raw model text is
+captures the schema- and evidence-validated intermediate extraction to
+`<output>.intermediate.json` before compatibility mapping. If semantic schema or
+evidence validation fails, inspect the raw provider response instead; the
+validated intermediate artifact is not written. Treat it as local diagnostic
+output; it is never written during normal runs. The raw model text is
 also captured as `<output>.provider-response.json` before JSON/schema validation,
 so malformed semantic responses can be inspected too.
 
