@@ -52,8 +52,8 @@ for (const [context, values] of [
     assert.equal(result.valid, true);
     assert.deepEqual(result.job.alternativeRequirements, [{ operator: "anyOf", values, kind: "requirement", classification: "preferred", context }]);
     const plain = mapToJob({ metadata, items: [item(context, "requirement", "preferred")] });
-    assert.equal(plain.valid, true);
-    assert.equal(plain.warnings[0].code, "unstructured_alternative");
+    assert.equal(plain.valid, false);
+    assert.equal(plain.errors[0].code, "unstructured_alternative");
   });
 }
 
