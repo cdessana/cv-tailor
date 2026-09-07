@@ -1,0 +1,7 @@
+Example is hiring a Senior Engineer
+
+Requirements
+- Experience with nodejs is required
+
+Bonus
+- Nice to have: k8s
