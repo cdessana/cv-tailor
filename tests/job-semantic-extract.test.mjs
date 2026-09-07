@@ -78,6 +78,25 @@ test("writes intermediate callback only after schema and evidence validation", a
   assert.equal(calls, 1);
 });
 
+test("writes the merged extraction to the intermediate callback", async () => {
+  const document = preprocess("Requirements\n- Node.js\nResponsibilities\n- Mentor engineers");
+  const deterministic = extract(document);
+  let intermediate;
+
+  const result = await semanticExtract(document, deterministic, () => ({
+    items: [{
+      type: "item",
+      value: "Mentor engineers",
+      kind: "responsibility",
+      classification: "not-applicable",
+      evidence: { quote: "Mentor engineers" },
+    }],
+  }), { onResponse: (value) => { intermediate = value; } });
+
+  assert.deepEqual(intermediate, result);
+  assert.equal(intermediate.items.length, 2);
+});
+
 test("rejects conflicting metadata and preserves ambiguity", async () => {
   const document = preprocess("Example Other");
   await assert.rejects(() => semanticExtract(document, { metadata: { company: { value: "Example", evidence: { quote: "Example" } } }, items: [] }, () => ({ metadata: { company: { value: "Other", evidence: { quote: "Other" } } }, items: [] })), /Conflicting semantic metadata/);

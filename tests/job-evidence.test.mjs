@@ -18,6 +18,20 @@ test("whitespace-normalized evidence passes", () => {
   assert.equal(result.valid, true);
 });
 
+test("technology boundaries do not accept partial symbol-delimited names", () => {
+  const document = {
+    originalText: "Experience with Node.js, C++, C#, and .NET is required.",
+  };
+
+  for (const value of ["Node.js", "C++", "C#", ".NET"]) {
+    assert.equal(validateEvidence(document, item(value, document.originalText)).valid, true);
+  }
+
+  for (const value of ["Node", "C", "NET"]) {
+    assert.equal(validateEvidence(document, item(value, document.originalText)).valid, false);
+  }
+});
+
 test("fabricated evidence and unsupported values fail with useful paths", () => {
   const document = preprocess("Experience with cloud platforms is required");
   const result = validateEvidence(document, item("AWS", "Experience with cloud platforms is required"));
