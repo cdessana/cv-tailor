@@ -6,6 +6,7 @@ import { semanticExtract } from "../lib/job-parser/semantic-extract.mjs";
 import { normalizeExtraction } from "../lib/job-parser/normalize.mjs";
 import { mapToJob } from "../lib/job-parser/map-to-job.mjs";
 import { createGeminiProvider } from "../lib/job-parser/providers/gemini.mjs";
+import { validateEvidence } from "../lib/job-parser/validate-evidence.mjs";
 
 export function parseArguments(argv) {
   let input;
@@ -111,6 +112,10 @@ export async function runJobParser({ input, output, semanticProvider } = {}) {
     } catch (error) {
       console.warn(`[job-parser] Could not write debug intermediate extraction: ${error.message}`);
     }
+  }
+  const evidence = validateEvidence(document, extraction);
+  if (!evidence.valid) {
+    throw new Error(`SEMANTIC_ERROR: Source evidence validation failed: ${JSON.stringify(evidence.errors)}`);
   }
   let mapped;
   try {
