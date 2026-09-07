@@ -1,0 +1,58 @@
+import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import test from "node:test";
+import { parseArguments, runJobParser } from "../scripts/job-parser.mjs";
+
+async function tempDir() { return fs.mkdtemp(path.join(os.tmpdir(), "job-parser-")); }
+
+test("parses positional and flag arguments", () => {
+  assert.deepEqual(parseArguments(["description.txt"]), { input: "description.txt", output: "data/jobs/description.json" });
+  assert.deepEqual(parseArguments(["--input", "description.txt", "--output", "out.json"]), { input: "description.txt", output: "out.json" });
+  for (const args of [["--input"], ["--unknown"], ["a", "b"], ["--input", "a", "b"]]) assert.throws(() => parseArguments(args));
+});
+
+test("runs the full flow with an injected semantic provider and writes valid output", async () => {
+  const directory = await tempDir();
+  const input = path.join(directory, "job.txt");
+  const output = path.join(directory, "out", "job.json");
+  await fs.writeFile(input, "Example role\nRequirements\n- Experience with Node.js is required\nResponsibilities\n- You will mentor engineers", "utf8");
+  const result = await runJobParser({ input, output, semanticProvider: ({ unresolved }) => ({
+    metadata: { company: { value: "Example", evidence: { quote: "Example" } }, title: { value: "Senior Engineer", evidence: { quote: "Example role" } } },
+    items: [{ type: "item", value: "Mentor engineers", kind: "responsibility", classification: "not-applicable", evidence: { quote: "You will mentor engineers" }, sourceSection: "Responsibilities" }],
+    ...(unresolved.length ? {} : {}),
+  }) });
+  assert.equal(result.job.company, "Example");
+  assert.deepEqual(JSON.parse(await fs.readFile(output, "utf8")), result.job);
+});
+
+test("runs a fully deterministic raw JD without a semantic provider", async () => {
+  const directory = await tempDir();
+  const input = path.join(directory, "job.txt");
+  const output = path.join(directory, "job.json");
+  await fs.writeFile(input, "Example is hiring a Senior Engineer\nRequirements\n- Node.js is required", "utf8");
+  const result = await runJobParser({ input, output });
+  assert.equal(result.job.company, "Example");
+  assert.deepEqual(result.job.requirements.required, ["Node.js"]);
+  assert.deepEqual(JSON.parse(await fs.readFile(output, "utf8")), result.job);
+});
+
+test("fails without a semantic provider and does not create output", async () => {
+  const directory = await tempDir();
+  const input = path.join(directory, "job.txt");
+  const output = path.join(directory, "job.json");
+  await fs.writeFile(input, "Requirements\n- Modern cloud experience", "utf8");
+  await assert.rejects(() => runJobParser({ input, output }), /SEMANTIC_ERROR/);
+  await assert.rejects(() => fs.access(output));
+});
+
+test("provider, evidence, mapping, and output failures do not write partial output", async () => {
+  const directory = await tempDir();
+  const input = path.join(directory, "job.txt");
+  const output = path.join(directory, "job.json");
+  await fs.writeFile(input, "Example\nRequirements\n- Experience with Node.js is required", "utf8");
+  await assert.rejects(() => runJobParser({ input, output, semanticProvider: () => ({ items: [{ type: "item", value: "AWS", kind: "skill", classification: "required", evidence: { quote: "not source" } }] }) }), /SEMANTIC_ERROR/);
+  await assert.rejects(() => fs.access(output));
+  await assert.rejects(() => runJobParser({ input: path.join(directory, "missing.txt"), output }), /INPUT_ERROR/);
+});

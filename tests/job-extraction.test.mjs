@@ -145,6 +145,15 @@ test("empty input and unsupported source remain separate", () => {
   assert.equal(result.extraction.items.length, 1);
   assert.equal(result.unresolved.length, 2);
 });
+
+test("extracts explicit company and title metadata without semantic inference", () => {
+  const result = extract(preprocess("Example is hiring a Senior Engineer\nRequirements\n- Node.js is required"));
+  assert.deepEqual(result.extraction.metadata, {
+    company: { value: "Example", evidence: { quote: "Example is hiring a Senior Engineer" } },
+    title: { value: "Senior Engineer", evidence: { quote: "Example is hiring a Senior Engineer" } },
+  });
+  assert.equal(result.unresolved.length, 0);
+});
 test("reject malformed documents and altered source ranges", () => {
   for (const value of [null, {}, "text", { originalText: "" }])
     assert.throws(() => extract(value), TypeError);
