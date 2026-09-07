@@ -13,6 +13,7 @@
     "test:semantic-extraction": "node --test tests/job-semantic-extract.test.mjs",
     "test:evidence": "node --test tests/job-evidence.test.mjs",
     "test:map-job": "node --test tests/job-map.test.mjs",
+    "test:job-parser": "node --test tests/job-parser-cli.test.mjs",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "validate": "node scripts/validate.mjs data/resumes/base.json",
