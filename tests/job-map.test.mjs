@@ -64,11 +64,10 @@ test("does not promote descriptive OR wording to an alternative", () => {
   assert.deepEqual(result.job.requirements.preferred, [value]);
 });
 
-test("accepts model-grouped lists if values occur in evidence", () => {
+test("rejects model-grouped lists even if all values occur in evidence", () => {
   const result = mapToJob({ metadata: { company: { value: "Example", ...evidence("Example") }, title: { value: "Engineer", ...evidence("Engineer") } }, items: [{ type: "alternative", operator: "anyOf", values: ["Java", "Kotlin"], kind: "skill", classification: "required", ...evidence("Experience with Java, Kotlin and Python") }] });
-  assert.equal(result.valid, true);
-  assert.equal(result.job.alternativeRequirements[0].values[0], "Java");
-  assert.equal(result.job.alternativeRequirements[0].values[1], "Kotlin");
+  assert.equal(result.valid, false);
+  assert.equal(result.errors[0].code, "invalid_alternative");
 });
 
 for (const value of ["Degree or equivalent", "Bacharelado ou superior", "3 or more years of experience", "5 ou mais anos de experiência"]) {

@@ -17,6 +17,9 @@
         "location": {
           "$ref": "#/definitions/metadataValue"
         },
+        "workArrangement": {
+          "$ref": "#/definitions/metadataValue"
+        },
         "employmentType": {
           "$ref": "#/definitions/metadataValue"
         },
@@ -57,6 +60,7 @@
                     "company",
                     "title",
                     "location",
+                    "workArrangement",
                     "employmentType",
                     "sourceUrl"
                   ]
@@ -111,6 +115,7 @@
                     "company",
                     "title",
                     "location",
+                    "workArrangement",
                     "employmentType",
                     "sourceUrl"
                   ]
@@ -223,6 +228,20 @@
         "type": {
           "const": "item"
         },
+        "examples": {
+          "description": "Illustrative values grounded in this item's evidence; not independent requirements or exhaustive alternatives.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["value"],
+            "properties": {
+              "value": { "$ref": "#/definitions/text" }
+            }
+          }
+        },
         "value": {
           "$ref": "#/definitions/text"
         },
@@ -266,6 +285,15 @@
         "evidence"
       ],
       "allOf": [
+        {
+          "if": { "properties": { "examples": {} }, "required": ["examples"] },
+          "then": {
+            "properties": {
+              "kind": { "enum": ["skill", "requirement", "competency"] },
+              "classification": { "enum": ["required", "preferred"] }
+            }
+          }
+        },
         {
           "oneOf": [
             {

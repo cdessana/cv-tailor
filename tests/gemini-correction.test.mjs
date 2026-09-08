@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createGeminiProvider } from "../lib/job-parser/providers/gemini.mjs";
 import { preprocessJobDescription } from "../lib/job-parser/preprocess.mjs";
-const document=preprocessJobDescription("About the team");
+const document=preprocessJobDescription("Unclassified source paragraph");
 const id=document.sections[0].units[0].id;
 const empty={blocks:{[id]:{status:"extracted",items:[],alternatives:[],metadata:{},reason:""}}};
 const corrected={blocks:{[id]:{status:"excluded",items:[],alternatives:[],metadata:{},reason:"Section heading only."}}};

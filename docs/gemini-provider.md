@@ -13,12 +13,13 @@ The request timeout defaults to 120 seconds and can be changed with
 `GEMINI_TIMEOUT_MS`. Transient rate-limit and service-availability responses
 are retried up to three times by default; `GEMINI_MAX_ATTEMPTS` can change this.
 
-Gemini requests use `generationConfig.responseJsonSchema` with a provider adapter
+Gemini requests use the `extract_block` function declaration with a provider adapter
 derived from `schemas/job-parser.schema.json`. The adapter separates ordinary records and alternatives into arrays without
 `anyOf`/`oneOf` unions: ordinary records require `value`; alternatives require
 `operator` and at least two `values`. Kind/classification combinations remain
 strictly validated by the canonical local schema. Metadata,
-records, and evidence reject extra properties. `responseSchema` is not also sent.
+records, and evidence reject extra properties locally. Function calling is forced
+with `toolConfig.functionCallingConfig.mode: "ANY"`; no generationConfig response schema is sent.
 Responses are still parsed as untrusted JSON and validated locally against the
 full intermediate schema; local validation remains authoritative. Evidence
 validation runs afterward through the existing semantic extraction flow.
@@ -60,12 +61,13 @@ checks do not substitute for a live model acceptance or completeness test.
 
 The request contains ordered SOURCE BLOCKS with each unit ID, original text,
 heading and section signal together. There is no separate offset index to
-cross-reference. All blocks remain visible as document context for classification;
+cross-reference. Only the target blocks and their heading/section signals are sent;
 a record's evidence must be copied from its own block.
 
-The response is a `blocks` object keyed by the exact supplied IDs. The request
-schema requires every key and rejects unknown keys. It uses a shared `$defs`
-block definition rather than duplicating the full record schema per unit.
+The model calls `extract_block` once per target ID. One decoder checks function
+names, argument shapes, duplicate/unknown IDs, and missing calls. It constructs
+the following internal `blocks` envelope. The legacy single JSON-text envelope
+is also accepted and goes through the same strict local validation.
 
 ```json
 {
@@ -92,10 +94,13 @@ sends no coverage array, sourceUnitIds, metadataKeys or itemIndices.
 
 Local code validates the block response, attaches sourceUnitIds from the enclosing
 block, assembles the canonical intermediate extraction, and derives coverage.
-Missing blocks, misplaced evidence and conflicting metadata fail explicitly.
-Repeated identical metadata is retained once; a metadata-only duplicate block is
-accounted for locally as duplicate metadata. Raw artifacts contain the provider's
-block response; intermediate artifacts retain assembled items, metadata and
+Missing blocks and misplaced evidence fail explicitly. Distinct supported metadata
+values are retained as candidates, using the existing primary-selection policy.
+The mapper returns a human-validation-required warning containing the selected
+value, alternatives, and evidence. This applies to all metadata fields, including
+employment type and source URL. Conflicts alone do not fail parsing; unsupported
+candidates do. Candidate arrays are generated locally and cannot be supplied by
+the model. Raw artifacts contain the API payload; intermediate artifacts retain assembled items, metadata and
 locally generated coverage. The final job schema and injected semantic provider
 interface remain unchanged. Old flat Gemini response artifacts are not valid
 responses to this new request contract.
@@ -141,9 +146,10 @@ Offline smoke coverage: `node --test tests/job-parser-smoke.test.mjs`.
 GEMINI_MODEL=gemini-3.1-flash-lite node scripts/job-parser-schema-probe.mjs
 ```
 
-Sends four live requests sequentially, for 3, 5, 10, and 15 required block keys.
-The prompt, synthetic source statement, model, and record schema stay constant;
-only the schema's block keys and resulting output size grow. It uses the
+Sends four live requests sequentially, for 3, 5, 10, and 15 target blocks.
+The function schema and synthetic statement stay constant; the target list,
+prompt size, and requested number of calls grow. This now measures function-call
+completeness, not JSON response-schema complexity. It uses the
 production provider and block adapter, with transport retries disabled so an
 availability retry cannot obscure the experiment. No files are written.
 
@@ -162,13 +168,13 @@ Offline test: `node --test tests/job-parser-schema-probe.test.mjs`.
 `createGeminiProvider` processes at most three target source blocks per request,
 sequentially. This is a conservative workaround based on observed acceptance at
 three blocks and rejection at five or more; it is not a universal Gemini limit.
-Each request includes the full original JD as classification context, followed by
-only its target blocks. Output must cover only those target IDs and evidence must
+Each request includes only target blocks and their heading/section signals.
+The original JD remains local for evidence validation. Output must cover only those target IDs and evidence must
 come from each target block. Non-target context must not generate extra records.
 
 Every batch undergoes schema, coverage and evidence validation. Results are
-assembled in source order; metadata conflicts stop the run rather than choosing
-one value. Full-document coverage and evidence are checked after assembly, then
+assembled in source order; metadata conflicts retain candidates for human review.
+Full-document coverage and evidence are checked after assembly, then
 the existing semantic merge, normalization and final mapping continue. A failed
 batch stops further requests and no new final job is written. Existing atomic
 output behavior remains unchanged.
@@ -194,11 +200,15 @@ gets at most one semantic correction request for the same target batch. It
 includes the prior raw response and validator feedback as data, retains the
 original source context and unchanged schema, and asks for corrected complete
 block results. Empty extracted blocks must receive source-backed records or an
-explicit exclusion reason. Code never converts them to exclusions itself.
+explicit exclusion reason. Code may normalize an empty extracted block only for
+an exact recognized standalone navigation/heading label outside a classified
+section. Every such normalization logs an `empty_block_excluded` reason. Short
+qualifications and marketing paragraphs are not automatically discarded.
+The validated, normalized blocks are merged directly; raw payloads are not decoded again.
 
 The corrected response passes the same validations. If it still fails, the run
 stops before final output and before any later batch. HTTP, authentication,
-network, and cross-batch metadata-conflict failures do not trigger this path.
+and network failures do not trigger this path.
 Transient HTTP retries remain separately bounded by the existing request retry
 setting; one semantic correction can therefore involve transport retries.
 
@@ -216,3 +226,55 @@ forms together instead of revealing them only after a block error is corrected.
 Malformed wire shapes are rejected before records are inspected. Local schema,
 evidence, accounting, and mapping validation remain mandatory; feedback does not
 relax grounding or increase the one-correction limit.
+
+Detailed response/source logs require `JOB_PARSER_DEBUG=1` and use the supplied
+logger. Normal progress and human-review warnings remain visible. Metadata
+candidates and evidence remain in the intermediate/debug artifact and mapping
+warnings; final legacy JSON carries the selected value. Coverage accounts for
+blocks but does not prove that all qualifications within them were extracted.
+
+## Bounded source and status recovery
+
+Evidence quotes match literal source substrings with whitespace normalization.
+They do not require token boundaries: scraped text such as
+`Quality AssuranceRemote, Brazil` still contains the quote `Remote, Brazil`.
+Extracted values retain word/symbol boundary checks in both their quote and the
+original source. This prevents a shortened quote from legitimizing `Java` from
+`JavaScript`, or `C` from `C++`. The geographic value `Brazil` can pass; a
+work-arrangement label is still rejected as a location value.
+
+After wire-shape validation, the adapter may restore capitalization-only value
+differences using the matching source-backed quote. It keeps token boundaries
+and does not stem words, translate, add text, change punctuation, or repair
+fabricated quotes. Ordinary values, alternative options, and metadata values
+are checked again afterward. Raw API artifacts are untouched.
+
+An `excluded` block containing records may become `extracted` only if every
+record passes the existing schema, classification, grounding, and metadata-role
+checks. No records are dropped. Each change emits `block_status_corrected` with
+the original reason and block ID. `unresolved` blocks, invalid records, and empty
+substantive blocks still fail. Final alternative semantics and mapping validation
+remain mandatory; these recovery steps do not establish semantic completeness.
+
+Offline regressions: `node --test tests/job-grounding-recovery.test.mjs`.
+# Qualification details in structured output
+
+Before accepting a block, the provider checks simple parenthetical example lists
+introduced by `such as`, `e.g.`, `for example`, `como` or `por exemplo` immediately
+after the extracted qualification. Missing or partial `examples` produce
+`missing_examples` feedback, with the missing spellings, through the existing
+single correction attempt. Persistent omissions fail explicitly. The check does
+not invent examples, normalize source spellings or convert them to alternatives.
+It intentionally skips nested lists, complex prose, unrelated illustrations and
+lists already retained in the value. It examines the returned quote; it cannot
+prove that all relevant source content was quoted or extracted. This is not a
+general recall guarantee. Test offline with
+`node --test tests/job-example-coverage.test.mjs`.
+
+The tool schema accepts optional ordinary-item `examples` records grounded in
+the item's quote, and source-backed `metadata.workArrangement`. The prompt asks
+for language levels as required/preferred requirements, retains illustrative
+technologies without anyOf conversion, and checks benefits for work arrangement.
+Local evidence validation checks each example; local schemas reject malformed
+records. These checks establish grounding and structure, not semantic recall.
+Live runs are still needed to measure omissions and classification quality.
