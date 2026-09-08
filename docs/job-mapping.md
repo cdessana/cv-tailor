@@ -33,3 +33,29 @@ Run the focused tests with:
 ```sh
 npm run test:map-job
 ```
+
+Model-generated groups without explicit choice evidence now fail with
+`invalid_alternative` instead of being dropped with a warning. Parenthetical
+example lists introduced by `such as`, `e.g.`, `for example`, `como`, or
+`por exemplo` also fail when all group options are inside that list, even when
+it contains OR. The provider should extract the broader qualification as an
+ordinary item, retaining the complete evidence. Mapping does not invent a
+replacement value. This bounded check is not a general natural-language parser;
+non-parenthetical or more complex example relationships still require semantic
+review. A failed mapping returns no accepted partial job.
+
+Preferred domain or team-environment experience should be extracted as a
+`requirement` with `preferred` classification, so it stays in the preferred
+array. True behavioral competencies remain distinct. The existing legacy
+competencies array still cannot retain required/preferred classification; this
+change does not redesign that final contract.
+
+Evidence validation rejects obvious work-arrangement-only employment types
+(remote, hybrid, onsite and Portuguese equivalents) and required extractions
+supported solely by a recognized Tech Stack section. These are bounded checks,
+not general language classification. Supported location stays in `location`;
+no new work-arrangement field is introduced.
+
+Merging only deduplicates otherwise equivalent items when their normalized
+quotes contain one another. It retains the fuller quote and keeps distinct
+conditions as separate records rather than silently erasing their evidence.

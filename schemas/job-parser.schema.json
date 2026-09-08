@@ -25,6 +25,108 @@
         }
       }
     },
+    "coverage": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "unitId": {
+                "$ref": "#/definitions/text"
+              },
+              "status": {
+                "const": "extracted"
+              },
+              "itemIndices": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "metadataKeys": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "company",
+                    "title",
+                    "location",
+                    "employmentType",
+                    "sourceUrl"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "unitId",
+              "status",
+              "itemIndices"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "unitId": {
+                "$ref": "#/definitions/text"
+              },
+              "status": {
+                "enum": [
+                  "excluded",
+                  "unresolved"
+                ]
+              },
+              "reason": {
+                "$ref": "#/definitions/text"
+              }
+            },
+            "required": [
+              "unitId",
+              "status",
+              "reason"
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "unitId": {
+                "$ref": "#/definitions/text"
+              },
+              "status": {
+                "const": "metadata"
+              },
+              "metadataKeys": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "company",
+                    "title",
+                    "location",
+                    "employmentType",
+                    "sourceUrl"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "unitId",
+              "status",
+              "metadataKeys"
+            ]
+          }
+        ]
+      },
+      "description": "Locally derived accounting with item indexes and metadata keys. The Gemini block adapter attaches source references and derives these decisions."
+    },
     "items": {
       "type": "array",
       "items": {
@@ -39,7 +141,9 @@
       }
     }
   },
-  "required": ["items"],
+  "required": [
+    "items"
+  ],
   "definitions": {
     "text": {
       "type": "string",
@@ -54,7 +158,9 @@
           "$ref": "#/definitions/text"
         }
       },
-      "required": ["quote"]
+      "required": [
+        "quote"
+      ]
     },
     "metadataValue": {
       "type": "object",
@@ -68,9 +174,47 @@
         },
         "sourceSection": {
           "$ref": "#/definitions/text"
+        },
+        "sourceUnitIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/text"
+          }
+        },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "value",
+              "evidence"
+            ],
+            "properties": {
+              "value": {
+                "$ref": "#/definitions/text"
+              },
+              "evidence": {
+                "$ref": "#/definitions/evidence"
+              },
+              "sourceSection": {
+                "$ref": "#/definitions/text"
+              },
+              "sourceUnitIds": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/text"
+                }
+              }
+            }
+          }
         }
       },
-      "required": ["value", "evidence"]
+      "required": [
+        "value",
+        "evidence"
+      ]
     },
     "item": {
       "type": "object",
@@ -92,26 +236,53 @@
           ]
         },
         "classification": {
-          "enum": ["required", "preferred", "ambiguous", "not-applicable"]
+          "enum": [
+            "required",
+            "preferred",
+            "ambiguous",
+            "not-applicable"
+          ]
         },
         "evidence": {
           "$ref": "#/definitions/evidence"
         },
         "sourceSection": {
           "$ref": "#/definitions/text"
+        },
+        "sourceUnitIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/text"
+          }
         }
       },
-      "required": ["type", "value", "kind", "classification", "evidence"],
+      "required": [
+        "type",
+        "value",
+        "kind",
+        "classification",
+        "evidence"
+      ],
       "allOf": [
         {
           "oneOf": [
             {
               "properties": {
                 "kind": {
-                  "enum": ["skill", "requirement", "competency"]
+                  "enum": [
+                    "skill",
+                    "requirement",
+                    "competency"
+                  ]
                 },
                 "classification": {
-                  "enum": ["required", "preferred", "ambiguous"]
+                  "enum": [
+                    "required",
+                    "preferred",
+                    "ambiguous"
+                  ]
                 }
               }
             },
@@ -167,13 +338,26 @@
           ]
         },
         "classification": {
-          "enum": ["required", "preferred", "ambiguous", "not-applicable"]
+          "enum": [
+            "required",
+            "preferred",
+            "ambiguous",
+            "not-applicable"
+          ]
         },
         "evidence": {
           "$ref": "#/definitions/evidence"
         },
         "sourceSection": {
           "$ref": "#/definitions/text"
+        },
+        "sourceUnitIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/definitions/text"
+          }
         }
       },
       "required": [
@@ -190,10 +374,18 @@
             {
               "properties": {
                 "kind": {
-                  "enum": ["skill", "requirement", "competency"]
+                  "enum": [
+                    "skill",
+                    "requirement",
+                    "competency"
+                  ]
                 },
                 "classification": {
-                  "enum": ["required", "preferred", "ambiguous"]
+                  "enum": [
+                    "required",
+                    "preferred",
+                    "ambiguous"
+                  ]
                 }
               }
             },
