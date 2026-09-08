@@ -20,9 +20,11 @@ Ambiguous items, unsupported classifications, missing company/title, and
 unsupported metadata return explicit errors. Required and preferred alternative groups map to `alternativeRequirements`.
 Their original evidence wording is retained as `context` to preserve shared
 phrasing. Ambiguous or responsibility alternatives remain unsupported. Plain
-skill, requirement, or competency items containing standalone `or` or `ou` fail
-with `unstructured_alternative`; this conservative check can require refinement
-for non-alternative uses of those words.
+skill, requirement, or competency items containing unresolved `or` or `ou` fail
+with `unstructured_alternative`. Explicit parenthetical illustrations retained in
+the value, numeric thresholds and the bounded `conhecimento ou interesse em`
+modifier are not technology choices. A real choice elsewhere in the same value
+still requires an alternative representation.
 
 Successful output is validated with the existing final job schema. Invalid or
 incompatible mapping returns `job: null`, so unsupported content cannot reach a
@@ -64,7 +66,8 @@ Evidence validation rejects obvious work-arrangement-only employment types
 (remote, hybrid, onsite and Portuguese equivalents) and required extractions
 supported solely by a recognized Tech Stack section. These are bounded checks,
 not general language classification. Supported location stays in `location`;
-no new work-arrangement field is introduced.
+work arrangement uses the source-backed intermediate `workArrangement` record
+and existing final `remote` text field described below.
 
 Merging only deduplicates otherwise equivalent items when their normalized
 quotes contain one another. It retains the fuller quote and keeps distinct
@@ -104,3 +107,35 @@ collapsed. This may leave summary/detail overlaps rather than erase qualifiers.
 
 Run the offline detail-preservation regression with:
 `node --test tests/job-detail-preservation.test.mjs`.
+
+## Shared semantic gate
+
+`validate-item-semantics.mjs` returns errors without rewriting records. Both the
+Gemini block inspector (before its single correction attempt is exhausted) and
+the final mapper call it. It rejects conjunctions represented as anyOf, choices
+whose signal does not connect the option spans, illustrative-only groups,
+identification metadata repeated as requirements, and narrowly recognized stack
+context promoted to qualifications. It preserves source-backed metadata candidate
+selection and human-review warnings.
+
+Simple unmarked parenthetical lists attached to a shortened value produce
+`missing_qualification_details`: preserve the full qualification instead of
+assuming the list is optional examples. For example, keep `(OAuth, JWT)` and
+`(Terraform, Ansible)` in the ordinary value. This rule is intentionally bounded
+and does not interpret arbitrary prose or nested parentheses. Schema, grounding
+and these checks do not prove semantic completeness.
+
+Offline real-text regression cases: `node --test tests/job-semantic-relations.test.mjs`.
+Tests cover correction and mapping using small C6/Arco excerpts, not generated
+personal artifacts. No matching/scoring behavior changes.
+
+## Narrow redundancy shadowing
+
+Before final mapping, a required/preferred ordinary item is omitted only when an
+alternative with the same classification and exact normalized evidence retains
+that item's value as a leading prefix and contains its options later in the same
+quote. This preserves `Experience in production with Go or Kotlin` as one
+alternative instead of also emitting `Experience in production` as a separate
+requirement. The mapper emits a `shadowed_item` warning. Similar wording,
+different evidence, durations, scopes and conditions remain distinct. This is a
+bounded compatibility cleanup, not semantic deduplication or matching change.

@@ -63,6 +63,52 @@ test("sequential 3/3/1 batches retain full context, order, metadata and complete
  assert.equal(JSON.parse(raw.at(-1)).batches.length,3);
 });
 
+test("later Gemini batches receive source-backed metadata already confirmed", async () => {
+ const prompts=[];
+ const provider=createGeminiProvider({apiKey:"test",logger:{},fetchImpl:async(_url,options)=>{
+  const body=JSON.parse(options.body); prompts.push(body.contents[0].parts[0].text);
+  return response(payload(targets(body)));
+ }});
+ await provider(input);
+ assert.equal(prompts.length,3);
+ assert.match(prompts[0],/No metadata has been confirmed yet/);
+ for (const prompt of prompts.slice(1)) {
+  assert.match(prompt,/CONFIRMED METADATA FROM EARLIER SOURCE BLOCKS/);
+  assert.match(prompt,/"company":"Example"/);
+  assert.match(prompt,/"title":"Engineer"/);
+ }
+});
+
+test("configured batch size reduces calls without changing block accounting", async () => {
+ const sizes=[];
+ const provider=createGeminiProvider({apiKey:"test",batchSize:6,logger:{},fetchImpl:async(_url,options)=>{
+  const blocks=targets(JSON.parse(options.body)); sizes.push(blocks.length);
+  return response(payload(blocks));
+ }});
+ const extraction=await provider(input);
+ assert.deepEqual(sizes,[6,1]);
+ assert.equal(extraction.items.length,6);
+ assert.equal(validateCoverage(input,extraction).valid,true);
+});
+
+test("corrects only the invalid block and retains approved batch blocks", async () => {
+ const requested=[]; let calls=0;
+ const provider=createGeminiProvider({apiKey:"test",logger:{},fetchImpl:async(_url,options)=>{
+  const blocks=targets(JSON.parse(options.body)); requested.push(blocks.map(block=>block.id));
+  const value=payload(blocks);
+  if(calls++===0){
+   const broken=value.candidates[0].content.parts[1].functionCall.args;
+   broken.items[0].value="Invented requirement";
+  }
+  return response(value);
+ }});
+ const extraction=await provider(input);
+ assert.deepEqual(requested.map(ids=>ids.length),[3,1,3,1]);
+ assert.deepEqual(requested[1],[requested[0][1]]);
+ assert.equal(extraction.items.length,6);
+ assert.equal(validateCoverage(input,extraction).valid,true);
+});
+
 for(const failure of ["http","malformed","evidence","conflict"]){
  test(`batch two ${failure} failure stops subsequent requests and does not write final job`,async()=>{
   const dir=await fs.mkdtemp(path.join(os.tmpdir(),"gemini-batches-"));

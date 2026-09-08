@@ -50,6 +50,20 @@ for (const ending of ["\n", "\r\n", "\r"]) {
   });
 }
 
+test("splits only a long paragraph at sentence boundaries outside parentheses", () => {
+  const first = "A".repeat(330);
+  const protectedSentence = `Requirement (${"B".repeat(340)}. still in parentheses) is preserved.`;
+  const final = "C".repeat(330);
+  const source = `${first}. ${protectedSentence} ${final}.`;
+  const result = preprocess(source);
+  const units = result.sections[0].units;
+  assert.equal(units.length, 3);
+  assert.equal(units[0].originalText, `${first}.`);
+  assert.equal(units[1].originalText, protectedSentence);
+  assert.equal(units[2].originalText, `${final}.`);
+  for (const unit of units) assert.equal(source.slice(unit.start, unit.end), unit.originalText);
+});
+
 test("normalizes mixed endings and horizontal whitespace without losing paragraphs", () => {
   const input =
     "\r\n  Overview\t text  \rwrapped\u00a0\u00a0line\n \t\r\n\rNext paragraph\t \n\n";

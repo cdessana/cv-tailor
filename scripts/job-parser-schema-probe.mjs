@@ -2,7 +2,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createGeminiRequestProvider } from "../lib/job-parser/providers/gemini.mjs";
 
-const COUNTS = [3, 5, 10, 15];
+const COUNTS = [3, 4, 6, 8, 10];
 const SOURCE = "Node.js is required.";
 // Function schema stays constant; vary target count to measure call completeness.
 
