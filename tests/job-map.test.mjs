@@ -64,16 +64,48 @@ test("does not promote descriptive OR wording to an alternative", () => {
   assert.deepEqual(result.job.requirements.preferred, [value]);
 });
 
-test("drops model-grouped lists without source choice wording", () => {
+test("accepts model-grouped lists if values occur in evidence", () => {
   const result = mapToJob({ metadata: { company: { value: "Example", ...evidence("Example") }, title: { value: "Engineer", ...evidence("Engineer") } }, items: [{ type: "alternative", operator: "anyOf", values: ["Java", "Kotlin"], kind: "skill", classification: "required", ...evidence("Experience with Java, Kotlin and Python") }] });
   assert.equal(result.valid, true);
-  assert.equal(result.job.alternativeRequirements, undefined);
+  assert.equal(result.job.alternativeRequirements[0].values[0], "Java");
+  assert.equal(result.job.alternativeRequirements[0].values[1], "Kotlin");
 });
 
-for (const value of ["Degree or equivalent", "Bacharelado ou superior"]) {
+for (const value of ["Degree or equivalent", "Bacharelado ou superior", "3 or more years of experience", "5 ou mais anos de experiência"]) {
   test(`retains qualification wording: ${value}`, () => {
     const result = mapToJob({ metadata: { company: { value: "Example", ...evidence("Example") }, title: { value: "Engineer", ...evidence("Engineer") } }, items: [item(value, "requirement", "required")] });
     assert.equal(result.valid, true);
     assert.deepEqual(result.job.requirements.required, [value]);
   });
 }
+
+for (const value of ["3 or more years with Java or Kotlin", "5 ou mais anos com Java ou Kotlin", "Java or more technologies"]) {
+  test(`threshold does not hide a choice: ${value}`, () => {
+    const result = mapToJob({ metadata: { company: { value: "Example", ...evidence("Example") }, title: { value: "Engineer", ...evidence("Engineer") } }, items: [item(value, "requirement", "required")] });
+    assert.equal(result.valid, false);
+    assert.equal(result.errors[0].code, "unstructured_alternative");
+  });
+}
+
+for (const [value, quote, values] of [
+  ["Familiarity with modern component-based UI frameworks", "Familiarity with modern component-based UI frameworks (such as React or Angular) to support the TypeScript rewrite.", ["React", "Angular"]],
+  ["Understanding of cloud architecture and containerization", "Understanding of cloud architecture and containerization (e.g., Docker, Kubernetes).", ["Docker", "Kubernetes"]],
+  ["Conhecimento de frameworks", "Conhecimento de frameworks (como React ou Angular).", ["React", "Angular"]],
+]) {
+  test(`preserves broad qualification and rejects example-only group: ${value}`, () => {
+    const metadata = { company: { value: "Example", ...evidence("Example") }, title: { value: "Engineer", ...evidence("Engineer") } };
+    const plain = mapToJob({ metadata, items: [item(value, "requirement", "preferred", quote)] });
+    assert.equal(plain.valid, true);
+    assert.deepEqual(plain.job.requirements.preferred, [value]);
+    const grouped = mapToJob({ metadata, items: [{ type: "alternative", operator: "anyOf", values, kind: "skill", classification: "preferred", ...evidence(quote) }] });
+    assert.equal(grouped.valid, false);
+    assert.equal(grouped.job, null);
+    assert.equal(grouped.errors[0].code, "invalid_alternative");
+  });
+}
+
+test("example elsewhere in evidence does not invalidate a separate real choice", () => {
+  const metadata = { company: { value: "Example", ...evidence("Example") }, title: { value: "Engineer", ...evidence("Engineer") } };
+  const result = mapToJob({ metadata, items: [{ type: "alternative", operator: "anyOf", values: ["Java", "Kotlin"], kind: "skill", classification: "required", ...evidence("Java or Kotlin and knowledge of containers (e.g., Docker, Kubernetes).") }] });
+  assert.equal(result.valid, true);
+});

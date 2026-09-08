@@ -155,6 +155,12 @@ test("extracts explicit company and title metadata without semantic inference", 
   });
   assert.equal(result.unresolved.length, 0);
 });
+
+test("extracts a company from a Portuguese about heading", () => {
+  const result = extract(preprocess("Pessoa Dev Full Stack PL\nOSASCO, SP, Brasil\nSobre o Bradesco\nRequisitos\n- Experiência com Java"));
+  assert.equal(result.extraction.metadata.company.value, "Bradesco");
+  assert.equal(result.extraction.metadata.company.evidence.quote, "Sobre o Bradesco");
+});
 test("reject malformed documents and altered source ranges", () => {
   for (const value of [null, {}, "text", { originalText: "" }])
     assert.throws(() => extract(value), TypeError);
