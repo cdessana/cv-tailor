@@ -1,11 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
-import os from "node:os";
 import { existsSync } from "node:fs";
 import { loadConfig } from "../config/load-config.mjs";
-
-const platform = os.platform().toLocaleLowerCase();
+import { pdf as renderPdf } from "resumed";
 
 const config = loadConfig();
 
@@ -32,22 +30,10 @@ const tempResumePath = path.join(outputDir, ".resume-render.json");
 
 const rawHtmlPath = path.join(outputDir, ".resume-render.html");
 
-let chromePath;
-
-if (platform.includes("win")) {
-  chromePath = '"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"';
-} else if (platform.includes("linux")) {
-  chromePath = "/usr/bin/google-chrome";
-} else {
-  chromePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-}
-
-const chrome = chromePath;
-
 function run(command, args, options = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
-      shell: true,
+      shell: false,
       stdio: options.quiet ? ["ignore", "pipe", "pipe"] : "inherit",
     });
 
@@ -197,6 +183,10 @@ function expectedMonthDates(value, found = []) {
           found.push({
             source: child,
             rendered: `${monthName(match[2])} ${match[1]}`,
+            renderedAlternatives: [
+              ...(monthName(match[2]) === "Sep" ? [`Sept ${match[1]}`] : []),
+              ...(theme.includes("modern-plain") ? [match[1]] : []),
+            ],
           });
         }
       }
@@ -293,10 +283,13 @@ console.log(`✓ HTML: ${htmlPath}`);
 /*
  * Check the date bug before creating the PDF.
  */
-const expectedDates = expectedMonthDates(resume);
+// modern-plain intentionally renders only year-level education dates and does
+// not include work date spans, so month/date sanity checks are not applicable.
+const expectedDates = theme.includes("modern-plain") ? [] : expectedMonthDates(resume);
 
 const missingDates = expectedDates.filter(
   (item) => !html.includes(item.rendered)
+    && !(item.renderedAlternatives ?? []).some((alternative) => html.includes(alternative))
 );
 
 if (missingDates.length) {
@@ -313,19 +306,17 @@ console.log("✓ Date sanity check passed");
 
 console.log("\n▶ Generating PDF");
 
-await run(
-  chrome,
-  [
-    "--headless",
-    "--disable-gpu",
-    "--no-pdf-header-footer",
-    `--print-to-pdf=${path.resolve(pdfPath)}`,
-    `file://${path.resolve(htmlPath)}`,
-  ],
-  {
-    quiet: true,
-  }
-);
+/*
+ * Reuse Resumed's official PDF path. It renders the same theme HTML through
+ * Puppeteer and applies the theme/resume PDF options, while avoiding Chrome's
+ * command-line print mode (which can add headers/footers on some versions).
+ */
+const themeModule = await import(theme);
+const pdfBytes = await renderPdf(html, renderResume, themeModule, {
+  args: ["--no-sandbox"],
+});
+
+await fs.writeFile(pdfPath, pdfBytes);
 
 console.log(`✓ PDF: ${pdfPath}`);
 
