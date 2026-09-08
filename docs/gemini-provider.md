@@ -146,7 +146,7 @@ Offline smoke coverage: `node --test tests/job-parser-smoke.test.mjs`.
 GEMINI_MODEL=gemini-3.1-flash-lite node scripts/job-parser-schema-probe.mjs
 ```
 
-Sends four live requests sequentially, for 3, 5, 10, and 15 target blocks.
+Sends five live requests sequentially, for 3, 4, 6, 8, and 10 target blocks.
 The function schema and synthetic statement stay constant; the target list,
 prompt size, and requested number of calls grow. This now measures function-call
 completeness, not JSON response-schema complexity. It uses the
@@ -165,9 +165,11 @@ Offline test: `node --test tests/job-parser-schema-probe.test.mjs`.
 
 ## Bounded production requests
 
-`createGeminiProvider` processes at most three target source blocks per request,
-sequentially. This is a conservative workaround based on observed acceptance at
-three blocks and rejection at five or more; it is not a universal Gemini limit.
+`createGeminiProvider` processes three target source blocks per request by
+default, sequentially. Set `GEMINI_BATCH_SIZE` to a positive integer (maximum
+12) to use a measured size for a particular model/account. Run the controlled
+block-count diagnostic first; a successful probe is evidence for that request
+shape only, not a universal Gemini limit. The default remains conservative.
 Each request includes only target blocks and their heading/section signals.
 The original JD remains local for evidence validation. Output must cover only those target IDs and evidence must
 come from each target block. Non-target context must not generate extra records.
@@ -181,7 +183,7 @@ output behavior remains unchanged.
 
 Logs identify `batch N/total`. Retry and timeout settings apply per request;
 sequential batching increases latency and API usage (15 units require five
-requests). Single-batch raw debug output remains the provider JSON. Multi-batch
+requests at the default size). Single-batch raw debug output remains the provider JSON. Multi-batch
 raw debug output is `{ "batches": [{ "batch": 1, "blockIds": [...], "response":
 "raw response text" }] }`, refreshed after each received response. It includes
 an invalid received response before validation, but does not invent a response
@@ -189,14 +191,17 @@ for HTTP/network failures. Intermediate/final output is only returned after all
 batches succeed.
 
 The schema-count probe deliberately uses the unbatched request helper so it
-continues to measure actual 3/5/10/15-block requests. The smoke test uses the
+continues to measure actual 3/4/6/8/10-block requests. The smoke test uses the
 production batched provider. Offline batching coverage:
 `node --test tests/gemini-batches.test.mjs`.
 
 ### One bounded batch correction
 
 A received response that fails JSON/schema/accounting or evidence validation
-gets at most one semantic correction request for the same target batch. It
+gets at most one semantic correction request. When local block inspection can
+identify a strict subset of invalid block IDs, the correction contains only
+those blocks and already approved blocks are retained. Otherwise it contains
+the same target batch. It
 includes the prior raw response and validator feedback as data, retains the
 original source context and unchanged schema, and asks for corrected complete
 block results. Empty extracted blocks must receive source-backed records or an
@@ -259,6 +264,18 @@ remain mandatory; these recovery steps do not establish semantic completeness.
 Offline regressions: `node --test tests/job-grounding-recovery.test.mjs`.
 # Qualification details in structured output
 
+Block inspection now shares item-semantic checks with final mapping. Mapping
+problems such as AND lists encoded as anyOf are returned to the existing single
+correction attempt while the source block is still available. Invalid corrections
+remain errors; no automatic truncation, omission or reinterpretation is applied.
+Metadata duplicated as requirements and explicit company-stack descriptions are
+checked conservatively. Candidate conflict handling is unchanged.
+
+For unmarked parenthetical lists, feedback asks for the whole qualification,
+not an inferred example/choice relationship. Work-arrangement grounding feedback
+asks the model to retain hashtags and conditions verbatim; technology token
+boundaries remain strict (Java is not extracted from JavaScript).
+
 Before accepting a block, the provider checks simple parenthetical example lists
 introduced by `such as`, `e.g.`, `for example`, `como` or `por exemplo` immediately
 after the extracted qualification. Missing or partial `examples` produce
@@ -278,3 +295,18 @@ technologies without anyOf conversion, and checks benefits for work arrangement.
 Local evidence validation checks each example; local schemas reject malformed
 records. These checks establish grounding and structure, not semantic recall.
 Live runs are still needed to measure omissions and classification quality.
+
+## Large job descriptions
+
+Preprocessing splits only oversized paragraph units at complete sentence
+boundaries outside parentheses. It preserves original offsets and never splits
+bullets or sentences merely to meet a size target. A sentence longer than the
+target remains whole. This reduces unrelated requirements competing in one
+provider block while retaining evidence grounding.
+
+Batching is sequential. After an accepted batch, source-backed metadata is sent
+as `CONFIRMED METADATA FROM EARLIER SOURCE BLOCKS` to later batches. The model
+must not reintroduce company/title values or title variants as candidate
+requirements. This is contextual guidance, not a replacement for local semantic
+validation. Run the offline batch regression with
+`node --test tests/gemini-batches.test.mjs`.

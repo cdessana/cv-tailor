@@ -12,13 +12,13 @@ test("probe varies target counts with a fixed tool schema and separates rejectio
   const results = await runSchemaProbe({ apiKey: "fake-key", logger: {}, fetchImpl: async (_url, options) => {
     const body = JSON.parse(options.body); requests.push(body);
     const ids = JSON.parse(body.contents[0].parts[0].text.split("SOURCE BLOCKS (ordered; each ID is adjacent to its original text):\n")[1]).map(block => block.id);
-    if (ids.length === 10) return { status: 400, ok: false, text: async () => "INVALID_ARGUMENT" };
-    if (ids.length === 15) return { status: 503, ok: false, text: async () => "Unavailable" };
+    if (ids.length === 8) return { status: 400, ok: false, text: async () => "INVALID_ARGUMENT" };
+    if (ids.length === 10) return { status: 503, ok: false, text: async () => "Unavailable" };
     return success(ids);
   } });
-  assert.equal(requests.length, 4);
-  assert.deepEqual(results.map(r => r.blocks), [3, 5, 10, 15]);
-  assert.deepEqual(results.map(r => r.outcome), ["accepted_and_valid", "accepted_and_valid", "request_rejected", "inconclusive_transport_failure"]);
+  assert.equal(requests.length, 5);
+  assert.deepEqual(results.map(r => r.blocks), [3, 4, 6, 8, 10]);
+  assert.deepEqual(results.map(r => r.outcome), ["accepted_and_valid", "accepted_and_valid", "accepted_and_valid", "request_rejected", "inconclusive_transport_failure"]);
   for (const request of requests) {
     assert.deepEqual(request.tools, requests[0].tools);
   }

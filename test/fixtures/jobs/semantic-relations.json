@@ -1,0 +1,32 @@
+[
+  {
+    "name": "c6 conjunction is not a choice",
+    "quote": "Experiência com bancos relacionais, não relacionais e distribuídos e replicação de dados (MongoDB, Cassandra, Redis)",
+    "options": ["bancos relacionais", "não relacionais", "distribuídos"],
+    "error": "invalid_alternative"
+  },
+  {
+    "name": "c6 circuit breaker libraries do not replace the requirement",
+    "quote": "Implementação de Circuit Breaker (Hystrix, Resilience4j), fallback e estratégias de redundância",
+    "options": ["Hystrix", "Resilience4j"],
+    "error": "invalid_alternative"
+  },
+  {
+    "name": "arco choice concerns knowledge or interest, not languages",
+    "quote": "Conhecimento ou interesse em atuar com Golang e Kotlin",
+    "options": ["Golang", "Kotlin"],
+    "error": "invalid_alternative"
+  },
+  {
+    "name": "c6 authentication parentheses must survive",
+    "quote": "Conhecimento em autenticação e autorização (OAuth, JWT)",
+    "value": "Conhecimento em autenticação e autorização",
+    "error": "missing_qualification_details"
+  },
+  {
+    "name": "c6 infrastructure parentheses must survive",
+    "quote": "Uso de ferramentas de infraestrutura como código (Terraform, Ansible)",
+    "value": "Uso de ferramentas de infraestrutura como código",
+    "error": "missing_qualification_details"
+  }
+]
