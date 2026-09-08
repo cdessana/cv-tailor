@@ -97,9 +97,11 @@ test("writes the merged extraction to the intermediate callback", async () => {
   assert.equal(intermediate.items.length, 2);
 });
 
-test("rejects conflicting metadata and preserves ambiguity", async () => {
+test("preserves conflicting metadata candidates and item ambiguity", async () => {
   const document = preprocess("Example Other");
-  await assert.rejects(() => semanticExtract(document, { metadata: { company: { value: "Example", evidence: { quote: "Example" } } }, items: [] }, () => ({ metadata: { company: { value: "Other", evidence: { quote: "Other" } } }, items: [] })), /Conflicting semantic metadata/);
+  const merged = await semanticExtract(document, { metadata: { company: { value: "Example", evidence: { quote: "Example" } } }, items: [] }, () => ({ metadata: { company: { value: "Other", evidence: { quote: "Other" } } }, items: [] }));
+  assert.equal(merged.metadata.company.value, "Example");
+  assert.deepEqual(merged.metadata.company.candidates.map(candidate => candidate.value), ["Example", "Other"]);
   const { result } = await run("Requirements\n- Modern cloud experience", { items: [{ type: "item", value: "Modern cloud experience", kind: "ambiguous", classification: "ambiguous", evidence: { quote: "Modern cloud experience" } }] });
   assert.equal(result.items[0].classification, "ambiguous");
 });
