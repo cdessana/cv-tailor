@@ -4,8 +4,7 @@ import { createGeminiRequestProvider } from "../lib/job-parser/providers/gemini.
 
 const COUNTS = [3, 5, 10, 15];
 const SOURCE = "Node.js is required.";
-// Deliberately constant across requests: isolate schema block count from JD size.
-const PROMPT = `This is a schema acceptance diagnostic. Every block named in the response schema has identical source text: "${SOURCE}". Return every required block. Each block must have status extracted, reason "", metadata {}, alternatives [], and items [{"type":"item","value":"Node.js","kind":"skill","classification":"required","evidence":{"quote":"${SOURCE}"}}]. Do not add fields.`;
+// Function schema stays constant; vary target count to measure call completeness.
 
 export async function runSchemaProbe({ apiKey = process.env.GEMINI_API_KEY, fetchImpl = globalThis.fetch, logger = console } = {}) {
   if (!apiKey) throw new Error("GEMINI_CONFIG_ERROR: GEMINI_API_KEY is not configured.");
@@ -16,13 +15,13 @@ export async function runSchemaProbe({ apiKey = process.env.GEMINI_API_KEY, fetc
       text: SOURCE, start: i * (SOURCE.length + 2), end: i * (SOURCE.length + 2) + SOURCE.length,
     }));
     const input = { originalText: units.map(u => u.text).join("\n\n"), sections: [{ heading: null, signal: "required", units }], unresolved: [] };
-    const result = { blocks: count, httpStatus: null, schemaBytes: null, requestBytes: null, promptBytes: Buffer.byteLength(PROMPT) };
+    const result = { blocks: count, httpStatus: null, schemaBytes: null, requestBytes: null, promptBytes: null };
     logger.info?.(`[schema-probe] Testing ${count} blocks (one request, no retries).`);
     const start = Date.now();
     const provider = createGeminiRequestProvider({ apiKey, maxAttempts: 1, logger: {}, fetchImpl: async (url, options) => {
       const request = JSON.parse(options.body);
-      request.contents = [{ role: "user", parts: [{ text: PROMPT }] }];
-      result.schemaBytes = Buffer.byteLength(JSON.stringify(request.generationConfig.responseJsonSchema));
+      result.schemaBytes = Buffer.byteLength(JSON.stringify(request.tools));
+      result.promptBytes = Buffer.byteLength(JSON.stringify(request.contents));
       const body = JSON.stringify(request);
       result.requestBytes = Buffer.byteLength(body);
       const response = await fetchImpl(url, { ...options, body });
@@ -50,7 +49,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
   try {
     const results = await runSchemaProbe();
     console.log(JSON.stringify(results, null, 2));
-    console.log("One sample per size; this does not establish a fixed API limit. HTTP 429/503 or network failures are inconclusive. No job files written.");
+    console.log("Function-call completeness probe: fixed tool schema, varying target counts and prompt sizes. One sample per size does not establish an API limit. HTTP 429/503 or network failures are inconclusive. No job files written.");
     if (results.some(result => result.outcome !== "accepted_and_valid")) process.exitCode = 1;
   } catch (error) {
     console.error(error.message);

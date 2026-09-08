@@ -77,6 +77,26 @@
         }
       }
     },
+    "requirementExamples": {
+      "description": "Illustrations linked to a final requirement; these do not participate in matching as mandatory choices.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["classification", "requirement", "values"],
+        "properties": {
+          "classification": { "enum": ["required", "preferred", "competencies"] },
+          "requirement": { "$ref": "#/definitions/text" },
+          "values": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "$ref": "#/definitions/text" }
+          }
+        }
+      }
+    },
     "screening": {
       "type": "array",
       "items": {

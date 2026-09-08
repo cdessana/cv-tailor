@@ -15,10 +15,10 @@ function fixture(blocks) {
 test("smoke test exercises production schema, assembly, evidence and mapping offline",async()=>{
   const provider=createGeminiProvider({apiKey:"test",logger:{},fetchImpl:async(_url,options)=>{
     const body=JSON.parse(options.body);
-    const schema=JSON.stringify(body.generationConfig.responseJsonSchema);
+    const schema=JSON.stringify(body.tools);
     assert.equal(/"(?:anyOf|oneOf|allOf)":/u.test(schema),false);
     const blocks=JSON.parse(body.contents[0].parts[0].text.split("SOURCE BLOCKS (ordered; each ID is adjacent to its original text):\n")[1]);
-    return {status:200,ok:true,json:async()=>({candidates:[{content:{parts:[{text:JSON.stringify(fixture(blocks))}]}}]})};
+    return {status:200,ok:true,json:async()=>({candidates:[{content:{parts:Object.entries(fixture(blocks).blocks).map(([id, block]) => ({functionCall:{name:"extract_block",args:{id,...block}}}))}}]})};
   }});
   const job=await runSmokeTest({provider});
   assert.deepEqual(job.requirements.required,["Node.js"]);

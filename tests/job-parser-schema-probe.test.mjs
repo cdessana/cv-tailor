@@ -2,16 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { runSchemaProbe } from "../scripts/job-parser-schema-probe.mjs";
 
-const success = ids => ({ status: 200, ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({ blocks: Object.fromEntries(ids.map(id => [id, {
+const success = ids => ({ status: 200, ok: true, json: async () => ({ candidates: [{ content: { parts: ids.map(id => ({ functionCall: { name: "extract_block", args: { id,
   status: "extracted", reason: "", metadata: {}, alternatives: [],
   items: [{ type: "item", value: "Node.js", kind: "skill", classification: "required", evidence: { quote: "Node.js is required." } }],
-}])) }) }] } }] }) });
+} } })) } }] }) });
 
-test("probe varies only schema block keys and separates rejection from availability", async () => {
+test("probe varies target counts with a fixed tool schema and separates rejection from availability", async () => {
   const requests = [];
   const results = await runSchemaProbe({ apiKey: "fake-key", logger: {}, fetchImpl: async (_url, options) => {
     const body = JSON.parse(options.body); requests.push(body);
-    const ids = body.generationConfig.responseJsonSchema.properties.blocks.required;
+    const ids = JSON.parse(body.contents[0].parts[0].text.split("SOURCE BLOCKS (ordered; each ID is adjacent to its original text):\n")[1]).map(block => block.id);
     if (ids.length === 10) return { status: 400, ok: false, text: async () => "INVALID_ARGUMENT" };
     if (ids.length === 15) return { status: 503, ok: false, text: async () => "Unavailable" };
     return success(ids);
@@ -20,8 +20,7 @@ test("probe varies only schema block keys and separates rejection from availabil
   assert.deepEqual(results.map(r => r.blocks), [3, 5, 10, 15]);
   assert.deepEqual(results.map(r => r.outcome), ["accepted_and_valid", "accepted_and_valid", "request_rejected", "inconclusive_transport_failure"]);
   for (const request of requests) {
-    assert.deepEqual(request.contents, requests[0].contents);
-    assert.deepEqual(request.generationConfig.responseJsonSchema.$defs, requests[0].generationConfig.responseJsonSchema.$defs);
+    assert.deepEqual(request.tools, requests[0].tools);
   }
   assert.ok(results.every(r => r.requestBytes > r.schemaBytes && r.elapsedMs >= 0));
 });
