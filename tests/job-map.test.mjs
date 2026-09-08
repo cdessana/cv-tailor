@@ -35,6 +35,21 @@ test("does not mutate intermediate extraction", () => {
   assert.deepEqual(extraction, before);
 });
 
+test("omits only an ordinary prefix shadowed by the same alternative evidence", () => {
+  const metadata = { company: { value: "Example", ...evidence("Example") }, title: { value: "Engineer", ...evidence("Engineer") } };
+  const quote = "Experience in production with Go or Kotlin";
+  const extraction = { metadata, items: [
+    item("Experience in production", "requirement", "preferred", quote),
+    { type: "alternative", operator: "anyOf", kind: "requirement", classification: "preferred", values: ["Go", "Kotlin"], ...evidence(quote) },
+    item("Experience in production systems", "requirement", "preferred", "Experience in production systems"),
+  ] };
+  const result = mapToJob(extraction);
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.job.requirements.preferred, ["Experience in production systems"]);
+  assert.equal(result.job.alternativeRequirements.length, 1);
+  assert.equal(result.warnings[0].code, "shadowed_item");
+});
+
 test("existing fixture remains available unchanged", async () => {
   const fixture = JSON.parse(await fs.readFile(new URL("../data/jobs/flash-senior-backend.json", import.meta.url), "utf8"));
   assert.equal(fixture.company, "Flash");
@@ -93,7 +108,7 @@ for (const [value, quote, values] of [
 ]) {
   test(`preserves broad qualification and rejects example-only group: ${value}`, () => {
     const metadata = { company: { value: "Example", ...evidence("Example") }, title: { value: "Engineer", ...evidence("Engineer") } };
-    const plain = mapToJob({ metadata, items: [item(value, "requirement", "preferred", quote)] });
+    const plain = mapToJob({ metadata, items: [{ ...item(value, "requirement", "preferred", quote), examples: values.map(value => ({ value })) }] });
     assert.equal(plain.valid, true);
     assert.deepEqual(plain.job.requirements.preferred, [value]);
     const grouped = mapToJob({ metadata, items: [{ type: "alternative", operator: "anyOf", values, kind: "skill", classification: "preferred", ...evidence(quote) }] });
