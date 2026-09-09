@@ -7,7 +7,100 @@ import { loadConfig } from "../config/load-config.mjs";
 export function currentModel() {
   const localConfig = loadConfig();
   const provider = process.env.LLM_PROVIDER || localConfig.llm.provider;
+
+  if (provider === "ollama" && process.env.OLLAMA_MODEL) {
+    return process.env.OLLAMA_MODEL;
+  }
+
   return localConfig.llm[provider]?.model || provider;
+}
+
+function requireText(content, provider) {
+  if (typeof content !== "string" || !content.trim()) {
+    throw new Error(`${provider} returned an empty text response.`);
+  }
+
+  return content;
+}
+
+/**
+ * Gemini's legacy SDK accepts its own SchemaType wire values rather than
+ * ordinary JSON Schema's lowercase values. Keep the application schema as
+ * JSON Schema and adapt it only at the provider boundary.
+ */
+export function adaptGeminiSchema(jsonSchema) {
+  const schemaTypes = {
+    array: "ARRAY",
+    boolean: "BOOLEAN",
+    integer: "INTEGER",
+    number: "NUMBER",
+    object: "OBJECT",
+    string: "STRING",
+  };
+
+  return JSON.parse(
+    JSON.stringify(jsonSchema, (key, value) => {
+      if (key === "additionalProperties") return undefined;
+      if (key === "type" && typeof value === "string") {
+        return schemaTypes[value] ?? value;
+      }
+      return value;
+    })
+  );
+}
+
+/**
+ * Accept a JSON object returned directly, in a Markdown fence, or after a
+ * short provider preface. The scanner respects quoted braces, unlike a greedy
+ * regular expression, and preserves the validation performed by callers.
+ */
+export function parseJsonObject(rawResponse) {
+  const text = String(rawResponse ?? "").trim();
+
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed;
+    }
+  } catch {
+    // A compatible provider may add prose or Markdown around the JSON object.
+  }
+
+  for (
+    let start = text.indexOf("{");
+    start !== -1;
+    start = text.indexOf("{", start + 1)
+  ) {
+    let depth = 0;
+    let escaped = false;
+    let quoted = false;
+
+    for (let index = start; index < text.length; index += 1) {
+      const character = text[index];
+
+      if (quoted) {
+        if (escaped) escaped = false;
+        else if (character === "\\") escaped = true;
+        else if (character === '"') quoted = false;
+        continue;
+      }
+
+      if (character === '"') quoted = true;
+      else if (character === "{") depth += 1;
+      else if (character === "}") {
+        depth -= 1;
+        if (depth === 0) {
+          try {
+            return JSON.parse(text.slice(start, index + 1));
+          } catch {
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  throw new Error("Model response did not contain a valid JSON object.");
 }
 
 export async function generateText({
@@ -37,7 +130,7 @@ export async function generateText({
       format: jsonSchema,
       options: { temperature },
     });
-    return response.message.content;
+    return requireText(response.message?.content, "Ollama");
   }
 
   // ---------------------------------------------------------
@@ -86,7 +179,7 @@ export async function generateText({
         { role: "user", content: effectiveUserPrompt },
       ],
     });
-    return response.choices[0].message.content;
+    return requireText(response.choices[0]?.message?.content, provider);
   }
 
   // ---------------------------------------------------------
@@ -113,7 +206,8 @@ export async function generateText({
         },
       ],
     });
-    return response.content[0].text;
+    const textBlock = response.content.find((block) => block.type === "text");
+    return requireText(textBlock?.text, "Anthropic");
   }
 
   // ---------------------------------------------------------
@@ -128,11 +222,7 @@ export async function generateText({
     }
     const genAI = new GoogleGenerativeAI(apiKey);
 
-    const sanitizedSchema = JSON.parse(
-      JSON.stringify(jsonSchema, (key, value) =>
-        key === "additionalProperties" ? undefined : value
-      )
-    );
+    const sanitizedSchema = adaptGeminiSchema(jsonSchema);
 
     const model = genAI.getGenerativeModel({
       model: config.llm.gemini.model,
@@ -145,7 +235,7 @@ export async function generateText({
     });
 
     const response = await model.generateContent(userPrompt);
-    return response.response.text();
+    return requireText(response.response.text(), "Gemini");
   }
 
   throw new Error(`Unsupported LLM provider: ${provider}`);

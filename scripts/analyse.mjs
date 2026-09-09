@@ -6,11 +6,12 @@ const [
   jobPath,
   aliasesPath = "data/aliases.json",
   evidencePath = "data/evidence.json",
+  outputRoot = "output",
 ] = process.argv.slice(2);
 
 if (!resumePath || !jobPath) {
   console.error(
-    "Usage: node scripts/analyse.mjs <resume.json> <job.json> [aliases.json] [evidence.json]"
+    "Usage: node scripts/analyse.mjs <resume.json> <job.json> [aliases.json] [evidence.json] [output-dir]"
   );
   process.exit(1);
 }
@@ -587,12 +588,12 @@ const analysis = {
   },
 };
 
-await fs.mkdir("output", {
+await fs.mkdir(outputRoot, {
   recursive: true,
 });
 
 const outputPath = path.join(
-  "output",
+  outputRoot,
   `${slug(job.company)}-${slug(job.title)}-analysis.json`
 );
 

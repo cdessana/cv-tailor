@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import { z } from "zod";
-import { generateText, currentModel } from "./llm.mjs";
+import { generateText, currentModel, parseJsonObject } from "./llm.mjs";
 
 const [
   resumePath,
@@ -604,11 +604,7 @@ async function generate(prompt, { attempts = 3, retryDelayMs = 1200 } = {}) {
         jsonSchema: summaryJsonSchema,
       });
 
-      const sanitized = rawResponse
-      .trim()
-        .replace(/^```(?:json)?\s*|\s*```$/g, "")
-        .trim();
-      const parsed = summarySchema.parse(JSON.parse(sanitized));
+      const parsed = summarySchema.parse(parseJsonObject(rawResponse));
 
       return parsed.summary.trim();
     } catch (error) {
