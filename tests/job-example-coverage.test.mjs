@@ -34,6 +34,16 @@ test("does not infer examples from choices, conjunctions, unrelated quotes or re
   ]) assert.deepEqual(validateExampleCoverage(record), []);
 });
 
+test("requires a short primarily/mainly technology qualifier to remain in value", () => {
+  const quote = "Experiência com soluções em Cloud, principalmente AWS.";
+  const shortened = item("Experiência com soluções em Cloud", quote);
+  assert.equal(validateExampleCoverage(shortened)[0].code, "missing_illustrative_qualifier");
+  const shortenedWithExample = item("Experiência com soluções em Cloud", quote, ["AWS"]);
+  assert.equal(validateExampleCoverage(shortenedWithExample)[0].code, "missing_illustrative_qualifier");
+  const retained = item("Experiência com soluções em Cloud, principalmente AWS", quote, ["AWS"]);
+  assert.deepEqual(validateExampleCoverage(retained), []);
+});
+
 test("AgileEngine headings receive deterministic signals with source offsets intact", () => {
   for (const newline of ["\n", "\r\n"]) {
     const source = ["What you will do ", "Build products", "", "Must haves", "Java experience", "", "Nice to haves", "Cloud experience"].join(newline);
@@ -65,5 +75,5 @@ for (const corrected of [true, false]) test(`Gemini omission correction ${correc
     const result = await provider(document);
     assert.deepEqual(result.items[0].examples, [{ value: "React" }, { value: "Angular" }]);
   } else await assert.rejects(provider(document), /missing_examples/);
-  assert.equal(calls, 2);
+  assert.equal(calls, corrected ? 2 : 3);
 });

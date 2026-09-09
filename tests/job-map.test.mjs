@@ -123,3 +123,39 @@ test("example elsewhere in evidence does not invalidate a separate real choice",
   const result = mapToJob({ metadata, items: [{ type: "alternative", operator: "anyOf", values: ["Java", "Kotlin"], kind: "skill", classification: "required", ...evidence("Java or Kotlin and knowledge of containers (e.g., Docker, Kubernetes).") }] });
   assert.equal(result.valid, true);
 });
+
+test("maps only explicit intermediate examples without reparsing source prose", () => {
+  const metadata = { company: { value: "Example", ...evidence("Example") }, title: { value: "Engineer", ...evidence("Engineer") } };
+  const value = "Experiência com soluções em Cloud, principalmente AWS";
+  const extraction = {
+    metadata,
+    items: [{ ...item(value, "skill", "required"), examples: [{ value: "AWS" }] }],
+  };
+  const result = mapToJob(extraction);
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.job.requirements.required, [value]);
+  assert.deepEqual(result.job.requirementExamples, [{
+    classification: "required", requirement: value, values: ["AWS"],
+  }]);
+});
+
+test("does not derive examples from item wording during compatibility mapping", () => {
+  const metadata = { company: { value: "Example", ...evidence("Example") }, title: { value: "Engineer", ...evidence("Engineer") } };
+  const value = "Experiência com bancos NoSQL, como MongoDB e Cassandra";
+  const result = mapToJob({ metadata, items: [item(value, "skill", "required")] });
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.job.requirements.required, [value]);
+  assert.equal(result.job.requirementExamples, undefined);
+});
+
+test("preserves generic alternative options without narrowing their semantics", () => {
+  const metadata = { company: { value: "Example", ...evidence("Example") }, title: { value: "Engineer", ...evidence("Engineer") } };
+  const result = mapToJob({
+    metadata,
+    items: [{ type: "alternative", operator: "anyOf", values: ["AWS", "similar tools"], kind: "skill", classification: "preferred", ...evidence("AWS or similar tools") }],
+  });
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.job.alternativeRequirements, [{
+    operator: "anyOf", values: ["AWS", "similar tools"], kind: "skill", classification: "preferred", context: "AWS or similar tools",
+  }]);
+});
