@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { generateText, currentModel } from "./llm.mjs";
+import { generateText, currentModel, parseJsonObject } from "./llm.mjs";
 
 const MAX_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 1200;
@@ -393,11 +393,7 @@ async function generateRewrite(systemContent, userContent) {
         temperature: 0.1,
       });
 
-      const sanitized = rawResponse
-        .trim()
-        .replace(/^```(?:json)?\s*|\s*```$/g, "")
-        .trim();
-      const parsed = JSON.parse(sanitized);
+      const parsed = parseJsonObject(rawResponse);
 
       if (typeof parsed.rewritten !== "string") {
         throw new Error('Expected {"rewritten":"..."}');
