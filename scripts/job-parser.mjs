@@ -87,7 +87,7 @@ export async function runJobParser({ input, output, semanticProvider } = {}) {
   try {
     source = await fs.readFile(input, "utf8");
   } catch (error) {
-    throw new Error(`INPUT_ERROR: Could not read ${input}: ${error.message}`);
+    throw new Error(`INPUT_ERROR: Could not read ${input}: ${error.message}`, { cause: error });
   }
   console.info(`[job-parser] Read ${source.length} characters.`);
   console.info("[job-parser] Preprocessing job description.");
@@ -115,7 +115,7 @@ export async function runJobParser({ input, output, semanticProvider } = {}) {
       });
       console.info(`[job-parser] Semantic extraction complete (${extraction.items.length} items).`);
     } catch (error) {
-      throw new Error(`SEMANTIC_ERROR: ${error.message}`);
+      throw new Error(`SEMANTIC_ERROR: ${error.message}`, { cause: error });
     }
   }
   if (process.env.JOB_PARSER_DEBUG === "1" && deterministic.unresolved.length === 0) {
@@ -136,7 +136,7 @@ export async function runJobParser({ input, output, semanticProvider } = {}) {
     console.info("[job-parser] Normalizing and mapping extraction.");
     mapped = mapToJob(normalizeExtraction(extraction));
   } catch (error) {
-    throw new Error(`MAPPING_ERROR: ${error.message}`);
+    throw new Error(`MAPPING_ERROR: ${error.message}`, { cause: error });
   }
   if (!mapped.valid) {
     throw new Error(`MAPPING_ERROR: ${JSON.stringify(mapped.errors)}`);
@@ -148,7 +148,7 @@ export async function runJobParser({ input, output, semanticProvider } = {}) {
     console.info(`[job-parser] Writing validated output: ${output}`);
     await writeAtomically(output, mapped.job);
   } catch (error) {
-    throw new Error(`OUTPUT_ERROR: Could not write ${output}: ${error.message}`);
+    throw new Error(`OUTPUT_ERROR: Could not write ${output}: ${error.message}`, { cause: error });
   }
   console.info("[job-parser] Job parsing completed successfully.");
   return { output, job: mapped.job };
