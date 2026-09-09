@@ -5,11 +5,15 @@ import { loadConfig } from "../config/load-config.mjs";
 
 const config = loadConfig();
 
-const jobPath = process.argv[2];
-const hasSkipRewriteCli = process.argv.includes("--skip-rewrite");
+const args = process.argv.slice(2);
+const hasSkipRewriteCli = args.includes("--skip-rewrite");
+const unsupportedFlags = args.filter(
+  (arg) => arg.startsWith("--") && arg !== "--skip-rewrite"
+);
+const jobPath = args.find((arg) => !arg.startsWith("--"));
 const skipRewrite = hasSkipRewriteCli || !config.pipeline.rewriteEnabled;
 
-if (!jobPath) {
+if (!jobPath || unsupportedFlags.length > 0) {
   console.error("Usage: node scripts/run.mjs <job.json> [--skip-rewrite]");
   process.exit(1);
 }
@@ -73,14 +77,15 @@ if (!titleSlug) {
   throw new Error("Job JSON must contain a valid title.");
 }
 
-const outputDir = path.join("output", companySlug);
+const outputRoot = config.paths.output;
+const outputDir = path.join(outputRoot, companySlug);
 
 await fs.mkdir(outputDir, {
   recursive: true,
 });
 
 const generatedAnalysisPath = path.join(
-  "output",
+  outputRoot,
   `${companySlug}-${titleSlug}-analysis.json`
 );
 
@@ -106,6 +111,7 @@ await run("node", [
   jobPath,
   aliasesPath,
   evidencePath,
+  outputRoot,
 ]);
 
 if (!(await exists(generatedAnalysisPath))) {
