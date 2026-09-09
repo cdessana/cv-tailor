@@ -62,6 +62,13 @@ test("canonicalizes a standalone direct choice before block validation", () => {
   assert.deepEqual(copy.blocks[choice.id].alternatives[0].values, ["Java", "Kotlin"]);
 });
 
+test("leaves malformed item records for structural validation", () => {
+  const copy = structuredClone(valid);
+  copy.blocks[ai.id].items = [null];
+  assert.doesNotThrow(() => canonicalizeBlockRecords(copy));
+  assert.throws(() => contract.assemble(copy), /Invalid block response/);
+});
+
 for(const [name,modify] of [
  ["missing Nortal tail block",x=>delete x.blocks[benefit.id]],
  ["unknown block",x=>x.blocks.invented={...empty(),status:"excluded",reason:"unknown"}],
