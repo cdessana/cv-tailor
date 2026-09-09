@@ -92,9 +92,9 @@ test("configured batch size reduces calls without changing block accounting", as
 });
 
 test("corrects only the invalid block and retains approved batch blocks", async () => {
- const requested=[]; let calls=0;
+ const requested=[], bodies=[]; let calls=0;
  const provider=createGeminiProvider({apiKey:"test",logger:{},fetchImpl:async(_url,options)=>{
-  const blocks=targets(JSON.parse(options.body)); requested.push(blocks.map(block=>block.id));
+  const body=JSON.parse(options.body); bodies.push(body); const blocks=targets(body); requested.push(blocks.map(block=>block.id));
   const value=payload(blocks);
   if(calls++===0){
    const broken=value.candidates[0].content.parts[1].functionCall.args;
@@ -105,6 +105,30 @@ test("corrects only the invalid block and retains approved batch blocks", async 
  const extraction=await provider(input);
  assert.deepEqual(requested.map(ids=>ids.length),[3,1,3,1]);
  assert.deepEqual(requested[1],[requested[0][1]]);
+ const correction = JSON.parse(bodies[1].contents[1].parts[0].text.slice(bodies[1].contents[1].parts[0].text.indexOf("\n") + 1));
+ assert.deepEqual(Object.keys(correction.previousResponse.blocks), requested[1]);
+ assert.deepEqual(correction.sourceBlocks.map(block => block.id), requested[1]);
+ assert.equal(extraction.items.length,6);
+ assert.equal(validateCoverage(input,extraction).valid,true);
+});
+
+test("performs a second correction only for the block still invalid", async () => {
+ const requested=[]; let calls=0;
+ const provider=createGeminiProvider({apiKey:"test",logger:{},fetchImpl:async(_url,options)=>{
+  const blocks=targets(JSON.parse(options.body)); requested.push(blocks.map(block=>block.id));
+  const value=payload(blocks);
+  if(calls===0) {
+   value.candidates[0].content.parts[1].functionCall.args.items[0].value="Invented requirement one";
+   value.candidates[0].content.parts[2].functionCall.args.items[0].value="Invented requirement two";
+  } else if(calls===1) {
+   value.candidates[0].content.parts[0].functionCall.args.items[0].value="Invented requirement again";
+  }
+  calls++;
+  return response(value);
+ }});
+ const extraction=await provider(input);
+ assert.deepEqual(requested.map(ids=>ids.length),[3,2,1,3,1]);
+ assert.deepEqual(requested[2],[requested[1][0]]);
  assert.equal(extraction.items.length,6);
  assert.equal(validateCoverage(input,extraction).valid,true);
 });

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import Ajv from "ajv";
-import { createBlockContract } from "../lib/job-parser/providers/gemini-blocks.mjs";
+import { canonicalizeBlockRecords, createBlockContract } from "../lib/job-parser/providers/gemini-blocks.mjs";
 import { preprocessJobDescription as preprocess } from "../lib/job-parser/preprocess.mjs";
 import { validateEvidence } from "../lib/job-parser/validate-evidence.mjs";
 import { semanticExtract } from "../lib/job-parser/semantic-extract.mjs";
@@ -40,6 +40,26 @@ test("metadata-only and extracted blocks assemble without model references or in
  assert.deepEqual(valid,before);
  const reversed={blocks:Object.fromEntries(Object.entries(valid.blocks).reverse())};
  assert.deepEqual(contract.assemble(reversed),extraction);
+});
+
+test("losslessly moves a complete alternative placed in items", () => {
+  const copy = structuredClone(valid);
+  copy.blocks[choice.id].items = [copy.blocks[choice.id].alternatives.pop()];
+  const warnings = [];
+  canonicalizeBlockRecords(copy, warning => warnings.push(warning));
+  assert.deepEqual(copy.blocks[choice.id].items, []);
+  assert.deepEqual(copy.blocks[choice.id].alternatives, [alternative]);
+  assert.equal(warnings[0].code, "misplaced_alternative_canonicalized");
+  assert.equal(contract.assemble(copy).items[0].type, "alternative");
+});
+
+test("canonicalizes a standalone direct choice before block validation", () => {
+  const copy = structuredClone(valid);
+  copy.blocks[choice.id].alternatives = [];
+  copy.blocks[choice.id].items = [ordinary("Java or Kotlin")];
+  canonicalizeBlockRecords(copy);
+  assert.equal(copy.blocks[choice.id].items.length, 0);
+  assert.deepEqual(copy.blocks[choice.id].alternatives[0].values, ["Java", "Kotlin"]);
 });
 
 for(const [name,modify] of [

@@ -44,6 +44,30 @@ compliance or the semantic correctness of every classification.
 The block adapter rejects malformed record shapes; it does not repair missing
 values or turn metadata into requirement items.
 
+## Fidelity-preserving canonicalization
+
+Illustrative wording is retained when it narrows the qualification. For example,
+`Experiência com soluções em Cloud, principalmente AWS` must retain `AWS` in
+the ordinary requirement value; it can additionally appear in `examples`.
+Illustrative lists remain non-exhaustive and do not become independent
+requirements or alternatives.
+
+Before evidence validation, the parser may canonicalize a standalone direct
+choice such as `PostgreSQL or MySQL` into an `anyOf` record. It may also move a
+complete `anyOf` record that Gemini placed in the `items` array into
+`alternatives`. Both transformations retain the exact values and evidence. The
+direct-choice rule is limited to two short values joined directly by `or`, `ou`,
+`e/ou`, or `and/or`. It never parses a sentence with shared duration, role,
+examples, punctuation, or other qualifiers; those remain provider-owned
+structured-output decisions.
+
+Exact duplicates are consolidated. A second, deliberately narrow rule also
+consolidates two required/preferred skill or requirement records when they have
+the same explicit experience duration and a shared non-generic technology term.
+The more detailed wording is retained and source unit IDs from both records are
+kept. Different classifications, durations, conditions, and non-duration
+phrases remain separate.
+
 The adapter uses the [documented Gemini JSON Schema subset](https://ai.google.dev/api/generate-content#v1beta.GenerationConfig).
 It resolves local references and converts `const` to singleton `enum`. Nonblank
 strings (`minLength`/`pattern`) and duplicate alternatives (`uniqueItems`) remain
@@ -198,20 +222,22 @@ production batched provider. Offline batching coverage:
 ### One bounded batch correction
 
 A received response that fails JSON/schema/accounting or evidence validation
-gets at most one semantic correction request. When local block inspection can
+gets at most two semantic correction requests. `GEMINI_MAX_CORRECTIONS` can
+set a positive value up to three. When local block inspection can
 identify a strict subset of invalid block IDs, the correction contains only
 those blocks and already approved blocks are retained. Otherwise it contains
 the same target batch. It
-includes the prior raw response and validator feedback as data, retains the
-original source context and unchanged schema, and asks for corrected complete
-block results. Empty extracted blocks must receive source-backed records or an
+includes only the decoded prior response for those target blocks, validator
+feedback, the original target source context and unchanged schema. Raw provider
+payloads remain in debug artifacts and are never replayed to Gemini. The
+correction asks for complete block results. Empty extracted blocks must receive source-backed records or an
 explicit exclusion reason. Code may normalize an empty extracted block only for
 an exact recognized standalone navigation/heading label outside a classified
 section. Every such normalization logs an `empty_block_excluded` reason. Short
 qualifications and marketing paragraphs are not automatically discarded.
 The validated, normalized blocks are merged directly; raw payloads are not decoded again.
 
-The corrected response passes the same validations. If it still fails, the run
+Each corrected response passes the same validations. If the final correction still fails, the run
 stops before final output and before any later batch. HTTP, authentication,
 and network failures do not trigger this path.
 Transient HTTP retries remain separately bounded by the existing request retry

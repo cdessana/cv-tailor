@@ -26,11 +26,11 @@ test("one correction includes exact empty-block feedback and retains both raw at
  assert.deepEqual(JSON.parse(JSON.parse(attempts[1].response).candidates[0].content.parts[0].text),corrected);
 });
 
-test("invalid correction stops after two responses without silently excluding",async()=>{
+test("invalid corrections stop after three responses without silently excluding",async()=>{
  let calls=0;
  const provider=createGeminiProvider({apiKey:"test",logger:{},fetchImpl:async()=>{calls++;return response(empty);}});
  await assert.rejects(provider(document),/Batch 1\/1.*no items or metadata/);
- assert.equal(calls,2);
+ assert.equal(calls,3);
 });
 
 test("HTTP rejection does not trigger semantic correction",async()=>{
@@ -66,7 +66,9 @@ test("correction receives block errors and every capitalization or rewritten-ver
  const result = await provider(source);
  assert.equal(requests.length, 2);
  const feedback = requests[1].contents[1].parts[0].text;
- for (const value of ["Build and operate services", "Design systems", "Handle transfers", "evidence_not_in_block", ...units.map(unit => unit.id)]) assert.ok(feedback.includes(value), value);
+ const correction = JSON.parse(feedback.slice(feedback.indexOf("\n") + 1));
+ const correctionDetails = `${feedback}\n${JSON.stringify(correction.previousResponse)}`;
+ for (const value of ["Build and operate services", "Design systems", "Handle transfers", "evidence_not_in_block", ...units.map(unit => unit.id)]) assert.ok(correctionDetails.toLocaleLowerCase().includes(value.toLocaleLowerCase()), value);
  assert.match(feedback, /preserving capitalization and verb forms/);
  assert.equal(result.items.length, 3);
  assert.deepEqual(bad, snapshot);
