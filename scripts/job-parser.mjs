@@ -67,6 +67,17 @@ async function writeTextAtomically(outputPath, text) {
   }
 }
 
+export function reportWarnings(warnings, logger = console) {
+  const metadataWarnings = warnings.filter(warning => warning.code === "ambiguous_metadata" && warning.requiresHumanValidation);
+  for (const warning of metadataWarnings) {
+    const others = [...new Set((warning.candidates ?? []).map(candidate => candidate.value)
+      .filter(value => value !== warning.selected?.value))];
+    logger.warn(`[job-parser] HUMAN_VALIDATION_REQUIRED: ${warning.path.slice("/metadata/".length)} selected "${warning.selected?.value}"; other source-backed candidate(s): ${others.map(value => `"${value}"`).join(", ")}.`);
+  }
+  const remaining = warnings.filter(warning => !metadataWarnings.includes(warning));
+  if (remaining.length) logger.warn(`[job-parser] ${remaining.length} extraction warning(s): ${JSON.stringify(remaining)}`);
+}
+
 export async function runJobParser({ input, output, semanticProvider } = {}) {
   if (!input) throw new Error("INPUT_ERROR: An input file is required.");
   output ??= path.join("data", "jobs", `${path.basename(input, path.extname(input))}.json`);
@@ -131,7 +142,7 @@ export async function runJobParser({ input, output, semanticProvider } = {}) {
     throw new Error(`MAPPING_ERROR: ${JSON.stringify(mapped.errors)}`);
   }
   if (mapped.warnings?.length) {
-    console.warn(`[job-parser] ${mapped.warnings.length} extraction warning(s): ${JSON.stringify(mapped.warnings)}`);
+    reportWarnings(mapped.warnings);
   }
   try {
     console.info(`[job-parser] Writing validated output: ${output}`);

@@ -58,7 +58,7 @@ test("short qualifications beneath unknown headings are not silently excluded", 
   let calls=0;
   const provider=createGeminiProvider({apiKey:"test",logger:{},fetchImpl:async()=>{calls++;return response(payload([call(id,block())]));}});
   await assert.rejects(provider(document),/no items or metadata/);
-  assert.equal(calls,2);
+  assert.equal(calls,3);
 });
 
 test("malformed block arrays fail shape validation before normalization", async () => {

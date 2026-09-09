@@ -39,3 +39,21 @@ test("does not merge similar values, different evidence, or records across secti
   ] };
   assert.equal(consolidateExtraction(document, extraction).items.length, 3);
 });
+
+test("keeps the more detailed repeated duration-and-technology requirement across sections", () => {
+  const document = preprocess("Overview\n- 4+ years of Java experience\n\nMust haves\n- At least 4+ years of experience in backend development using Java");
+  const [overview] = document.sections[0].units;
+  const [detail] = document.sections[1].units;
+  const extraction = { items: [
+    item("4+ years of Java experience", "4+ years of Java experience", [overview.id]),
+    item("At least 4+ years of experience in backend development using Java", "At least 4+ years of experience in backend development using Java", [detail.id]),
+  ], coverage: [
+    { unitId: overview.id, status: "extracted", itemIndices: [0] },
+    { unitId: detail.id, status: "extracted", itemIndices: [1] },
+  ] };
+  const result = consolidateExtraction(document, extraction);
+  assert.equal(result.items.length, 1);
+  assert.equal(result.items[0].value, "At least 4+ years of experience in backend development using Java");
+  assert.deepEqual(result.items[0].sourceUnitIds, [overview.id, detail.id]);
+  assert.deepEqual(result.coverage.map(entry => entry.itemIndices), [[0], [0]]);
+});

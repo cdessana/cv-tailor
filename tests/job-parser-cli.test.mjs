@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { parseArguments, runJobParser } from "../scripts/job-parser.mjs";
+import { parseArguments, reportWarnings, runJobParser } from "../scripts/job-parser.mjs";
 
 async function tempDir() { return fs.mkdtemp(path.join(os.tmpdir(), "job-parser-")); }
 
@@ -11,6 +11,17 @@ test("parses positional and flag arguments", () => {
   assert.deepEqual(parseArguments(["description.txt"]), { input: "description.txt", output: "data/jobs/description.json" });
   assert.deepEqual(parseArguments(["--input", "description.txt", "--output", "out.json"]), { input: "description.txt", output: "out.json" });
   for (const args of [["--input"], ["--unknown"], ["a", "b"], ["--input", "a", "b"]]) assert.throws(() => parseArguments(args));
+});
+
+test("reports conflicting metadata candidates in a human-readable CLI warning", () => {
+  const messages = [];
+  reportWarnings([{
+    code: "ambiguous_metadata", path: "/metadata/location", requiresHumanValidation: true,
+    selected: { value: "São Paulo" }, candidates: [{ value: "São Paulo" }, { value: "Brasil" }],
+  }], { warn: message => messages.push(message) });
+  assert.deepEqual(messages, [
+    '[job-parser] HUMAN_VALIDATION_REQUIRED: location selected "São Paulo"; other source-backed candidate(s): "Brasil".',
+  ]);
 });
 
 test("programmatic parser calls default the output path", async () => {
