@@ -154,7 +154,7 @@ stack mentions. An open-ended `AWS or other cloud services` choice remains an
 alternative, including the generic option. No absent technologies or missing
 values are filled automatically.
 
-Run `node --test tests/gemini-blocks.test.mjs tests/job-coverage.test.mjs tests/gemini-provider.test.mjs`
+Run `node --test tests/block-contract.test.mjs tests/job-coverage.test.mjs tests/gemini-provider.test.mjs`
 for offline accounting, metadata, merge-context, and classification regressions.
 Live model verification is still required after prompt changes.
 
