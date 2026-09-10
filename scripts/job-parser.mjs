@@ -1,31 +1,46 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { loadConfig } from "../config/load-config.mjs";
 import { extract } from "../lib/job-parser/extract.mjs";
 import { preprocessJobDescription } from "../lib/job-parser/preprocess.mjs";
 import { semanticExtract } from "../lib/job-parser/semantic-extract.mjs";
 import { normalizeExtraction } from "../lib/job-parser/normalize.mjs";
 import { mapToJob } from "../lib/job-parser/map-to-job.mjs";
-import { createGeminiProvider } from "../lib/job-parser/providers/gemini.mjs";
+import {
+  createSemanticProvider,
+  describeSemanticProvider,
+  getSemanticProviderDiagnostics,
+  resolveSemanticProviderName,
+} from "../lib/job-parser/providers/index.mjs";
 import { validateEvidence } from "../lib/job-parser/validate-evidence.mjs";
 import { consolidateExtraction } from "../lib/job-parser/consolidate-extraction.mjs";
 
 export function parseArguments(argv) {
   let input;
   let output;
+  let semanticProviderName;
   const positional = [];
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
-    if (argument === "--input" || argument === "--output") {
+    if (
+      argument === "--input" ||
+      argument === "--output" ||
+      argument === "--semantic-provider"
+    ) {
       if (index + 1 >= argv.length || argv[index + 1].startsWith("--")) {
         throw new Error(`${argument} requires a value.`);
       }
       if (argument === "--input") {
         if (input) throw new Error("--input may be provided only once.");
         input = argv[++index];
-      } else {
+      } else if (argument === "--output") {
         if (output) throw new Error("--output may be provided only once.");
         output = argv[++index];
+      } else {
+        if (semanticProviderName)
+          throw new Error("--semantic-provider may be provided only once.");
+        semanticProviderName = argv[++index];
       }
     } else if (argument.startsWith("--")) {
       throw new Error(`Unknown option: ${argument}`);
@@ -33,20 +48,37 @@ export function parseArguments(argv) {
       positional.push(argument);
     }
   }
-  if (positional.length > 1) throw new Error("Only one positional input file is allowed.");
-  if (input && positional.length) throw new Error("Use either positional input or --input, not both.");
+  if (positional.length > 1)
+    throw new Error("Only one positional input file is allowed.");
+  if (input && positional.length)
+    throw new Error("Use either positional input or --input, not both.");
   input ??= positional[0];
   if (!input) throw new Error("An input file is required.");
-  output ??= path.join("data", "jobs", `${path.basename(input, path.extname(input))}.json`);
-  return { input, output };
+  output ??= path.join(
+    "data",
+    "jobs",
+    `${path.basename(input, path.extname(input))}.json`
+  );
+  return {
+    input,
+    output,
+    ...(semanticProviderName ? { semanticProviderName } : {}),
+  };
 }
 
 async function writeAtomically(outputPath, value) {
   const directory = path.dirname(outputPath);
   await fs.mkdir(directory, { recursive: true });
-  const temporary = path.join(directory, `.${path.basename(outputPath)}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`);
+  const temporary = path.join(
+    directory,
+    `.${path.basename(outputPath)}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`
+  );
   try {
-    await fs.writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+    await fs.writeFile(
+      temporary,
+      `${JSON.stringify(value, null, 2)}\n`,
+      "utf8"
+    );
     await fs.rename(temporary, outputPath);
   } catch (error) {
     await fs.rm(temporary, { force: true }).catch(() => {});
@@ -57,7 +89,10 @@ async function writeAtomically(outputPath, value) {
 async function writeTextAtomically(outputPath, text) {
   const directory = path.dirname(outputPath);
   await fs.mkdir(directory, { recursive: true });
-  const temporary = path.join(directory, `.${path.basename(outputPath)}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`);
+  const temporary = path.join(
+    directory,
+    `.${path.basename(outputPath)}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`
+  );
   try {
     await fs.writeFile(temporary, text, "utf8");
     await fs.rename(temporary, outputPath);
@@ -67,69 +102,241 @@ async function writeTextAtomically(outputPath, text) {
   }
 }
 
-export function reportWarnings(warnings, logger = console) {
-  const metadataWarnings = warnings.filter(warning => warning.code === "ambiguous_metadata" && warning.requiresHumanValidation);
-  for (const warning of metadataWarnings) {
-    const others = [...new Set((warning.candidates ?? []).map(candidate => candidate.value)
-      .filter(value => value !== warning.selected?.value))];
-    logger.warn(`[job-parser] HUMAN_VALIDATION_REQUIRED: ${warning.path.slice("/metadata/".length)} selected "${warning.selected?.value}"; other source-backed candidate(s): ${others.map(value => `"${value}"`).join(", ")}.`);
+async function writeProviderAudit(output, providerInfo, config, env, error) {
+  if (env.JOB_PARSER_DEBUG !== "1") return;
+  let providers = [];
+  try {
+    providers = getSemanticProviderDiagnostics({
+      selected: providerInfo?.name,
+      config,
+      env,
+    });
+  } catch {
+    // The selected configuration error is already represented below.
   }
-  const remaining = warnings.filter(warning => !metadataWarnings.includes(warning));
-  if (remaining.length) logger.warn(`[job-parser] ${remaining.length} extraction warning(s): ${JSON.stringify(remaining)}`);
+  const value = {
+    selected: providerInfo ?? { name: "unknown", model: null, used: false },
+    providers,
+    ...(error
+      ? {
+          error: {
+            code: error.code ?? error.cause?.code ?? "SEMANTIC_PROVIDER_ERROR",
+            message: error.message,
+          },
+        }
+      : {}),
+  };
+  await writeTextAtomically(
+    `${output}.provider.json`,
+    `${JSON.stringify(value, null, 2)}\n`
+  );
 }
 
-export async function runJobParser({ input, output, semanticProvider } = {}) {
+function semanticProviderError(code, message, cause) {
+  const error = new Error(`${code}: ${message}`);
+  error.code = code;
+  if (cause) error.cause = cause;
+  return error;
+}
+
+function normalizeProviderSetupError(error) {
+  if (String(error?.code ?? "").startsWith("SEMANTIC_PROVIDER_")) return error;
+  return semanticProviderError(
+    "SEMANTIC_PROVIDER_CONFIG_ERROR",
+    `Could not load job-parser provider configuration. ${error.message}`,
+    error
+  );
+}
+
+export function reportWarnings(warnings, logger = console) {
+  const metadataWarnings = warnings.filter(
+    (warning) =>
+      warning.code === "ambiguous_metadata" && warning.requiresHumanValidation
+  );
+  for (const warning of metadataWarnings) {
+    const others = [
+      ...new Set(
+        (warning.candidates ?? [])
+          .map((candidate) => candidate.value)
+          .filter((value) => value !== warning.selected?.value)
+      ),
+    ];
+    logger.warn(
+      `[job-parser] HUMAN_VALIDATION_REQUIRED: ${warning.path.slice("/metadata/".length)} selected "${warning.selected?.value}"; other source-backed candidate(s): ${others.map((value) => `"${value}"`).join(", ")}.`
+    );
+  }
+  const remaining = warnings.filter(
+    (warning) => !metadataWarnings.includes(warning)
+  );
+  if (remaining.length)
+    logger.warn(
+      `[job-parser] ${remaining.length} extraction warning(s): ${JSON.stringify(remaining)}`
+    );
+}
+
+export async function runJobParser({
+  input,
+  output,
+  semanticProvider,
+  semanticProviderName,
+  config,
+  env = process.env,
+} = {}) {
   if (!input) throw new Error("INPUT_ERROR: An input file is required.");
-  output ??= path.join("data", "jobs", `${path.basename(input, path.extname(input))}.json`);
+  output ??= path.join(
+    "data",
+    "jobs",
+    `${path.basename(input, path.extname(input))}.json`
+  );
   if (output) await fs.mkdir(path.dirname(output), { recursive: true });
   console.info(`[job-parser] Reading input: ${input}`);
   let source;
   try {
     source = await fs.readFile(input, "utf8");
   } catch (error) {
-    throw new Error(`INPUT_ERROR: Could not read ${input}: ${error.message}`, { cause: error });
+    throw new Error(`INPUT_ERROR: Could not read ${input}: ${error.message}`, {
+      cause: error,
+    });
   }
   console.info(`[job-parser] Read ${source.length} characters.`);
   console.info("[job-parser] Preprocessing job description.");
   const document = preprocessJobDescription(source);
-  console.info(`[job-parser] Preprocessing complete (${document.sections.length} sections).`);
+  console.info(
+    `[job-parser] Preprocessing complete (${document.sections.length} sections).`
+  );
   console.info("[job-parser] Running deterministic extraction.");
   const deterministic = extract(document);
-  console.info(`[job-parser] Deterministic extraction complete (${deterministic.extraction.items.length} items, ${deterministic.unresolved.length} unresolved).`);
+  console.info(
+    `[job-parser] Deterministic extraction complete (${deterministic.extraction.items.length} items, ${deterministic.unresolved.length} unresolved).`
+  );
   let extraction = deterministic.extraction;
+  let providerInfo = semanticProvider
+    ? { name: "injected", model: null, used: false }
+    : undefined;
   if (deterministic.unresolved.length > 0) {
     console.info("[job-parser] Semantic extraction required.");
-    semanticProvider ??= process.env.GEMINI_API_KEY ? createGeminiProvider({
-      onRawResponse: process.env.JOB_PARSER_DEBUG === "1"
-        ? (response) => writeTextAtomically(`${output}.provider-response.json`, `${response}\n`)
-        : undefined,
-    }) : undefined;
     if (!semanticProvider) {
-      throw new Error("SEMANTIC_ERROR: Unresolved content requires a semantic provider.");
+      try {
+        config ??= loadConfig();
+        const selectedName = resolveSemanticProviderName({
+          cli: semanticProviderName,
+          env,
+          config,
+        });
+        providerInfo = {
+          ...describeSemanticProvider(selectedName, config, env),
+          used: false,
+          status: "selected",
+        };
+        const selected = createSemanticProvider({
+          name: selectedName,
+          config,
+          env,
+          onRawResponse:
+            env.JOB_PARSER_DEBUG === "1"
+              ? (response) =>
+                  writeTextAtomically(
+                    `${output}.provider-response.json`,
+                    `${response}\n`
+                  )
+              : undefined,
+        });
+        semanticProvider = selected.provider;
+        providerInfo = { ...selected.info, used: false, status: "selected" };
+      } catch (error) {
+        const normalizedError = normalizeProviderSetupError(error);
+        providerInfo ??= {
+          name:
+            semanticProviderName ??
+            env.JOB_PARSER_PROVIDER ??
+            config?.jobParser?.semanticProvider ??
+            "unknown",
+          model: null,
+          capabilities: [],
+          used: false,
+          status: "misconfigured",
+        };
+        providerInfo.status = "misconfigured";
+        await writeProviderAudit(output, providerInfo, config, env, normalizedError);
+        throw new Error(`SEMANTIC_ERROR: ${normalizedError.message}`, {
+          cause: error,
+        });
+      }
+    }
+    if (!semanticProvider) {
+      const error = semanticProviderError(
+        "SEMANTIC_PROVIDER_REQUIRED",
+        "Unresolved content cannot be parsed while the semantic provider is none."
+      );
+      providerInfo.status = "disabled";
+      await writeProviderAudit(output, providerInfo, config, env, error);
+      throw new Error(`SEMANTIC_ERROR: ${error.message}`, { cause: error });
     }
     try {
-      extraction = await semanticExtract(document, deterministic, semanticProvider, {
-        onResponse: process.env.JOB_PARSER_DEBUG === "1"
-          ? (response) => writeTextAtomically(`${output}.intermediate.json`, `${JSON.stringify(response, null, 2)}\n`)
-          : undefined,
-      });
-      console.info(`[job-parser] Semantic extraction complete (${extraction.items.length} items).`);
+      console.info(
+        `[job-parser] Using semantic provider ${providerInfo.name}${providerInfo.model ? ` (model=${providerInfo.model})` : ""}.`
+      );
+      extraction = await semanticExtract(
+        document,
+        deterministic,
+        semanticProvider,
+        {
+          onResponse:
+            env.JOB_PARSER_DEBUG === "1"
+              ? (response) =>
+                  writeTextAtomically(
+                    `${output}.intermediate.json`,
+                    `${JSON.stringify(response, null, 2)}\n`
+                  )
+              : undefined,
+        }
+      );
+      providerInfo.used = true;
+      providerInfo.status = "succeeded";
+      console.info(
+        `[job-parser] Semantic extraction complete (${extraction.items.length} items).`
+      );
     } catch (error) {
+      providerInfo.status = "failed";
+      await writeProviderAudit(output, providerInfo, config, env, error);
       throw new Error(`SEMANTIC_ERROR: ${error.message}`, { cause: error });
     }
   }
-  if (process.env.JOB_PARSER_DEBUG === "1" && deterministic.unresolved.length === 0) {
+  if (!providerInfo) {
+    config ??= loadConfig();
+    const selectedName = resolveSemanticProviderName({
+      cli: semanticProviderName,
+      env,
+      config,
+    });
+    providerInfo = {
+      ...describeSemanticProvider(selectedName, config, env),
+      used: false,
+      status: "not-needed",
+    };
+  }
+  await writeProviderAudit(output, providerInfo, config, env);
+  if (env.JOB_PARSER_DEBUG === "1" && deterministic.unresolved.length === 0) {
     try {
-      await writeTextAtomically(`${output}.intermediate.json`, `${JSON.stringify(extraction, null, 2)}\n`);
-      console.info(`[job-parser] Debug intermediate extraction written: ${output}.intermediate.json`);
+      await writeTextAtomically(
+        `${output}.intermediate.json`,
+        `${JSON.stringify(extraction, null, 2)}\n`
+      );
+      console.info(
+        `[job-parser] Debug intermediate extraction written: ${output}.intermediate.json`
+      );
     } catch (error) {
-      console.warn(`[job-parser] Could not write debug intermediate extraction: ${error.message}`);
+      console.warn(
+        `[job-parser] Could not write debug intermediate extraction: ${error.message}`
+      );
     }
   }
   extraction = consolidateExtraction(document, extraction);
   const evidence = validateEvidence(document, extraction);
   if (!evidence.valid) {
-    throw new Error(`SEMANTIC_ERROR: Source evidence validation failed: ${JSON.stringify(evidence.errors)}`);
+    throw new Error(
+      `SEMANTIC_ERROR: Source evidence validation failed: ${JSON.stringify(evidence.errors)}`
+    );
   }
   let mapped;
   try {
@@ -148,13 +355,19 @@ export async function runJobParser({ input, output, semanticProvider } = {}) {
     console.info(`[job-parser] Writing validated output: ${output}`);
     await writeAtomically(output, mapped.job);
   } catch (error) {
-    throw new Error(`OUTPUT_ERROR: Could not write ${output}: ${error.message}`, { cause: error });
+    throw new Error(
+      `OUTPUT_ERROR: Could not write ${output}: ${error.message}`,
+      { cause: error }
+    );
   }
   console.info("[job-parser] Job parsing completed successfully.");
-  return { output, job: mapped.job };
+  return { output, job: mapped.job, semanticProvider: providerInfo };
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href
+) {
   try {
     const options = parseArguments(process.argv.slice(2));
     const result = await runJobParser(options);
