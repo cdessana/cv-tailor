@@ -41,6 +41,26 @@ const GeminiConfigSchema = z.object({
   apiKey: z.string().optional().default(""),
 });
 
+const JobParserProviderOptionsSchema = z.object({
+  model: z.string().min(1),
+  timeoutMs: z.number().int().positive().default(120000),
+  maxAttempts: z.number().int().positive().max(10).default(3),
+  batchSize: z.number().int().positive().max(12).default(3),
+  maxCorrections: z.number().int().nonnegative().max(3).default(2),
+});
+
+const JobParserOllamaSchema = JobParserProviderOptionsSchema.extend({
+  model: z.string().min(1).default("granite4.2:3b-q4_K_S"),
+  url: z
+    .string()
+    .url("jobParser.providers.ollama.url must be a valid URL")
+    .default("http://127.0.0.1:11434"),
+}).prefault({});
+
+const JobParserGeminiSchema = JobParserProviderOptionsSchema.extend({
+  model: z.string().min(1).default("gemini-3.1-flash-lite"),
+}).prefault({});
+
 export const ConfigSchema = z.object({
   llm: z
     .object({
@@ -55,6 +75,18 @@ export const ConfigSchema = z.object({
       gemini: GeminiConfigSchema.default({}),
     })
     .default({}),
+
+  jobParser: z
+    .object({
+      semanticProvider: z.enum(["gemini", "ollama", "none"]).default("gemini"),
+      providers: z
+        .object({
+          gemini: JobParserGeminiSchema,
+          ollama: JobParserOllamaSchema,
+        })
+        .prefault({}),
+    })
+    .prefault({}),
 
   render: z
     .object({

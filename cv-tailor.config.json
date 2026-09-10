@@ -28,6 +28,26 @@
       "apiKey": ""
     }
   },
+  "jobParser": {
+    "semanticProvider": "gemini",
+    "providers": {
+      "gemini": {
+        "model": "gemini-3.1-flash-lite",
+        "timeoutMs": 120000,
+        "maxAttempts": 3,
+        "batchSize": 3,
+        "maxCorrections": 2
+      },
+      "ollama": {
+        "model": "granite4.2:3b-q4_K_S",
+        "url": "http://127.0.0.1:11434",
+        "timeoutMs": 120000,
+        "maxAttempts": 3,
+        "batchSize": 3,
+        "maxCorrections": 2
+      }
+    }
+  },
   "render": {
     "theme": "jsonresume-theme-stackoverflow"
   },
