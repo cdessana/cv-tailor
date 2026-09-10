@@ -15,6 +15,11 @@ import {
 } from "../lib/job-parser/providers/index.mjs";
 import { validateEvidence } from "../lib/job-parser/validate-evidence.mjs";
 import { consolidateExtraction } from "../lib/job-parser/consolidate-extraction.mjs";
+import {
+  asSemanticStageError,
+  isSemanticProviderError,
+  semanticProviderError,
+} from "../lib/job-parser/providers/errors.mjs";
 
 export function parseArguments(argv) {
   let input;
@@ -132,19 +137,12 @@ async function writeProviderAudit(output, providerInfo, config, env, error) {
   );
 }
 
-function semanticProviderError(code, message, cause) {
-  const error = new Error(`${code}: ${message}`);
-  error.code = code;
-  if (cause) error.cause = cause;
-  return error;
-}
-
 function normalizeProviderSetupError(error) {
-  if (String(error?.code ?? "").startsWith("SEMANTIC_PROVIDER_")) return error;
+  if (isSemanticProviderError(error)) return error;
   return semanticProviderError(
     "SEMANTIC_PROVIDER_CONFIG_ERROR",
     `Could not load job-parser provider configuration. ${error.message}`,
-    error
+    { cause: error, stage: "configuration" }
   );
 }
 
@@ -257,10 +255,14 @@ export async function runJobParser({
           status: "misconfigured",
         };
         providerInfo.status = "misconfigured";
-        await writeProviderAudit(output, providerInfo, config, env, normalizedError);
-        throw new Error(`SEMANTIC_ERROR: ${normalizedError.message}`, {
-          cause: error,
-        });
+        await writeProviderAudit(
+          output,
+          providerInfo,
+          config,
+          env,
+          normalizedError
+        );
+        throw asSemanticStageError(normalizedError);
       }
     }
     if (!semanticProvider) {
@@ -270,7 +272,7 @@ export async function runJobParser({
       );
       providerInfo.status = "disabled";
       await writeProviderAudit(output, providerInfo, config, env, error);
-      throw new Error(`SEMANTIC_ERROR: ${error.message}`, { cause: error });
+      throw asSemanticStageError(error);
     }
     try {
       console.info(
@@ -299,7 +301,7 @@ export async function runJobParser({
     } catch (error) {
       providerInfo.status = "failed";
       await writeProviderAudit(output, providerInfo, config, env, error);
-      throw new Error(`SEMANTIC_ERROR: ${error.message}`, { cause: error });
+      throw asSemanticStageError(error);
     }
   }
   if (!providerInfo) {
