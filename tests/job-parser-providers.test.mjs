@@ -13,6 +13,7 @@ import {
   resolveSemanticProviderOptions,
 } from "../lib/job-parser/providers/index.mjs";
 import { runJobParser } from "../scripts/job-parser.mjs";
+import { SemanticProviderError } from "../lib/job-parser/providers/errors.mjs";
 
 test("job-parser provider selection follows CLI, environment, config, then default precedence", () => {
   const config = { jobParser: { semanticProvider: "ollama" } };
@@ -236,7 +237,10 @@ test("none fails unresolved parsing without replacing an existing output", async
   });
   await assert.rejects(
     () => runJobParser({ input, output, config, env: {} }),
-    /SEMANTIC_PROVIDER_REQUIRED/
+    (error) =>
+      error instanceof SemanticProviderError &&
+      error.code === "SEMANTIC_PROVIDER_REQUIRED" &&
+      /SEMANTIC_ERROR/u.test(error.message)
   );
   assert.equal(
     await fs.readFile(output, "utf8"),
@@ -315,7 +319,9 @@ test("configuration-file validation failures use the provider configuration cate
   try {
     await assert.rejects(
       () => runJobParser({ input, output, env: { JOB_PARSER_DEBUG: "1" } }),
-      /SEMANTIC_PROVIDER_CONFIG_ERROR/
+      (error) =>
+        error instanceof SemanticProviderError &&
+        error.code === "SEMANTIC_PROVIDER_CONFIG_ERROR"
     );
     const audit = JSON.parse(
       await fs.readFile(`${output}.provider.json`, "utf8")

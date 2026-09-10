@@ -75,4 +75,5 @@ All provider tests are mocked and run without network access or secrets:
 ```sh
 npm run test:job-parser-providers
 npm run test:gemini-provider
+npm run test:ollama-provider
 ```

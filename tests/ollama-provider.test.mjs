@@ -1,0 +1,265 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { preprocessJobDescription } from "../lib/job-parser/preprocess.mjs";
+import { createBlockContract } from "../lib/job-parser/providers/block-contract.mjs";
+import { createOllamaProvider } from "../lib/job-parser/providers/ollama.mjs";
+import { createSemanticProvider } from "../lib/job-parser/providers/index.mjs";
+import { ConfigSchema } from "../config/schema.mjs";
+
+function blockResult(block) {
+  const quote = block.text.replace(/^-\s*/u, "");
+  if (quote.includes("Java ou Kotlin")) {
+    return {
+      status: "extracted",
+      items: [],
+      alternatives: [
+        {
+          type: "alternative",
+          operator: "anyOf",
+          values: ["Java", "Kotlin"],
+          kind: "skill",
+          classification: "required",
+          evidence: { quote },
+          ...(block.heading ? { sourceSection: block.heading } : {}),
+        },
+      ],
+      metadata: {},
+      reason: "",
+    };
+  }
+  return {
+    status: "extracted",
+    items: [
+      {
+        type: "item",
+        value: quote,
+        kind: "requirement",
+        classification: "required",
+        evidence: { quote },
+        ...(block.heading ? { sourceSection: block.heading } : {}),
+      },
+    ],
+    alternatives: [],
+    metadata: {},
+    reason: "",
+  };
+}
+
+test("Ollama preserves Portuguese alternatives across sequential batches", async () => {
+  const document = preprocessJobDescription(
+    [
+      "Requisitos",
+      "- Experiência com Java ou Kotlin",
+      "- Inglês avançado",
+      "- Experiência com APIs REST",
+      "- Conhecimento de bancos de dados",
+    ].join("\n")
+  );
+  const blocks = createBlockContract(document).blocks;
+  const calls = [];
+  const provider = createOllamaProvider({
+    model: "test-model",
+    batchSize: 2,
+    maxAttempts: 1,
+    maxCorrections: 0,
+    logger: {},
+    chat: async (request) => {
+      calls.push(request);
+      const ids = request.format.properties.blocks.required;
+      return {
+        message: {
+          content: JSON.stringify({
+            blocks: Object.fromEntries(
+              ids.map((id) => [
+                id,
+                blockResult(blocks.find((block) => block.id === id)),
+              ])
+            ),
+          }),
+        },
+      };
+    },
+  });
+  const extraction = await provider({ ...document, unresolved: [] });
+  assert.equal(calls.length, 2);
+  assert.deepEqual(
+    extraction.items.find((item) => item.type === "alternative").values,
+    ["Java", "Kotlin"]
+  );
+  assert.equal(extraction.coverage.length, 4);
+});
+
+test("Ollama passes confirmed metadata to later batches", async () => {
+  const document = preprocessJobDescription(
+    "About\n- Example\nRequirements\n- Modern cloud experience"
+  );
+  const blocks = createBlockContract(document).blocks;
+  const prompts = [];
+  const provider = createOllamaProvider({
+    batchSize: 1,
+    maxAttempts: 1,
+    maxCorrections: 0,
+    logger: {},
+    chat: async (request) => {
+      prompts.push(request.messages[0].content);
+      const id = request.format.properties.blocks.required[0];
+      const block = blocks.find((candidate) => candidate.id === id);
+      const result =
+        block.text === "About"
+          ? {
+              status: "excluded",
+              items: [],
+              alternatives: [],
+              metadata: {},
+              reason: "Standalone context heading.",
+            }
+          : block.text.includes("Example")
+            ? {
+                status: "extracted",
+                items: [],
+                alternatives: [],
+                metadata: {
+                  company: { value: "Example", evidence: { quote: "Example" } },
+                },
+                reason: "",
+              }
+            : blockResult(block);
+      return {
+        message: { content: JSON.stringify({ blocks: { [id]: result } }) },
+      };
+    },
+  });
+  const extraction = await provider({ ...document, unresolved: [] });
+  assert.equal(extraction.metadata.company.value, "Example");
+  assert.match(
+    prompts[2],
+    /Already confirmed metadata: \{"company":"Example"\}/u
+  );
+});
+
+test("Ollama preserves geographic location and remote-work metadata", async () => {
+  const document = preprocessJobDescription(
+    "Location\n- São Paulo - SP\n- Trabalho 100% remoto"
+  );
+  const blocks = createBlockContract(document).blocks;
+  const response = {
+    blocks: Object.fromEntries(
+      blocks.map((block) => {
+        if (block.text === "Location") {
+          return [
+            block.id,
+            {
+              status: "excluded",
+              items: [],
+              alternatives: [],
+              metadata: {},
+              reason: "Standalone context heading.",
+            },
+          ];
+        }
+        const location = block.text.includes("São Paulo");
+        const key = location ? "location" : "workArrangement";
+        const value = location ? "São Paulo - SP" : "Trabalho 100% remoto";
+        return [
+          block.id,
+          {
+            status: "extracted",
+            items: [],
+            alternatives: [],
+            metadata: { [key]: { value, evidence: { quote: value } } },
+            reason: "",
+          },
+        ];
+      })
+    ),
+  };
+  const provider = createOllamaProvider({
+    batchSize: 3,
+    maxAttempts: 1,
+    maxCorrections: 0,
+    logger: {},
+    chat: async () => ({ message: { content: JSON.stringify(response) } }),
+  });
+  const extraction = await provider({ ...document, unresolved: [] });
+  assert.equal(extraction.metadata.location.value, "São Paulo - SP");
+  assert.equal(
+    extraction.metadata.workArrangement.value,
+    "Trabalho 100% remoto"
+  );
+});
+
+test("Ollama correction exhaustion fails without silently accepting blocks", async () => {
+  const document = preprocessJobDescription(
+    "Requirements\n- Modern cloud experience"
+  );
+  let calls = 0;
+  const provider = createOllamaProvider({
+    maxAttempts: 1,
+    maxCorrections: 2,
+    logger: {},
+    chat: async () => {
+      calls += 1;
+      return { message: { content: JSON.stringify({ blocks: {} }) } };
+    },
+  });
+  await assert.rejects(
+    () => provider({ ...document, unresolved: [] }),
+    /OLLAMA_SCHEMA_ERROR/
+  );
+  assert.equal(calls, 3);
+});
+
+test("Ollama timeout aborts the active request", async () => {
+  const document = preprocessJobDescription(
+    "Requirements\n- Modern cloud experience"
+  );
+  let observedSignal;
+  const provider = createOllamaProvider({
+    timeoutMs: 5,
+    maxAttempts: 1,
+    logger: {},
+    fetchImpl: (_url, options) => {
+      observedSignal = options.signal;
+      return new Promise((_, reject) => {
+        options.signal.addEventListener("abort", () =>
+          reject(Object.assign(new Error("aborted"), { name: "AbortError" }))
+        );
+      });
+    },
+  });
+  await assert.rejects(
+    () => provider({ ...document, unresolved: [] }),
+    /OLLAMA_TIMEOUT/
+  );
+  assert.equal(observedSignal.aborted, true);
+});
+
+for (const [status, code] of [
+  [401, "SEMANTIC_PROVIDER_AUTH_ERROR"],
+  [429, "SEMANTIC_PROVIDER_RATE_LIMIT"],
+]) {
+  test(`Ollama HTTP ${status} maps to ${code}`, async () => {
+    const document = preprocessJobDescription(
+      "Requirements\n- Modern cloud experience"
+    );
+    const config = ConfigSchema.parse({
+      jobParser: { semanticProvider: "ollama" },
+    });
+    const selected = createSemanticProvider({
+      name: "ollama",
+      config,
+      env: {},
+      dependencies: {
+        chat: async () => {
+          const error = new Error(`HTTP ${status}`);
+          error.status_code = status;
+          throw error;
+        },
+      },
+    });
+    await assert.rejects(
+      () => selected.provider({ ...document, unresolved: [] }),
+      (error) => error.code === code
+    );
+  });
+}
