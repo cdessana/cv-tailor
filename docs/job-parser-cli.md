@@ -7,6 +7,7 @@ final validation, and atomic output writing.
 ```sh
 node scripts/job-parser.mjs job-description.txt
 node scripts/job-parser.mjs --input job-description.txt --output data/jobs/example.json
+node scripts/job-parser.mjs job-description.txt --semantic-provider ollama
 ```
 
 For troubleshooting semantic output, set `JOB_PARSER_DEBUG=1`. The CLI then
@@ -16,13 +17,18 @@ evidence validation fails, inspect the raw provider response instead; the
 validated intermediate artifact is not written. Treat it as local diagnostic
 output; it is never written during normal runs. The raw model text is
 also captured as `<output>.provider-response.json` before JSON/schema validation,
-so malformed semantic responses can be inspected too.
+so malformed semantic responses can be inspected too. Effective provider and
+model metadata is written to `<output>.provider.json`; it is never added to the
+canonical job JSON.
 
 Positional input is equivalent to `--input`. Without `--output`, the CLI writes
-`data/jobs/<input-basename>.json`. When unresolved content exists, the CLI uses
-Gemini when `GEMINI_API_KEY` is configured; otherwise it exits with
-`SEMANTIC_ERROR` rather than dropping content. Programmatic callers can inject a
-provider through `runJobParser`.
+`data/jobs/<input-basename>.json`. When unresolved content exists, the CLI selects
+the semantic provider in this order: `--semantic-provider`,
+`JOB_PARSER_PROVIDER`, `jobParser.semanticProvider` in the config file, then the
+`gemini` default. Supported values are `gemini`, `ollama`, and `none`. The last
+option explicitly disables network/model extraction and fails rather than
+dropping unresolved content. Programmatic callers can still inject a provider
+through `runJobParser`.
 
 Output is written only after all stages pass. It is first written to a temporary
 file in the destination directory and renamed into place atomically. Input,
@@ -33,4 +39,5 @@ Run the offline integration tests with:
 
 ```sh
 npm run test:job-parser
+npm run test:job-parser-providers
 ```

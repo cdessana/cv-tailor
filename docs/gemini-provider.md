@@ -4,9 +4,11 @@ The optional Gemini adapter implements the existing semantic-provider interface.
 It reads `GEMINI_API_KEY` from the environment and returns only the strict
 intermediate representation. It does not receive candidate data or write files.
 
-The CLI uses Gemini only when unresolved content exists and `GEMINI_API_KEY` is
-configured. Fully deterministic jobs do not need a key. Without a key, unresolved
-content still fails explicitly.
+The CLI uses Gemini only when unresolved content exists and the effective
+job-parser provider is `gemini`. Set it independently from résumé rewriting with
+`jobParser.semanticProvider`, `JOB_PARSER_PROVIDER`, or the
+`--semantic-provider` flag. Fully deterministic jobs do not need a key. Without
+`GEMINI_API_KEY`, unresolved content fails explicitly.
 
 The default model is `gemini-3.1-flash-lite`. Set `GEMINI_MODEL` to select another model supported by the account.
 The request timeout defaults to 120 seconds and can be changed with
@@ -101,9 +103,20 @@ is also accepted and goes through the same strict local validation.
       "items": [],
       "alternatives": [],
       "reason": "",
-      "metadata": {"company": {"value": "Example", "evidence": {"quote": "Company: Example"}}}
+      "metadata": {
+        "company": {
+          "value": "Example",
+          "evidence": { "quote": "Company: Example" }
+        }
+      }
     },
-    "unit-100-120": {"status": "excluded", "items": [], "alternatives": [], "metadata": {}, "reason": "Benefits only"}
+    "unit-100-120": {
+      "status": "excluded",
+      "items": [],
+      "alternatives": [],
+      "metadata": {},
+      "reason": "Benefits only"
+    }
   }
 }
 ```
@@ -144,7 +157,6 @@ values are filled automatically.
 Run `node --test tests/gemini-blocks.test.mjs tests/job-coverage.test.mjs tests/gemini-provider.test.mjs`
 for offline accounting, metadata, merge-context, and classification regressions.
 Live model verification is still required after prompt changes.
-
 
 ## Minimal live API smoke test
 
@@ -190,8 +202,7 @@ Offline test: `node --test tests/job-parser-schema-probe.test.mjs`.
 ## Bounded production requests
 
 `createGeminiProvider` processes three target source blocks per request by
-default, sequentially. Set `GEMINI_BATCH_SIZE` to a positive integer (maximum
-12) to use a measured size for a particular model/account. Run the controlled
+default, sequentially. Set `GEMINI_BATCH_SIZE` to a positive integer (maximum 12) to use a measured size for a particular model/account. Run the controlled
 block-count diagnostic first; a successful probe is evidence for that request
 shape only, not a universal Gemini limit. The default remains conservative.
 Each request includes only target blocks and their heading/section signals.
@@ -288,6 +299,7 @@ substantive blocks still fail. Final alternative semantics and mapping validatio
 remain mandatory; these recovery steps do not establish semantic completeness.
 
 Offline regressions: `node --test tests/job-grounding-recovery.test.mjs`.
+
 # Qualification details in structured output
 
 Block inspection now shares item-semantic checks with final mapping. Mapping

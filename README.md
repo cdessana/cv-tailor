@@ -2,6 +2,12 @@
 
 A local-first CV tailoring pipeline that adapts a master resume to a specific job description while preserving factual accuracy.
 
+Job descriptions are parsed deterministically first. If unresolved content
+remains, the configured job-parser semantic provider is used. The built-in
+default is Gemini, which sends that job-description content to Google; select
+Ollama for a user-controlled local endpoint or `none` for deterministic-only
+operation.
+
 The core principle is simple:
 
 > The job determines what should be emphasized.  
@@ -273,6 +279,15 @@ A job may define:
 - metadata;
 - original job URL.
 
+Create a structured job file from a text description with:
+
+```bash
+node scripts/job-parser.mjs job-description.txt
+```
+
+Use `--semantic-provider gemini`, `--semantic-provider ollama`, or
+`--semantic-provider none` to override semantic extraction for one run.
+
 ## Configuration
 
 CV Tailor uses a centralized configuration file (`cv-tailor.config.json`) validated at runtime via **Zod**.
@@ -327,6 +342,18 @@ CLI Arguments / Environment Variables
       "apiKey": ""
     }
   },
+  "jobParser": {
+    "semanticProvider": "gemini",
+    "providers": {
+      "gemini": {
+        "model": "gemini-3.1-flash-lite"
+      },
+      "ollama": {
+        "model": "granite4.2:3b-q4_K_S",
+        "url": "http://127.0.0.1:11434"
+      }
+    }
+  },
   "render": {
     "theme": "jsonresume-theme-stackoverflow"
   },
@@ -361,7 +388,36 @@ The pipeline decouples prompt execution from model implementations via `scripts/
 - **`anthropic`**: Claude models via the Anthropic SDK.
 - **`gemini`**: Google Gemini models via `@google/generative-ai`.
 
-API keys can be declared in `cv-tailor.config.json` or supplied via standard environment variables (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `GROQ_API_KEY`).
+For résumé generation, API keys can be declared under `llm.*` in
+`cv-tailor.config.json` or supplied through `OPENAI_API_KEY`,
+`ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, and `GROQ_API_KEY`. In particular,
+`llm.gemini.apiKey` applies to résumé generation. Gemini semantic job parsing
+requires `GEMINI_API_KEY` and never reads the résumé-generation key from the
+configuration file.
+
+The job parser has an independent semantic-provider setting under
+`jobParser.semanticProvider`. Choose `gemini`, `ollama`, or `none`; this does not
+change the provider used to rewrite résumé content. `none` permits deterministic
+extraction only and fails explicitly if any source block still needs semantic
+interpretation. See [Job parser providers](docs/job-parser-providers.md).
+
+Job-parser provider selection uses this exact precedence:
+
+```text
+--semantic-provider
+    ↓
+JOB_PARSER_PROVIDER
+    ↓
+jobParser.semanticProvider
+    ↓
+gemini
+```
+
+Ollama job parsing accepts `OLLAMA_MODEL` and `OLLAMA_HOST`, plus the more
+specific `JOB_PARSER_OLLAMA_MODEL`, `JOB_PARSER_OLLAMA_HOST`,
+`JOB_PARSER_OLLAMA_TIMEOUT_MS`, `JOB_PARSER_OLLAMA_MAX_ATTEMPTS`,
+`JOB_PARSER_OLLAMA_BATCH_SIZE`, and `JOB_PARSER_OLLAMA_MAX_CORRECTIONS`.
+Job-parser-specific variables take precedence over the shared Ollama variables.
 
 ---
 
@@ -374,7 +430,7 @@ The project currently expects:
 - npm
 - Google Chrome
 - Poppler (`pdftotext` and `pdfinfo`)
-- Ollama for optional local rewriting
+- Ollama for optional local rewriting or semantic job parsing
 
 Recommended Node version:
 
