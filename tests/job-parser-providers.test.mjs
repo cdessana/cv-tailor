@@ -103,6 +103,22 @@ test("provider-specific environment values override validated configuration", ()
   );
 });
 
+test("non-numeric provider environment values use the configuration error category", () => {
+  const config = ConfigSchema.parse({});
+  for (const [provider, env] of [
+    ["gemini", { GEMINI_TIMEOUT_MS: "not-a-number" }],
+    ["ollama", { JOB_PARSER_OLLAMA_MAX_ATTEMPTS: "not-a-number" }],
+  ]) {
+    assert.throws(
+      () => resolveSemanticProviderOptions(provider, config, env),
+      (error) =>
+        error instanceof SemanticProviderError &&
+        error.code === "SEMANTIC_PROVIDER_CONFIG_ERROR" &&
+        /must be a positive integer/u.test(error.message)
+    );
+  }
+});
+
 test("diagnostics expose capabilities, selection, and missing setup without secrets", () => {
   const config = ConfigSchema.parse({
     jobParser: { semanticProvider: "gemini" },

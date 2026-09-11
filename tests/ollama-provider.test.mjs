@@ -209,6 +209,37 @@ test("Ollama correction exhaustion fails without silently accepting blocks", asy
   assert.equal(calls, 3);
 });
 
+test("Ollama treats an undefined response as correctable and retries", async () => {
+  const document = preprocessJobDescription(
+    "Requirements\n- Modern cloud experience"
+  );
+  const block = createBlockContract(document).blocks.find((candidate) =>
+    candidate.text.includes("Modern cloud experience")
+  );
+  let calls = 0;
+  const provider = createOllamaProvider({
+    maxAttempts: 1,
+    maxCorrections: 1,
+    logger: {},
+    chat: async () => {
+      calls += 1;
+      if (calls === 1) return undefined;
+      return {
+        message: {
+          content: JSON.stringify({
+            blocks: { [block.id]: blockResult(block) },
+          }),
+        },
+      };
+    },
+  });
+
+  const extraction = await provider({ ...document, unresolved: [] });
+
+  assert.equal(calls, 2);
+  assert.equal(extraction.items[0].value, "Modern cloud experience");
+});
+
 test("Ollama timeout aborts the active request", async () => {
   const document = preprocessJobDescription(
     "Requirements\n- Modern cloud experience"
