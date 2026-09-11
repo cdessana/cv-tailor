@@ -5,6 +5,10 @@ import { createBlockContract } from "../lib/job-parser/providers/block-contract.
 import { createOllamaProvider } from "../lib/job-parser/providers/ollama.mjs";
 import { createSemanticProvider } from "../lib/job-parser/providers/index.mjs";
 import { ConfigSchema } from "../config/schema.mjs";
+import {
+  ollamaWireSchema,
+  translateOllamaWireResponse,
+} from "../lib/job-parser/providers/ollama-wire-contract.mjs";
 
 function blockResult(block) {
   const quote = block.text.replace(/^-\s*/u, "");
@@ -45,6 +49,34 @@ function blockResult(block) {
   };
 }
 
+function wireRecord(record, recordType, metadataKey = "none") {
+  return {
+    recordType,
+    metadataKey,
+    value: record.value ?? "",
+    values: record.values ?? [],
+    kind: record.kind ?? "none",
+    classification: record.classification ?? "none",
+    quote: record.evidence.quote,
+    examples: (record.examples ?? []).map((example) => example.value),
+  };
+}
+
+function wireBlock(id, result) {
+  return {
+    id,
+    status: result.status,
+    reason: result.reason,
+    records: [
+      ...result.items.map((record) => wireRecord(record, "item")),
+      ...result.alternatives.map((record) => wireRecord(record, "alternative")),
+      ...Object.entries(result.metadata).map(([key, record]) =>
+        wireRecord(record, "metadata", key)
+      ),
+    ],
+  };
+}
+
 test("Ollama preserves Portuguese alternatives across sequential batches", async () => {
   const document = preprocessJobDescription(
     [
@@ -65,15 +97,16 @@ test("Ollama preserves Portuguese alternatives across sequential batches", async
     logger: {},
     chat: async (request) => {
       calls.push(request);
-      const ids = request.format.properties.blocks.required;
+      const call = calls.length - 1;
+      const ids = blocks.slice(call * 2, call * 2 + 2).map((block) => block.id);
       return {
         message: {
           content: JSON.stringify({
-            blocks: Object.fromEntries(
-              ids.map((id) => [
+            blocks: ids.map((id) =>
+              wireBlock(
                 id,
-                blockResult(blocks.find((block) => block.id === id)),
-              ])
+                blockResult(blocks.find((block) => block.id === id))
+              )
             ),
           }),
         },
@@ -82,11 +115,74 @@ test("Ollama preserves Portuguese alternatives across sequential batches", async
   });
   const extraction = await provider({ ...document, unresolved: [] });
   assert.equal(calls.length, 2);
+  assert.equal(calls[0].messages[0].role, "system");
+  assert.equal(calls[0].messages[1].role, "user");
+  assert.equal(calls[0].format, ollamaWireSchema);
   assert.deepEqual(
     extraction.items.find((item) => item.type === "alternative").values,
     ["Java", "Kotlin"]
   );
   assert.equal(extraction.coverage.length, 4);
+});
+
+test("Ollama wire translation rejects missing and duplicate block IDs", () => {
+  const blocks = createBlockContract(
+    preprocessJobDescription("Requirements\n- Node.js\n- PostgreSQL")
+  ).blocks;
+  const excluded = (id) => ({
+    id,
+    status: "excluded",
+    reason: "No relevant record.",
+    records: [],
+  });
+  assert.throws(
+    () =>
+      translateOllamaWireResponse({ blocks: [excluded(blocks[0].id)] }, blocks),
+    /missing block IDs/u
+  );
+  assert.throws(
+    () =>
+      translateOllamaWireResponse(
+        {
+          blocks: blocks
+            .map((block) => excluded(block.id))
+            .concat(excluded(blocks[0].id)),
+        },
+        blocks
+      ),
+    /duplicate block ID/u
+  );
+});
+
+test("Ollama wire translation removes empty placeholders from excluded blocks", () => {
+  const blocks = createBlockContract(
+    preprocessJobDescription("Company marketing only")
+  ).blocks;
+  const translated = translateOllamaWireResponse(
+    {
+      blocks: [
+        {
+          id: blocks[0].id,
+          status: "excluded",
+          reason: "Company context only.",
+          records: [
+            {
+              recordType: "item",
+              metadataKey: "none",
+              value: "",
+              values: [],
+              kind: "none",
+              classification: "not-applicable",
+              quote: "Company marketing only",
+              examples: [],
+            },
+          ],
+        },
+      ],
+    },
+    blocks
+  );
+  assert.deepEqual(translated.blocks[blocks[0].id].items, []);
 });
 
 test("Ollama passes confirmed metadata to later batches", async () => {
@@ -101,8 +197,8 @@ test("Ollama passes confirmed metadata to later batches", async () => {
     maxCorrections: 0,
     logger: {},
     chat: async (request) => {
-      prompts.push(request.messages[0].content);
-      const id = request.format.properties.blocks.required[0];
+      prompts.push(request.messages[1].content);
+      const id = blocks[prompts.length - 1].id;
       const block = blocks.find((candidate) => candidate.id === id);
       const result =
         block.text === "About"
@@ -125,7 +221,9 @@ test("Ollama passes confirmed metadata to later batches", async () => {
               }
             : blockResult(block);
       return {
-        message: { content: JSON.stringify({ blocks: { [id]: result } }) },
+        message: {
+          content: JSON.stringify({ blocks: [wireBlock(id, result)] }),
+        },
       };
     },
   });
@@ -143,35 +241,27 @@ test("Ollama preserves geographic location and remote-work metadata", async () =
   );
   const blocks = createBlockContract(document).blocks;
   const response = {
-    blocks: Object.fromEntries(
-      blocks.map((block) => {
-        if (block.text === "Location") {
-          return [
-            block.id,
-            {
-              status: "excluded",
-              items: [],
-              alternatives: [],
-              metadata: {},
-              reason: "Standalone context heading.",
-            },
-          ];
-        }
-        const location = block.text.includes("São Paulo");
-        const key = location ? "location" : "workArrangement";
-        const value = location ? "São Paulo - SP" : "Trabalho 100% remoto";
-        return [
-          block.id,
-          {
-            status: "extracted",
-            items: [],
-            alternatives: [],
-            metadata: { [key]: { value, evidence: { quote: value } } },
-            reason: "",
-          },
-        ];
-      })
-    ),
+    blocks: blocks.map((block) => {
+      if (block.text === "Location") {
+        return wireBlock(block.id, {
+          status: "excluded",
+          items: [],
+          alternatives: [],
+          metadata: {},
+          reason: "Standalone context heading.",
+        });
+      }
+      const location = block.text.includes("São Paulo");
+      const key = location ? "location" : "workArrangement";
+      const value = location ? "São Paulo - SP" : "Trabalho 100% remoto";
+      return wireBlock(block.id, {
+        status: "extracted",
+        items: [],
+        alternatives: [],
+        metadata: { [key]: { value, evidence: { quote: value } } },
+        reason: "",
+      });
+    }),
   };
   const provider = createOllamaProvider({
     batchSize: 3,
@@ -227,7 +317,7 @@ test("Ollama treats an undefined response as correctable and retries", async () 
       return {
         message: {
           content: JSON.stringify({
-            blocks: { [block.id]: blockResult(block) },
+            blocks: [wireBlock(block.id, blockResult(block))],
           }),
         },
       };

@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "lint": "eslint .",
+    "doctor": "node scripts/doctor.mjs",
     "test:llm": "node --test test/llm-adapter.test.mjs",
     "test:schemas": "node --test tests/job-schemas.test.mjs",
     "test:preprocess": "node --test tests/job-preprocess.test.mjs",
@@ -22,9 +23,9 @@
     "format": "prettier --write .",
     "validate": "node scripts/validate.mjs data/resumes/base.json",
     "base:html": "resumed render data/resumes/base.json --theme jsonresume-theme-stackoverflow --output output/resume.html",
-    "base:pdf": "npm run base:html && \"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\" --headless --disable-gpu --no-pdf-header-footer --print-to-pdf=output/resume.pdf \"file://$(pwd)/output/resume.html\"",
+    "base:pdf": "node scripts/render.mjs data/resumes/base.json --output-dir output",
     "flash:html": "resumed render output/flash/resume.json --theme jsonresume-theme-stackoverflow --output output/flash/resume.html",
-    "flash:pdf": "npm run flash:html && \"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\" --headless --disable-gpu --no-pdf-header-footer --print-to-pdf=output/flash/resume.pdf \"file://$(pwd)/output/flash/resume.html\""
+    "flash:pdf": "node scripts/render.mjs output/flash/resume.json"
   },
   "keywords": [],
   "author": "",

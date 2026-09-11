@@ -33,7 +33,7 @@ test("job-parser provider selection follows CLI, environment, config, then defau
     "gemini"
   );
   assert.equal(resolveSemanticProviderName({ env: {}, config }), "ollama");
-  assert.equal(resolveSemanticProviderName({ env: {}, config: {} }), "gemini");
+  assert.equal(resolveSemanticProviderName({ env: {}, config: {} }), "none");
   assert.throws(
     () => resolveSemanticProviderName({ cli: "unknown", env: {}, config }),
     /SEMANTIC_PROVIDER_CONFIG_ERROR/
@@ -91,9 +91,11 @@ test("provider-specific environment values override validated configuration", ()
   const ollama = resolveSemanticProviderOptions("ollama", config, {
     OLLAMA_MODEL: "ollama-env-model",
     OLLAMA_HOST: "http://127.0.0.1:22434",
+    JOB_PARSER_OLLAMA_CONTEXT_SIZE: "32768",
   });
   assert.equal(ollama.model, "ollama-env-model");
   assert.equal(ollama.url, "http://127.0.0.1:22434");
+  assert.equal(ollama.contextSize, 32768);
   assert.throws(
     () =>
       resolveSemanticProviderOptions("gemini", config, {
@@ -155,24 +157,25 @@ test("Ollama uses structured output and retries locally invalid responses", asyn
     "Requirements\n- Modern cloud experience"
   );
   const valid = {
-    blocks: {
-      "unit-13-38": {
+    blocks: [
+      {
+        id: "unit-13-38",
         status: "extracted",
-        items: [
+        records: [
           {
-            type: "item",
+            recordType: "item",
+            metadataKey: "none",
             value: "Modern cloud experience",
+            values: [],
             kind: "requirement",
             classification: "required",
-            evidence: { quote: "Modern cloud experience" },
-            sourceSection: "Requirements",
+            quote: "Modern cloud experience",
+            examples: [],
           },
         ],
-        alternatives: [],
-        metadata: {},
         reason: "",
       },
-    },
+    ],
   };
   const requests = [];
   const provider = createOllamaProvider({
@@ -184,7 +187,7 @@ test("Ollama uses structured output and retries locally invalid responses", asyn
       return {
         message: {
           content: JSON.stringify(
-            requests.length === 1 ? { blocks: {} } : valid
+            requests.length === 1 ? { blocks: [] } : valid
           ),
         },
       };
@@ -198,8 +201,10 @@ test("Ollama uses structured output and retries locally invalid responses", asyn
   assert.equal(extraction.items[0].value, "Modern cloud experience");
   assert.equal(requests.length, 2);
   assert.equal(requests[0].model, "test-model");
+  assert.equal(requests[0].think, false);
+  assert.equal(requests[0].options.num_ctx, 16384);
   assert.deepEqual(requests[0].format.required, ["blocks"]);
-  assert.match(requests[1].messages[0].content, /local validation feedback/u);
+  assert.match(requests[1].messages[1].content, /local validation feedback/u);
 });
 
 test("Ollama model-not-found failures are actionable, neutral, and not retried", async () => {

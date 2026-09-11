@@ -1,6 +1,9 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
+import puppeteer from "puppeteer";
+import { loadConfig } from "../config/load-config.mjs";
+import { resolveBrowserExecutable } from "../lib/render/browser.mjs";
 
 const resumePath = process.argv[2] || "output/flash/resume-final.json";
 
@@ -65,7 +68,14 @@ function runCapture(command, args) {
   });
 }
 
-const chrome = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+const config = loadConfig();
+const browser = resolveBrowserExecutable({
+  environmentPath: process.env.PUPPETEER_EXECUTABLE_PATH,
+  configuredPath: config.render.browserExecutable,
+  managedPath: puppeteer.executablePath(),
+});
+if (!browser.available) throw new Error(browser.message);
+const chrome = browser.path;
 
 const results = [];
 

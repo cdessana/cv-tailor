@@ -148,18 +148,126 @@ test("empty input and unsupported source remain separate", () => {
 });
 
 test("extracts explicit company and title metadata without semantic inference", () => {
-  const result = extract(preprocess("Example is hiring a Senior Engineer\nRequirements\n- Node.js is required"));
+  const result = extract(
+    preprocess(
+      "Example is hiring a Senior Engineer\nRequirements\n- Node.js is required"
+    )
+  );
   assert.deepEqual(result.extraction.metadata, {
-    company: { value: "Example", evidence: { quote: "Example is hiring a Senior Engineer" } },
-    title: { value: "Senior Engineer", evidence: { quote: "Example is hiring a Senior Engineer" } },
+    company: {
+      value: "Example",
+      evidence: { quote: "Example is hiring a Senior Engineer" },
+    },
+    title: {
+      value: "Senior Engineer",
+      evidence: { quote: "Example is hiring a Senior Engineer" },
+    },
   });
   assert.equal(result.unresolved.length, 0);
 });
 
+test("extracts LinkedIn archive header metadata deterministically", () => {
+  const source = [
+    "JOB POSTING ARCHIVE: SOFTWARE ENGINEER",
+    "Company:              Example Corp",
+    "Job Title:            Software Engineer",
+    "Location:             Manaus, Amazonas, Brazil",
+    "Workplace Type:       Hybrid",
+    "Employment Type:      Full-time",
+    "LinkedIn URL:         https://www.linkedin.com/jobs/view/123",
+  ].join("\n");
+  const result = extract(preprocess(source));
+  assert.deepEqual(
+    Object.fromEntries(
+      Object.entries(result.extraction.metadata).map(([key, record]) => [
+        key,
+        record.value,
+      ])
+    ),
+    {
+      company: "Example Corp",
+      title: "Software Engineer",
+      location: "Manaus, Amazonas, Brazil",
+      workArrangement: "Hybrid",
+      employmentType: "Full-time",
+      sourceUrl: "https://www.linkedin.com/jobs/view/123",
+    }
+  );
+  assert.equal(
+    result.extraction.metadata.company.evidence.quote,
+    "Company:              Example Corp"
+  );
+  assert.equal(result.unresolved.length, 0);
+});
+
+test("preserves archive skill keywords without promoting them to requirements", () => {
+  const result = extract(
+    preprocess(["SKILLS & KEYWORDS:", "• Java", "• AWS"].join("\n"))
+  );
+  assert.deepEqual(
+    result.extraction.items.map(({ value, kind, classification }) => ({
+      value,
+      kind,
+      classification,
+    })),
+    [
+      { value: "Java", kind: "skill", classification: "ambiguous" },
+      { value: "AWS", kind: "skill", classification: "ambiguous" },
+    ]
+  );
+  assert.equal(result.unresolved.length, 0);
+});
+
+test("does not treat prose under a skills heading as a keyword", () => {
+  const result = extract(
+    preprocess(
+      "SKILLS & KEYWORDS:\n• Experience building APIs with Java and AWS."
+    )
+  );
+  assert.equal(result.extraction.items.length, 0);
+  assert.equal(result.unresolved.length, 1);
+});
+
+test("excludes LinkedIn archive boilerplate deterministically", () => {
+  const source = [
+    "JOB POSTING ARCHIVE: ENGINEER",
+    "Company: Example",
+    "Job Title: Engineer",
+    "",
+    "JOB DESCRIPTION:",
+    "--------------------------------------------------------------------------------",
+    "Detailed job description for Engineer at Example.",
+    "",
+    "Location: Manaus, Brazil",
+    "Date Posted: 2026-01-01",
+    "Official Job ID: 123",
+    "Direct LinkedIn Link: https://example.com/job",
+    "",
+    "Key Responsibilities and Requirements can be viewed directly on LinkedIn at https://example.com/job.",
+    "",
+    "================================================================================",
+    "Archived via LinkedIn Job Data Fetcher | Job ID: 123",
+    "================================================================================",
+  ].join("\n");
+  const result = extract(preprocess(source));
+  assert.equal(result.unresolved.length, 0);
+  assert.equal(result.extraction.coverage.length, 4);
+  assert.ok(
+    result.extraction.coverage.every((entry) => entry.status === "excluded")
+  );
+});
+
 test("extracts a company from a Portuguese about heading", () => {
-  const result = extract(preprocess("Pessoa Dev Full Stack PL\nOSASCO, SP, Brasil\nSobre o Bradesco\nRequisitos\n- Experiência com Java"));
+  const result = extract(
+    preprocess(
+      "Pessoa Dev Full Stack PL\nOSASCO, SP, Brasil\nSobre o Bradesco\nRequisitos\n- Experiência com Java"
+    )
+  );
   assert.equal(result.extraction.metadata.company.value, "Bradesco");
-  assert.equal(result.extraction.metadata.company.evidence.quote, "Sobre o Bradesco");
+  assert.equal(
+    result.extraction.metadata.company.evidence.quote,
+    "Sobre o Bradesco"
+  );
 });
 test("reject malformed documents and altered source ranges", () => {
   for (const value of [null, {}, "text", { originalText: "" }])

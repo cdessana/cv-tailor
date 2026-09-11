@@ -4,21 +4,39 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { loadConfig } from "../config/load-config.mjs";
 import { pdf as renderPdf } from "resumed";
+import puppeteer from "puppeteer";
+import { parseRenderArguments } from "../lib/render/arguments.mjs";
+import { resolveBrowserExecutable } from "../lib/render/browser.mjs";
 
 const config = loadConfig();
-
-const resumePath = process.argv[2];
-const themeArg = process.argv[3];
-
-if (!resumePath) {
-  console.error("Usage: node scripts/render.mjs <resume-final.json>  [theme]");
+let parsedArguments;
+try {
+  parsedArguments = parseRenderArguments(process.argv.slice(2));
+} catch (error) {
+  console.error(error.message);
   process.exit(1);
 }
+const {
+  resumePath,
+  theme: themeArg,
+  outputDirectory: outputDirectoryArg,
+} = parsedArguments;
+const browser = resolveBrowserExecutable({
+  environmentPath: process.env.PUPPETEER_EXECUTABLE_PATH,
+  configuredPath: config.render.browserExecutable,
+  managedPath: puppeteer.executablePath(),
+});
+if (!browser.available) throw new Error(browser.message);
+process.env.PUPPETEER_EXECUTABLE_PATH = browser.path;
 
 const theme = themeArg || config.render.theme;
 const themeDisplay = theme.replace("jsonresume-theme-", "").toUpperCase();
 
-const outputDir = path.dirname(resumePath);
+const outputDir = outputDirectoryArg
+  ? path.resolve(outputDirectoryArg)
+  : path.dirname(resumePath);
+
+await fs.mkdir(outputDir, { recursive: true });
 
 const htmlPath = path.join(outputDir, "resume.html");
 
@@ -285,11 +303,16 @@ console.log(`✓ HTML: ${htmlPath}`);
  */
 // modern-plain intentionally renders only year-level education dates and does
 // not include work date spans, so month/date sanity checks are not applicable.
-const expectedDates = theme.includes("modern-plain") ? [] : expectedMonthDates(resume);
+const expectedDates = theme.includes("modern-plain")
+  ? []
+  : expectedMonthDates(resume);
 
 const missingDates = expectedDates.filter(
-  (item) => !html.includes(item.rendered)
-    && !(item.renderedAlternatives ?? []).some((alternative) => html.includes(alternative))
+  (item) =>
+    !html.includes(item.rendered) &&
+    !(item.renderedAlternatives ?? []).some((alternative) =>
+      html.includes(alternative)
+    )
 );
 
 if (missingDates.length) {

@@ -4,9 +4,9 @@ A local-first CV tailoring pipeline that adapts a master resume to a specific jo
 
 Job descriptions are parsed deterministically first. If unresolved content
 remains, the configured job-parser semantic provider is used. The built-in
-default is Gemini, which sends that job-description content to Google; select
-Ollama for a user-controlled local endpoint or `none` for deterministic-only
-operation.
+default is `none`, which fails safely rather than sending content to a model.
+Explicitly select Gemini to send job-description content to Google, or Ollama
+for an endpoint you control.
 
 The core principle is simple:
 
@@ -195,6 +195,13 @@ cv-tailor/
 │   ├── schema.mjs         # Zod configuration schema & validation
 │   └── load-config.mjs    # Config loader with root path resolution
 │
+├── lib/
+│   ├── doctor/
+│   │   └── diagnostics.mjs    # Testable readiness checks and exit status
+│   └── render/
+│       ├── arguments.mjs      # Renderer command-line contract
+│       └── browser.mjs        # Portable browser detection and validation
+│
 ├── scripts/
 │   ├── analyse.mjs
 │   ├── tailor.mjs
@@ -203,8 +210,12 @@ cv-tailor/
 │   ├── summary.mjs
 │   ├── final-check.mjs
 │   ├── render.mjs             # Dynamic JSON Resume renderer & PDF generator
+│   ├── doctor.mjs             # Local setup and readiness diagnostic
 │   ├── validate.mjs
 │   └── run.mjs                # Main pipeline orchestrator
+│
+├── docs/
+│   └── setup.md                # Installation and troubleshooting guide
 │
 ├── output/
 ├── eslint.config.mjs          # Flat ESLint configuration
@@ -343,14 +354,15 @@ CLI Arguments / Environment Variables
     }
   },
   "jobParser": {
-    "semanticProvider": "gemini",
+    "semanticProvider": "none",
     "providers": {
       "gemini": {
         "model": "gemini-3.1-flash-lite"
       },
       "ollama": {
         "model": "granite4.2:3b-q4_K_S",
-        "url": "http://127.0.0.1:11434"
+        "url": "http://127.0.0.1:11434",
+        "contextSize": 16384
       }
     }
   },
@@ -399,7 +411,9 @@ The job parser has an independent semantic-provider setting under
 `jobParser.semanticProvider`. Choose `gemini`, `ollama`, or `none`; this does not
 change the provider used to rewrite résumé content. `none` permits deterministic
 extraction only and fails explicitly if any source block still needs semantic
-interpretation. See [Job parser providers](docs/job-parser-providers.md).
+interpretation. It is the safe default for an unconfigured installation, so a
+job description is sent to a model only after you explicitly select `gemini` or
+`ollama`. See [Job parser providers](docs/job-parser-providers.md).
 
 Job-parser provider selection uses this exact precedence:
 
@@ -410,12 +424,13 @@ JOB_PARSER_PROVIDER
     ↓
 jobParser.semanticProvider
     ↓
-gemini
+none
 ```
 
 Ollama job parsing accepts `OLLAMA_MODEL` and `OLLAMA_HOST`, plus the more
 specific `JOB_PARSER_OLLAMA_MODEL`, `JOB_PARSER_OLLAMA_HOST`,
-`JOB_PARSER_OLLAMA_TIMEOUT_MS`, `JOB_PARSER_OLLAMA_MAX_ATTEMPTS`,
+`JOB_PARSER_OLLAMA_CONTEXT_SIZE`, `JOB_PARSER_OLLAMA_TIMEOUT_MS`,
+`JOB_PARSER_OLLAMA_MAX_ATTEMPTS`,
 `JOB_PARSER_OLLAMA_BATCH_SIZE`, and `JOB_PARSER_OLLAMA_MAX_CORRECTIONS`.
 Job-parser-specific variables take precedence over the shared Ollama variables.
 
@@ -425,10 +440,9 @@ Job-parser-specific variables take precedence over the shared Ollama variables.
 
 The project currently expects:
 
-- macOS
 - Node.js 22+
 - npm
-- Google Chrome
+- Chrome or Chromium (the browser managed by Puppeteer is detected automatically)
 - Poppler (`pdftotext` and `pdfinfo`)
 - Ollama for optional local rewriting or semantic job parsing
 
@@ -452,11 +466,32 @@ Install dependencies:
 npm install
 ```
 
+Run the local readiness diagnostic before processing résumé data:
+
+```bash
+npm run doctor
+```
+
+The diagnostic does not read résumé files, contact model services, or display
+credentials. `READY` exits with code 0, `READY-WITH-WARNINGS` exits with code 2
+when only optional capabilities are absent, and `BLOCKED` exits with code 1.
+Use `npm run doctor -- --json` for machine-readable output. See
+[Local setup and troubleshooting](docs/setup.md) for corrective actions.
+
 Install Poppler on macOS:
 
 ```bash
 brew install poppler
 ```
+
+On Debian/Ubuntu, use `sudo apt install poppler-utils`. Other platforms should
+install a package that provides both `pdftotext` and `pdfinfo` on `PATH`.
+
+Puppeteer's managed browser is used by default. To select another Chrome or
+Chromium executable, set `render.browserExecutable` in the configuration file or
+set `PUPPETEER_EXECUTABLE_PATH`; the environment variable takes precedence.
+Explicit overrides must point to an executable file; an invalid override fails
+instead of silently selecting a different browser.
 
 If using the local LLM rewriting stage, install Ollama and pull the configured model.
 
@@ -472,6 +507,20 @@ Run the complete tailoring pipeline for a job:
 
 ```bash
 node scripts/run.mjs data/jobs/example-job.json
+```
+
+Render a résumé beside its JSON input, optionally selecting a theme:
+
+```bash
+node scripts/render.mjs output/flash/resume-final.json
+node scripts/render.mjs output/flash/resume-final.json jsonresume-theme-stackoverflow
+```
+
+Use `--output-dir` to place `resume.html`, `resume.pdf`, and `resume.txt` in a
+different directory:
+
+```bash
+node scripts/render.mjs data/resumes/base.json --output-dir output
 ```
 
 The pipeline creates a company-specific output directory:
@@ -640,8 +689,7 @@ Current limitations include:
 - some theme behavior depends on third-party JSON Resume packages;
 - ATS validation is still being integrated;
 - role-date overlaps require human review;
-- older career roles may not yet have detailed evidence;
-- the current renderer assumes Google Chrome is installed at the standard macOS path.
+- older career roles may not yet have detailed evidence.
 
 ## Roadmap
 

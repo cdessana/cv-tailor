@@ -25,10 +25,18 @@ Positional input is equivalent to `--input`. Without `--output`, the CLI writes
 `data/jobs/<input-basename>.json`. When unresolved content exists, the CLI selects
 the semantic provider in this order: `--semantic-provider`,
 `JOB_PARSER_PROVIDER`, `jobParser.semanticProvider` in the config file, then the
-`gemini` default. Supported values are `gemini`, `ollama`, and `none`. The last
-option explicitly disables network/model extraction and fails rather than
-dropping unresolved content. Programmatic callers can still inject a provider
-through `runJobParser`.
+`none` default. Supported values are `gemini`, `ollama`, and `none`. The last
+option disables network/model extraction and fails rather than dropping
+unresolved content. Gemini or Ollama must be explicitly selected before the job
+description can be sent to a semantic provider. Programmatic callers can still
+inject a provider through `runJobParser`.
+
+Supported LinkedIn archive text receives additional deterministic handling:
+header metadata is preserved, short `SKILLS & KEYWORDS` bullets remain
+unclassified skills, and archive-only separators, repeated metadata, navigation
+messages, and provenance footers are excluded with explicit coverage reasons.
+Only the remaining unresolved source blocks are sent to the selected semantic
+provider.
 
 Output is written only after all stages pass. It is first written to a temporary
 file in the destination directory and renamed into place atomically. Input,
