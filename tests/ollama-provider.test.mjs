@@ -154,7 +154,7 @@ test("Ollama wire translation rejects missing and duplicate block IDs", () => {
   );
 });
 
-test("Ollama wire translation removes empty placeholders from excluded blocks", () => {
+test("Ollama wire translation removes whitespace-only placeholders from excluded blocks", () => {
   const blocks = createBlockContract(
     preprocessJobDescription("Company marketing only")
   ).blocks;
@@ -169,7 +169,7 @@ test("Ollama wire translation removes empty placeholders from excluded blocks", 
             {
               recordType: "item",
               metadataKey: "none",
-              value: "",
+              value: " \n\t ",
               values: [],
               kind: "none",
               classification: "not-applicable",
