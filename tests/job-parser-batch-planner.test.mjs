@@ -4,6 +4,7 @@ import { preprocessJobDescription } from "../lib/job-parser/preprocess.mjs";
 import {
   createAdaptiveBatchPlan,
   estimateTokens,
+  splitPlannedBatch,
 } from "../lib/job-parser/providers/batch-planner.mjs";
 
 function document(count, text = "A moderately sized requirement") {
@@ -70,4 +71,26 @@ test("an oversized single block is retained and marked for later fallback", () =
   assert.equal(plan.batches.length, 1);
   assert.equal(plan.batches[0].targetIds.length, 1);
   assert.equal(plan.batches[0].exceedsPromptBudget, true);
+});
+
+test("splitting preserves order and cumulative processed IDs", () => {
+  const input = document(5);
+  const parent = createAdaptiveBatchPlan(input, { maxBlocks: 5 }).batches[0];
+  const children = splitPlannedBatch(input, parent);
+  assert.deepEqual(
+    children.map((child) => child.targetIds.length),
+    [3, 2]
+  );
+  assert.deepEqual(
+    children.flatMap((child) => child.targetIds),
+    parent.targetIds
+  );
+  assert.deepEqual(children[1].processedIds, parent.processedIds);
+  assert.equal(children[0].splitDepth, 1);
+});
+
+test("a single-block batch cannot be split further", () => {
+  const input = document(1);
+  const batch = createAdaptiveBatchPlan(input, { maxBlocks: 1 }).batches[0];
+  assert.equal(splitPlannedBatch(input, batch), null);
 });

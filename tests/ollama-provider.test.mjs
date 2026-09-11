@@ -125,6 +125,48 @@ test("Ollama preserves Portuguese alternatives across sequential batches", async
   assert.equal(extraction.coverage.length, 4);
 });
 
+test("Ollama preserves a signaled bullet that the model silently excludes", async () => {
+  const document = preprocessJobDescription(
+    "Required Qualifications\n- Experience building distributed systems"
+  );
+  const [block] = createBlockContract(document).blocks;
+  const warnings = [];
+  const provider = createOllamaProvider({
+    maxAttempts: 1,
+    maxCorrections: 0,
+    logger: { warn: (message) => warnings.push(message) },
+    chat: async () => ({
+      message: {
+        content: JSON.stringify({
+          blocks: [
+            {
+              id: block.id,
+              status: "excluded",
+              reason: "No explicit job details found",
+              records: [],
+            },
+          ],
+        }),
+      },
+    }),
+  });
+
+  const extraction = await provider({ ...document, unresolved: [] });
+
+  assert.deepEqual(extraction.items, [
+    {
+      type: "item",
+      value: "Experience building distributed systems",
+      kind: "requirement",
+      classification: "required",
+      evidence: { quote: "- Experience building distributed systems" },
+      sourceSection: "Required Qualifications",
+      sourceUnitIds: [block.id],
+    },
+  ]);
+  assert.match(warnings[0], /signaled_bullet_preserved/u);
+});
+
 test("Ollama wire translation rejects missing and duplicate block IDs", () => {
   const blocks = createBlockContract(
     preprocessJobDescription("Requirements\n- Node.js\n- PostgreSQL")
@@ -299,6 +341,47 @@ test("Ollama correction exhaustion fails without silently accepting blocks", asy
   assert.equal(calls, 3);
 });
 
+test("Ollama splits a multi-block batch after schema corrections are exhausted", async () => {
+  const document = preprocessJobDescription(
+    "Requirements\n- Requirement alpha\n- Requirement beta"
+  );
+  let calls = 0;
+  const requested = [];
+  const provider = createOllamaProvider({
+    batchSize: 2,
+    maxAttempts: 1,
+    maxCorrections: 1,
+    logger: {},
+    chat: async (request) => {
+      calls += 1;
+      const marker = "SOURCE BLOCKS: ";
+      const prompt = request.messages[1].content;
+      const requestedBlocks = JSON.parse(
+        prompt.slice(prompt.indexOf(marker) + marker.length)
+      );
+      requested.push(requestedBlocks.map((block) => block.id));
+      if (requestedBlocks.length > 1)
+        return { message: { content: JSON.stringify({ blocks: [] }) } };
+      return {
+        message: {
+          content: JSON.stringify({
+            blocks: [
+              wireBlock(requestedBlocks[0].id, blockResult(requestedBlocks[0])),
+            ],
+          }),
+        },
+      };
+    },
+  });
+  const extraction = await provider({ ...document, unresolved: [] });
+  assert.deepEqual(
+    requested.map((ids) => ids.length),
+    [2, 2, 1, 1]
+  );
+  assert.equal(calls, 4);
+  assert.equal(extraction.items.length, 2);
+});
+
 test("Ollama treats an undefined response as correctable and retries", async () => {
   const document = preprocessJobDescription(
     "Requirements\n- Modern cloud experience"
@@ -353,6 +436,112 @@ test("Ollama timeout aborts the active request", async () => {
     /OLLAMA_TIMEOUT/
   );
   assert.equal(observedSignal.aborted, true);
+});
+
+test("Ollama splits only the failed context-sized batch and preserves all blocks", async () => {
+  const document = preprocessJobDescription(
+    [
+      "Requirements",
+      "- Modern cloud experience",
+      "- Distributed systems experience",
+      "- API design experience",
+      "- Database design experience",
+    ].join("\n")
+  );
+  let calls = 0;
+  const requested = [];
+  const provider = createOllamaProvider({
+    batchSize: 4,
+    maxAttempts: 1,
+    maxCorrections: 0,
+    logger: {},
+    chat: async (request) => {
+      calls += 1;
+      const marker = "SOURCE BLOCKS: ";
+      const prompt = request.messages[1].content;
+      const requestedBlocks = JSON.parse(
+        prompt.slice(prompt.indexOf(marker) + marker.length)
+      );
+      requested.push(requestedBlocks.map((block) => block.id));
+      if (calls === 1) {
+        const error = new Error("prompt exceeds context length");
+        error.status_code = 413;
+        throw error;
+      }
+      return {
+        message: {
+          content: JSON.stringify({
+            blocks: requestedBlocks.map((block) =>
+              wireBlock(block.id, blockResult(block))
+            ),
+          }),
+        },
+      };
+    },
+  });
+  const extraction = await provider({ ...document, unresolved: [] });
+  assert.deepEqual(
+    requested.map((ids) => ids.length),
+    [4, 2, 2]
+  );
+  assert.deepEqual(requested.slice(1).flat(), requested[0]);
+  assert.equal(extraction.items.length, 4);
+  assert.equal(extraction.coverage.length, 4);
+});
+
+test("Ollama timeout splitting does not repeat an already validated batch", async () => {
+  const document = preprocessJobDescription(
+    [
+      "Requirements",
+      "- Requirement alpha",
+      "- Requirement beta",
+      "- Requirement gamma",
+      "- Requirement delta",
+    ].join("\n")
+  );
+  const requested = [];
+  let calls = 0;
+  const provider = createOllamaProvider({
+    batchSize: 2,
+    timeoutMs: 5,
+    maxAttempts: 1,
+    maxCorrections: 0,
+    logger: {},
+    chat: async (request, { signal }) => {
+      calls += 1;
+      const marker = "SOURCE BLOCKS: ";
+      const prompt = request.messages[1].content;
+      const requestedBlocks = JSON.parse(
+        prompt.slice(prompt.indexOf(marker) + marker.length)
+      );
+      requested.push(requestedBlocks.map((block) => block.id));
+      if (calls === 2) {
+        return new Promise((_, reject) =>
+          signal.addEventListener("abort", () => reject(new Error("aborted")))
+        );
+      }
+      return {
+        message: {
+          content: JSON.stringify({
+            blocks: requestedBlocks.map((block) =>
+              wireBlock(block.id, blockResult(block))
+            ),
+          }),
+        },
+      };
+    },
+  });
+  const extraction = await provider({ ...document, unresolved: [] });
+  assert.deepEqual(
+    requested.map((ids) => ids.length),
+    [2, 2, 1, 1]
+  );
+  assert.equal(
+    requested.slice(1).flat().includes(requested[0][0]),
+    false,
+    "the validated first batch must not be sent again"
+  );
+  assert.equal(extraction.items.length, 4);
 });
 
 for (const [status, code] of [
