@@ -317,6 +317,8 @@ Create a structured job file from a text description with:
 node scripts/job-parser.mjs job-description.txt
 ```
 
+For long Ollama jobs, enable resumable batches with `--checkpoint output/job.checkpoint.json`.
+
 Use `--semantic-provider gemini`, `--semantic-provider ollama`, or
 `--semantic-provider none` to override semantic extraction for one run.
 
