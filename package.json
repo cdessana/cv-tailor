@@ -8,6 +8,7 @@
     "start": "node server.mjs",
     "dev": "node server.mjs",
     "lint": "eslint .",
+    "test": "node --test tests/*.test.mjs test/*.test.mjs",
     "doctor": "node scripts/doctor.mjs",
     "test:llm": "node --test test/llm-adapter.test.mjs",
     "test:schemas": "node --test tests/job-schemas.test.mjs",

@@ -30,6 +30,7 @@ test("parses positional and flag arguments", () => {
       semanticProviderName: "ollama",
     }
   );
+  assert.equal(parseArguments(["description.txt", "--checkpoint", "run.json"]).checkpoint, "run.json");
   for (const args of [
     ["--input"],
     ["--unknown"],
