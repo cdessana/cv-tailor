@@ -70,10 +70,19 @@ was exceeded, only that batch is split into ordered halves and returned to the
 front of the execution queue. Already validated batches are retained. Splitting
 continues down to a single source block; a failing single-block request is
 reported normally instead of looping or writing partial output. A batch that
-exhausts its configured schema-correction attempts is also split, because a
-smaller response can improve complete block accounting without accepting invalid
-output. Authentication, model availability, and transport failures do not
-trigger size fallback.
+contains independently valid and invalid blocks retains the valid blocks
+immediately. Correction requests contain only the invalid block IDs, their
+previous responses, and block-specific validation feedback. Accepted blocks are
+never sent again. If the targeted correction budget is exhausted, only the
+remaining invalid subset is split, because a smaller response can improve
+complete block accounting without accepting invalid output. Authentication,
+model availability, and transport failures do not trigger size fallback.
+
+Partial validation is strictly internal. Every retained block has already passed
+the normal structure, semantic, accounting, and exact-evidence gates, but the
+parser does not publish a partial `jobs.json`. The final document is assembled in
+source order only after every block has been accepted; an invalid singleton
+fails the run with no final output.
 
 Gemini sends the source job description to Google's Gemini service. Ollama keeps
 processing local only when its URL points to a service running on infrastructure
