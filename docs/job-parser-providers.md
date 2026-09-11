@@ -21,6 +21,8 @@ job-description extraction with `jobParser.semanticProvider`; keep using
         "model": "granite4.2:3b-q4_K_S",
         "url": "http://127.0.0.1:11434",
         "contextSize": 16384,
+        "maxPromptTokens": 10000,
+        "responseTokenReserve": 4000,
         "timeoutMs": 120000,
         "maxAttempts": 3,
         "batchSize": 3,
@@ -53,6 +55,15 @@ size, timeout, attempt count, batch size, and correction count. Structured
 requests disable model thinking and use a 16,384-token context by default.
 Override it with `JOB_PARSER_OLLAMA_CONTEXT_SIZE` or
 `jobParser.providers.ollama.contextSize` when necessary.
+
+Ollama batches are bounded by both `batchSize` and an estimated prompt-token
+budget. Configure the budget with `JOB_PARSER_OLLAMA_MAX_PROMPT_TOKENS` or
+`jobParser.providers.ollama.maxPromptTokens`; reserve response capacity with
+`JOB_PARSER_OLLAMA_RESPONSE_TOKEN_RESERVE` or
+`jobParser.providers.ollama.responseTokenReserve`. The defaults allow up to
+10,000 estimated prompt tokens while reserving 4,000 tokens in the configured
+context. A single oversized source block remains intact and is reported by the
+plan so later fallback logic can handle it without silently truncating source.
 
 Gemini sends the source job description to Google's Gemini service. Ollama keeps
 processing local only when its URL points to a service running on infrastructure

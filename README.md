@@ -614,7 +614,9 @@ CLI Arguments / Environment Variables
       "ollama": {
         "model": "granite4.2:3b-q4_K_S",
         "url": "http://127.0.0.1:11434",
-        "contextSize": 16384
+        "contextSize": 16384,
+        "maxPromptTokens": 10000,
+        "responseTokenReserve": 4000
       }
     }
   },
@@ -682,6 +684,8 @@ none
 Ollama job parsing accepts `OLLAMA_MODEL` and `OLLAMA_HOST`, plus the more
 specific `JOB_PARSER_OLLAMA_MODEL`, `JOB_PARSER_OLLAMA_HOST`,
 `JOB_PARSER_OLLAMA_CONTEXT_SIZE`, `JOB_PARSER_OLLAMA_TIMEOUT_MS`,
+`JOB_PARSER_OLLAMA_MAX_PROMPT_TOKENS`,
+`JOB_PARSER_OLLAMA_RESPONSE_TOKEN_RESERVE`,
 `JOB_PARSER_OLLAMA_MAX_ATTEMPTS`,
 `JOB_PARSER_OLLAMA_BATCH_SIZE`, and `JOB_PARSER_OLLAMA_MAX_CORRECTIONS`.
 Job-parser-specific variables take precedence over the shared Ollama variables.

@@ -52,6 +52,8 @@ const JobParserProviderOptionsSchema = z.object({
 const JobParserOllamaSchema = JobParserProviderOptionsSchema.extend({
   model: z.string().min(1).default("granite4.2:3b-q4_K_S"),
   contextSize: z.number().int().positive().default(16384),
+  maxPromptTokens: z.number().int().positive().default(10000),
+  responseTokenReserve: z.number().int().nonnegative().default(4000),
   url: z
     .string()
     .url("jobParser.providers.ollama.url must be a valid URL")
