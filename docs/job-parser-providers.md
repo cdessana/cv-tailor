@@ -109,7 +109,19 @@ bullet under one of those headings, the adapter preserves the complete bullet
 with the heading's classification only when that source-backed record passes the
 same schema, semantic, and evidence checks as provider output. Unsafe cases stay
 unresolved or enter the normal correction path; prose is never partially guessed
-or silently accepted. The provider's valid, more precise extraction always wins.
+or silently accepted. The provider's valid, more precise extraction always wins
+when it agrees with the explicit section signal.
+
+The preprocessor recognizes an exact, reviewed vocabulary of headings even when
+they are plain lines without Markdown or a trailing colon. This includes common
+forms such as `What You’ll Own`, `What You’ll Bring`, and
+`It’s a bonus if you have`. Apostrophe style, case, whitespace, and simple
+terminal punctuation are normalized; fuzzy or substring matching is not used.
+Context headings such as `About The Team` and `About Us` create a neutral section
+boundary so company marketing cannot inherit the preceding required or preferred
+classification. A provider record that contradicts an explicit required,
+preferred, responsibility, or competency signal enters targeted correction
+instead of being silently promoted or weakened.
 
 There is deliberately no automatic fallback between providers. Authentication,
 configuration, timeout, rate-limit, request, and invalid-response failures are
