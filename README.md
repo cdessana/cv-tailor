@@ -689,6 +689,9 @@ specific `JOB_PARSER_OLLAMA_MODEL`, `JOB_PARSER_OLLAMA_HOST`,
 `JOB_PARSER_OLLAMA_MAX_ATTEMPTS`,
 `JOB_PARSER_OLLAMA_BATCH_SIZE`, and `JOB_PARSER_OLLAMA_MAX_CORRECTIONS`.
 Job-parser-specific variables take precedence over the shared Ollama variables.
+Recognized qualification and responsibility headings also protect complete
+bullets from silent model exclusion; this bounded fallback is accepted only
+after the normal local schema, semantic, and source-evidence checks pass.
 
 ---
 

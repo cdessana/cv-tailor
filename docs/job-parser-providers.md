@@ -63,7 +63,17 @@ budget. Configure the budget with `JOB_PARSER_OLLAMA_MAX_PROMPT_TOKENS` or
 `jobParser.providers.ollama.responseTokenReserve`. The defaults allow up to
 10,000 estimated prompt tokens while reserving 4,000 tokens in the configured
 context. A single oversized source block remains intact and is reported by the
-plan so later fallback logic can handle it without silently truncating source.
+plan without silently truncating source.
+
+If an Ollama request times out or the service reports that the context window
+was exceeded, only that batch is split into ordered halves and returned to the
+front of the execution queue. Already validated batches are retained. Splitting
+continues down to a single source block; a failing single-block request is
+reported normally instead of looping or writing partial output. A batch that
+exhausts its configured schema-correction attempts is also split, because a
+smaller response can improve complete block accounting without accepting invalid
+output. Authentication, model availability, and transport failures do not
+trigger size fallback.
 
 Gemini sends the source job description to Google's Gemini service. Ollama keeps
 processing local only when its URL points to a service running on infrastructure
@@ -83,6 +93,14 @@ or preferred qualifications. Archive separators, repeated metadata, navigation
 text, and provenance footers are excluded locally with auditable reasons. These
 optimizations do not bypass the local schema, complete block accounting,
 semantic checks, or exact source-evidence validation.
+
+Recognized required, preferred, responsibility, and competency headings are
+also used as a bounded safety net. If a provider tries to exclude a substantive
+bullet under one of those headings, the adapter preserves the complete bullet
+with the heading's classification only when that source-backed record passes the
+same schema, semantic, and evidence checks as provider output. Unsafe cases stay
+unresolved or enter the normal correction path; prose is never partially guessed
+or silently accepted. The provider's valid, more precise extraction always wins.
 
 There is deliberately no automatic fallback between providers. Authentication,
 configuration, timeout, rate-limit, request, and invalid-response failures are

@@ -70,6 +70,54 @@ test("blocks colocate IDs/text and preserve document order and heading context",
   );
 });
 
+test("flags silent exclusion of substantive content under a signaled heading", () => {
+  const copy = structuredClone(valid);
+  copy.blocks[ai.id] = {
+    ...empty(),
+    status: "excluded",
+    reason: "No explicit job details found",
+  };
+
+  assert.deepEqual(
+    contract.inspect(copy).map(({ blockId, code }) => ({ blockId, code })),
+    [{ blockId: ai.id, code: "suspicious_signaled_exclusion" }]
+  );
+
+  copy.blocks[ai.id].status = "unresolved";
+  assert.equal(
+    contract
+      .inspect(copy)
+      .some((error) => error.code === "suspicious_signaled_exclusion"),
+    false
+  );
+});
+
+test("preserves a safely representable signaled bullet when a provider excludes it", () => {
+  const copy = structuredClone(valid);
+  copy.blocks[ai.id] = {
+    ...empty(),
+    status: "excluded",
+    reason: "No explicit job details found",
+  };
+  const changes = [];
+
+  contract.reconcile(copy, (change) => changes.push(change));
+
+  assert.equal(copy.blocks[ai.id].status, "extracted");
+  assert.deepEqual(copy.blocks[ai.id].items, [
+    {
+      type: "item",
+      value: "AI fluency",
+      kind: "requirement",
+      classification: "required",
+      evidence: { quote: "- AI fluency" },
+      sourceSection: "Requirements",
+    },
+  ]);
+  assert.equal(changes[0].code, "signaled_bullet_preserved");
+  assert.equal(contract.inspect(copy).length, 0);
+});
+
 test("metadata-only and extracted blocks assemble without model references or indexes", async () => {
   const before = structuredClone(valid);
   const extraction = contract.assemble(valid);
