@@ -92,6 +92,42 @@ test("flags silent exclusion of substantive content under a signaled heading", (
   );
 });
 
+test("rejects provider records that contradict the enclosing section signal", () => {
+  const copy = structuredClone(valid);
+  copy.blocks[ai.id].items[0].classification = "preferred";
+
+  assert.equal(
+    contract
+      .inspect(copy)
+      .some(
+        ({ blockId, code }) =>
+          blockId === ai.id && code === "section_signal_mismatch"
+      ),
+    true
+  );
+
+  const responsibilityDocument = preprocess(
+    "What You’ll Own\n- Develop reliable services"
+  );
+  const responsibilityContract = createBlockContract(responsibilityDocument);
+  const [responsibility] = responsibilityContract.blocks;
+  const response = {
+    blocks: {
+      [responsibility.id]: {
+        ...empty(),
+        status: "extracted",
+        items: [ordinary("Develop reliable services")],
+      },
+    },
+  };
+  assert.equal(
+    responsibilityContract
+      .inspect(response)
+      .some(({ code }) => code === "section_signal_mismatch"),
+    true
+  );
+});
+
 test("preserves a safely representable signaled bullet when a provider excludes it", () => {
   const copy = structuredClone(valid);
   copy.blocks[ai.id] = {
