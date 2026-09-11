@@ -1,6 +1,5 @@
 {
   "version": 2,
-
   "skills": {
     "Node.js": {
       "level": "experienced"
@@ -43,9 +42,14 @@
     },
     "Mentoring": {
       "level": "experienced"
+    },
+    "Redis": {
+      "level": "experienced"
+    },
+    "Distributed Systems": {
+      "level": "experienced"
     }
   },
-
   "experiences": [
     {
       "id": "sidia-node-high-volume",
@@ -69,7 +73,6 @@
         "Technical Leadership"
       ]
     },
-
     {
       "id": "sidia-node-mongodb",
       "company": "Sidia Instituto de Ciência e Tecnologia",
@@ -94,7 +97,6 @@
         "Technical Leadership"
       ]
     },
-
     {
       "id": "sidia-grpc-dotnet6",
       "company": "Sidia Instituto de Ciência e Tecnologia",
@@ -123,7 +125,6 @@
         "Technical Leadership"
       ]
     },
-
     {
       "id": "sidia-team-five-dotnet5",
       "company": "Sidia Instituto de Ciência e Tecnologia",
@@ -150,7 +151,6 @@
         "Technical Leadership"
       ]
     },
-
     {
       "id": "sidia-junior-development",
       "company": "Sidia Instituto de Ciência e Tecnologia",
@@ -163,9 +163,14 @@
         "Developed desktop applications using WPF.",
         "Developed web applications using Angular."
       ],
-      "skills": ["Python", "REST APIs", ".NET Core", "WPF", "Angular"]
+      "skills": [
+        "Python",
+        "REST APIs",
+        ".NET Core",
+        "WPF",
+        "Angular"
+      ]
     },
-
     {
       "id": "sidia-ci-onboarding",
       "company": "Sidia Instituto de Ciência e Tecnologia",
@@ -178,7 +183,26 @@
         "Helped configure continuous integration environments for new projects.",
         "Supported colleagues with technical questions and difficulties."
       ],
-      "skills": ["CI/CD", "Mentoring"]
+      "skills": [
+        "CI/CD",
+        "Mentoring"
+      ]
+    },
+    {
+      "id": "stripe-staff-backend-engineer",
+      "company": "Stripe",
+      "position": "Staff Backend Engineer",
+      "period": "2023-01 — Present",
+      "type": "professional",
+      "facts": [
+        "Led migration of payment intent worker pool to Node.js 20.",
+        "Reduced transaction latency by 18ms."
+      ],
+      "skills": [
+        "Node.js",
+        "Redis",
+        "Distributed Systems"
+      ]
     }
   ]
 }

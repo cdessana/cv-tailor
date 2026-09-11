@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CV Tailor — Factual Resume Tailoring</title>
+  <meta name="description" content="Local web UI for CV Tailor - a local-first resume tailoring pipeline adapting structured resumes to job descriptions with factual accuracy" />
+  <meta property="og:title" content="CV Tailor — Factual Resume Tailoring" />
+  <meta property="og:description" content="Local web UI for CV Tailor - a local-first resume tailoring pipeline adapting structured resumes to job descriptions with factual accuracy" />
+  
+  <!-- Google Fonts: Plus Jakarta Sans for UI, JetBrains Mono for Code/Metrics, Playfair Display for accents -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+            serif: ['Playfair Display', 'Georgia', 'serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#16a34a',
+              600: '#15803d',
+              700: '#166534',
+              900: '#14532d',
+            },
+            surface: {
+              50: '#f8fafc',
+              100: '#f1f5f9',
+              200: '#e2e8f0',
+              300: '#cbd5e1',
+              700: '#334155',
+              800: '#1e293b',
+              900: '#0f172a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased flex flex-col selection:bg-slate-900 selection:text-white overflow-x-hidden">
+  <!-- Top Navigation Bar -->
+  <header id="app-header" class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center justify-between gap-2.5 md:gap-4 py-2.5 md:py-0 md:h-16">
+      <div class="flex items-center justify-between w-full md:w-auto gap-3">
+        <!-- App Brand & Identity -->
+        <div class="flex items-center gap-3 shrink-0">
+          <div id="app-brand-logo" class="w-9 h-9 rounded-lg bg-slate-900 text-white flex items-center justify-center shadow-xs" title="CV Tailor">
+            <i data-lucide="file-user" class="w-5 h-5 text-white"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="font-bold text-slate-900 text-base leading-none">CV Tailor</h1>
+              <span class="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">Local-First</span>
+            </div>
+            <p class="text-xs text-slate-500 hidden sm:block mt-0.5">Factual Resume Tailoring & Pipeline Control</p>
+          </div>
+        </div>
+
+        <!-- Mobile Doctor Status Badge (visible in top row on mobile) -->
+        <div class="flex items-center gap-2 md:hidden shrink-0">
+          <button id="btn-doctor-status-mobile" title="Check Environment Diagnostics" class="btn-doctor-trigger flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium border transition-all shadow-xs bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200 focus:outline-none">
+            <span class="doctor-status-dot w-2 h-2 rounded-full bg-slate-400 shrink-0"></span>
+            <span class="doctor-status-text text-[11px] font-medium">Checking...</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex items-center gap-1 sm:gap-1.5 overflow-x-auto py-1 scrollbar-none w-full md:w-auto min-w-0" aria-label="Main Navigation">
+        <button id="nav-workspace" class="nav-tab active px-3 py-1.5 sm:py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 sm:gap-2 transition-colors whitespace-nowrap">
+          <i data-lucide="sparkles" class="w-4 h-4"></i>
+          <span>Workspace</span>
+        </button>
+        <button id="nav-evidence" class="nav-tab px-3 py-1.5 sm:py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 sm:gap-2 transition-colors text-slate-600 hover:text-slate-900 hover:bg-slate-100 whitespace-nowrap">
+          <i data-lucide="database" class="w-4 h-4"></i>
+          <span>Evidence</span>
+        </button>
+        <button id="nav-history" class="nav-tab px-3 py-1.5 sm:py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 sm:gap-2 transition-colors text-slate-600 hover:text-slate-900 hover:bg-slate-100 whitespace-nowrap">
+          <i data-lucide="history" class="w-4 h-4"></i>
+          <span>History</span>
+        </button>
+        <button id="nav-settings" class="nav-tab px-3 py-1.5 sm:py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 sm:gap-2 transition-colors text-slate-600 hover:text-slate-900 hover:bg-slate-100 whitespace-nowrap">
+          <i data-lucide="sliders" class="w-4 h-4"></i>
+          <span>Settings</span>
+        </button>
+      </nav>
+
+      <!-- Desktop Doctor Status Badge (hidden on mobile, visible on md+) -->
+      <div class="hidden md:flex items-center gap-2 shrink-0">
+        <button id="btn-doctor-status" title="Check Environment Diagnostics" class="btn-doctor-trigger flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all shadow-xs bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200 focus:outline-none">
+          <span id="doctor-status-dot" class="doctor-status-dot w-2 h-2 rounded-full bg-slate-400 shrink-0"></span>
+          <span id="doctor-status-text" class="doctor-status-text">Checking env...</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main View Area -->
+  <main id="main-content" class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8 space-y-6">
+    <!-- VIEW 1: WORKSPACE (Default) -->
+    <section id="view-workspace" class="space-y-6">
+      <!-- Workspace Sub-Header: Interactive Step Navigation Bar -->
+      <div class="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4">
+        <div class="flex items-center gap-1.5 sm:gap-3 overflow-x-auto text-xs py-1 scrollbar-none w-full min-w-0" id="workspace-step-nav" aria-label="Pipeline Steps">
+          <button id="step-ind-1" data-step="1" class="step-badge active clickable flex items-center gap-1.5 font-medium px-2.5 sm:px-3 py-1.5 rounded-full bg-slate-900 text-white whitespace-nowrap shrink-0">
+            <span class="w-4 h-4 rounded-full bg-white/25 text-center leading-4 text-[10px] font-bold">1</span>
+            <span>Job Ingestion</span>
+          </button>
+          <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
+          
+          <button id="step-ind-2" data-step="2" class="step-badge clickable flex items-center gap-1.5 font-medium px-2.5 sm:px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 whitespace-nowrap shrink-0">
+            <span class="w-4 h-4 rounded-full bg-slate-200 text-center leading-4 text-[10px] font-bold">2</span>
+            <span>Review Structure</span>
+          </button>
+          <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
+
+          <button id="step-ind-3" data-step="3" class="step-badge clickable flex items-center gap-1.5 font-medium px-2.5 sm:px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 whitespace-nowrap shrink-0">
+            <span class="w-4 h-4 rounded-full bg-slate-200 text-center leading-4 text-[10px] font-bold">3</span>
+            <span>Compatibility</span>
+          </button>
+          <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
+
+          <button id="step-ind-4" data-step="4" class="step-badge clickable flex items-center gap-1.5 font-medium px-2.5 sm:px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 whitespace-nowrap shrink-0">
+            <span class="w-4 h-4 rounded-full bg-slate-200 text-center leading-4 text-[10px] font-bold">4</span>
+            <span>Execution</span>
+          </button>
+          <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
+
+          <button id="step-ind-5" data-step="5" class="step-badge clickable flex items-center gap-1.5 font-medium px-2.5 sm:px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 whitespace-nowrap shrink-0">
+            <span class="w-4 h-4 rounded-full bg-slate-200 text-center leading-4 text-[10px] font-bold">5</span>
+            <span>Preview & Diff</span>
+          </button>
+        </div>
+
+        <div class="flex items-center justify-between sm:justify-end gap-2 shrink-0 border-t md:border-t-0 pt-2.5 md:pt-0 border-slate-100 w-full md:w-auto">
+          <button id="btn-load-sample" class="text-xs text-slate-700 hover:text-slate-900 px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 font-semibold flex items-center gap-1.5 shadow-2xs whitespace-nowrap">
+            <i data-lucide="file-code" class="w-3.5 h-3.5 text-slate-500"></i>
+            <span>Load Sample Job</span>
+          </button>
+          <button id="btn-reset-workspace" class="text-xs text-slate-500 hover:text-rose-600 px-2.5 py-1.5 rounded-lg hover:bg-rose-50 font-medium transition-colors whitespace-nowrap">
+            Reset
+          </button>
+        </div>
+      </div>
+
+      <!-- SECTION: STAGE 1 — JOB INGESTION -->
+      <div id="stage-job-input" class="bg-white rounded-xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="file-input" class="w-5 h-5 text-slate-700"></i>
+              <span>Stage 1: Job Description Ingestion</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">Paste raw job description or choose an existing parsed job file from <code class="font-mono text-slate-700">data/jobs/</code>.</p>
+          </div>
+          <div class="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+            <label for="select-existing-job" class="text-xs font-semibold text-slate-600 whitespace-nowrap">Load saved:</label>
+            <select id="select-existing-job" class="text-xs bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-800 focus:bg-white focus:border-slate-900 focus:ring-1 focus:ring-slate-900 focus:outline-none w-full sm:w-auto sm:max-w-[240px]">
+              <option value="">-- Choose saved job --</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Raw Textarea Container -->
+        <div>
+          <div class="flex flex-wrap items-center justify-between text-xs text-slate-600 mb-1.5 gap-2">
+            <span class="font-semibold">Raw Job Description Text</span>
+            <div class="flex items-center gap-3">
+              <button id="btn-clear-raw-text" class="text-[11px] text-slate-400 hover:text-slate-700">Clear text</button>
+              <span id="char-count" class="font-mono text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded">0 characters</span>
+            </div>
+          </div>
+          <textarea id="job-raw-text" rows="8" placeholder="Paste full job posting text here (including company background, responsibilities, required qualifications, nice-to-haves, competencies)..." class="w-full text-xs font-mono p-3.5 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:border-slate-900 focus:ring-1 focus:ring-slate-900 focus:outline-none transition-all leading-relaxed"></textarea>
+        </div>
+
+        <!-- Parser Strategy & Options -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t border-slate-100">
+          <div>
+            <label for="select-semantic-provider" class="block text-xs font-semibold text-slate-700 mb-1">
+              Semantic Parser Provider
+            </label>
+            <select id="select-semantic-provider" class="w-full text-xs bg-white border border-slate-300 rounded-lg p-2 font-medium text-slate-800 focus:ring-1 focus:ring-slate-900 focus:outline-none">
+              <option value="none">None (Deterministic only - 100% Local & Private)</option>
+              <option value="gemini">Gemini (AI Semantic Extraction)</option>
+              <option value="ollama">Ollama (Local Model Semantic Extraction)</option>
+            </select>
+            <p id="parser-privacy-notice" class="text-[11px] text-slate-500 mt-1 leading-normal">
+              <strong>Local mode:</strong> No job data leaves this machine. Parser fails safely if unresolved items require semantic inference.
+            </p>
+          </div>
+
+          <div>
+            <label for="input-target-company" class="block text-xs font-semibold text-slate-700 mb-1">
+              Target Company Name (Optional)
+            </label>
+            <input type="text" id="input-target-company" placeholder="Auto-detected if blank" class="w-full text-xs bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:ring-1 focus:ring-slate-900 focus:outline-none" />
+            <p class="text-[11px] text-slate-400 mt-1 font-mono">Output folder: output/&lt;company-slug&gt;/</p>
+          </div>
+
+          <div class="flex flex-col justify-start">
+            <label class="hidden md:block text-xs font-semibold text-slate-700 mb-1 invisible select-none">Action</label>
+            <button id="btn-parse-job" class="w-full py-2.5 px-4 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 min-h-[38px]">
+              <i data-lucide="play" class="w-4 h-4"></i>
+              <span id="btn-parse-text">Parse Job Description</span>
+            </button>
+            <p class="text-[11px] text-slate-400 mt-1 text-center">Advances to Stage 2 upon parsing</p>
+          </div>
+        </div>
+
+        <!-- Parser Warning/Error Box -->
+        <div id="parser-alert" class="hidden p-3.5 rounded-lg border text-xs"></div>
+      </div>
+
+      <!-- SECTION: STAGE 2 — JOB REVIEW & EDIT -->
+      <div id="stage-job-review" class="hidden bg-white rounded-xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <i data-lucide="check-square" class="w-5 h-5 text-emerald-600"></i>
+                <span>Stage 2: Parsed Job Structure Review</span>
+              </h2>
+              <span id="badge-semantic-used" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                Deterministic
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">Review and curate parsed requirements before tailoring. You can edit, add, or delete items.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <button id="btn-toggle-raw-json" class="flex-1 sm:flex-initial text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 whitespace-nowrap">
+              <i data-lucide="code" class="w-3.5 h-3.5"></i>
+              <span id="toggle-json-text">Inspect Raw JSON</span>
+            </button>
+            <button id="btn-save-job-changes" class="flex-1 sm:flex-initial text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 flex items-center justify-center gap-1.5 whitespace-nowrap">
+              <i data-lucide="save" class="w-3.5 h-3.5"></i>
+              <span>Save Job File</span>
+            </button>
+            <button id="btn-proceed-analyse" class="w-full sm:w-auto text-xs font-semibold px-4 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs flex items-center justify-center gap-1.5 whitespace-nowrap">
+              <i data-lucide="arrow-right" class="w-4 h-4"></i>
+              <span>Analyse Compatibility</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Metadata Header Inputs -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-lg border border-slate-200 text-xs">
+          <div>
+            <label for="review-job-company" class="text-slate-600 font-semibold block text-[11px] mb-0.5">Company *</label>
+            <input type="text" id="review-job-company" class="w-full font-semibold text-slate-900 bg-white border border-slate-300 rounded px-2.5 py-1.5 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 focus:outline-none" />
+          </div>
+          <div>
+            <label for="review-job-title" class="text-slate-600 font-semibold block text-[11px] mb-0.5">Job Title *</label>
+            <input type="text" id="review-job-title" class="w-full font-semibold text-slate-900 bg-white border border-slate-300 rounded px-2.5 py-1.5 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 focus:outline-none" />
+          </div>
+          <div>
+            <label for="review-job-type" class="text-slate-600 font-semibold block text-[11px] mb-0.5">Employment Type</label>
+            <input type="text" id="review-job-type" placeholder="Full-time" class="w-full text-slate-800 bg-white border border-slate-300 rounded px-2.5 py-1.5 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 focus:outline-none" />
+          </div>
+          <div>
+            <label for="review-job-remote" class="text-slate-600 font-semibold block text-[11px] mb-0.5">Workplace / Remote</label>
+            <input type="text" id="review-job-remote" placeholder="Hybrid / Remote" class="w-full text-slate-800 bg-white border border-slate-300 rounded px-2.5 py-1.5 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 focus:outline-none" />
+          </div>
+        </div>
+
+        <!-- Raw JSON Inspector (Toggleable) -->
+        <div id="raw-json-container" class="hidden space-y-2">
+          <div class="flex items-center justify-between text-xs text-slate-600">
+            <span class="font-semibold">Direct JSON Editor</span>
+            <button id="btn-apply-raw-json" class="text-xs font-semibold px-2.5 py-1 rounded bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 flex items-center gap-1">
+              <i data-lucide="check" class="w-3.5 h-3.5"></i>
+              <span>Apply JSON Changes</span>
+            </button>
+          </div>
+          <textarea id="raw-job-json-textarea" rows="12" class="w-full font-mono text-xs p-3 bg-slate-900 text-slate-100 rounded-lg focus:outline-none leading-relaxed"></textarea>
+        </div>
+
+        <!-- Structured Category Columns -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <!-- Required Core Requirements -->
+          <div class="bg-slate-50 rounded-lg p-4 border border-slate-200 space-y-3 flex flex-col justify-between">
+            <div class="space-y-3">
+              <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+                <span class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                  <span>Core / Required</span>
+                </span>
+                <span id="count-req-required" class="text-[11px] font-bold bg-white border border-slate-200 px-2 py-0.5 rounded-full text-slate-700">0</span>
+              </div>
+              <div id="list-req-required" class="space-y-2 max-h-80 overflow-y-auto pr-1"></div>
+            </div>
+            <button id="btn-add-req-required" class="w-full py-2 text-xs text-slate-700 hover:text-slate-900 hover:bg-white bg-slate-100 border border-dashed border-slate-300 hover:border-slate-400 rounded-lg font-semibold transition-colors flex items-center justify-center gap-1">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+              <span>Add Required Item</span>
+            </button>
+          </div>
+
+          <!-- Preferred Qualifications -->
+          <div class="bg-slate-50 rounded-lg p-4 border border-slate-200 space-y-3 flex flex-col justify-between">
+            <div class="space-y-3">
+              <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+                <span class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                  <span>Preferred Qualifications</span>
+                </span>
+                <span id="count-req-preferred" class="text-[11px] font-bold bg-white border border-slate-200 px-2 py-0.5 rounded-full text-slate-700">0</span>
+              </div>
+              <div id="list-req-preferred" class="space-y-2 max-h-80 overflow-y-auto pr-1"></div>
+            </div>
+            <button id="btn-add-req-preferred" class="w-full py-2 text-xs text-slate-700 hover:text-slate-900 hover:bg-white bg-slate-100 border border-dashed border-slate-300 hover:border-slate-400 rounded-lg font-semibold transition-colors flex items-center justify-center gap-1">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+              <span>Add Preferred Item</span>
+            </button>
+          </div>
+
+          <!-- Engineering Competencies -->
+          <div class="bg-slate-50 rounded-lg p-4 border border-slate-200 space-y-3 flex flex-col justify-between">
+            <div class="space-y-3">
+              <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+                <span class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                  <span>Engineering Competencies</span>
+                </span>
+                <span id="count-req-competencies" class="text-[11px] font-bold bg-white border border-slate-200 px-2 py-0.5 rounded-full text-slate-700">0</span>
+              </div>
+              <div id="list-req-competencies" class="space-y-2 max-h-80 overflow-y-auto pr-1"></div>
+            </div>
+            <button id="btn-add-req-competencies" class="w-full py-2 text-xs text-slate-700 hover:text-slate-900 hover:bg-white bg-slate-100 border border-dashed border-slate-300 hover:border-slate-400 rounded-lg font-semibold transition-colors flex items-center justify-center gap-1">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+              <span>Add Competency Item</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: STAGE 3 — COMPATIBILITY & EVIDENCE ANALYSIS -->
+      <div id="stage-job-analysis" class="hidden bg-white rounded-xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="bar-chart-2" class="w-5 h-5 text-slate-800"></i>
+              <span>Stage 3: Evidence Compatibility Matrix</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">Automated factual evaluation of candidate master evidence vs. target job requirements.</p>
+          </div>
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <button id="btn-run-full-pipeline" class="w-full sm:w-auto text-xs font-semibold px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white shadow-xs flex items-center justify-center gap-2">
+              <i data-lucide="play" class="w-4 h-4"></i>
+              <span>Execute Tailoring Pipeline</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Score Overview Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div class="bg-slate-50 border border-slate-200 rounded-lg p-3.5 sm:p-4">
+            <span class="text-xs font-semibold text-slate-600 block">Overall Evidence Match</span>
+            <div class="flex items-baseline gap-2 mt-1">
+              <span id="score-overall" class="text-2xl font-extrabold text-slate-900">0%</span>
+              <span id="score-overall-badge" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">Calculated</span>
+            </div>
+            <div class="w-full bg-slate-200 h-2 rounded-full mt-2 overflow-hidden">
+              <div id="bar-score-overall" class="bg-slate-900 h-full rounded-full transition-all" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 border border-slate-200 rounded-lg p-3.5 sm:p-4">
+            <span class="text-xs font-semibold text-slate-600 block">Core Requirements</span>
+            <div class="flex items-baseline gap-2 mt-1">
+              <span id="score-core" class="text-2xl font-extrabold text-emerald-700">0%</span>
+            </div>
+            <div class="w-full bg-slate-200 h-2 rounded-full mt-2 overflow-hidden">
+              <div id="bar-score-core" class="bg-emerald-600 h-full rounded-full transition-all" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 border border-slate-200 rounded-lg p-3.5 sm:p-4">
+            <span class="text-xs font-semibold text-slate-600 block">Preferred Qualifications</span>
+            <div class="flex items-baseline gap-2 mt-1">
+              <span id="score-preferred" class="text-2xl font-extrabold text-amber-700">0%</span>
+            </div>
+            <div class="w-full bg-slate-200 h-2 rounded-full mt-2 overflow-hidden">
+              <div id="bar-score-preferred" class="bg-amber-600 h-full rounded-full transition-all" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 border border-slate-200 rounded-lg p-3.5 sm:p-4">
+            <span class="text-xs font-semibold text-slate-600 block">Engineering Competencies</span>
+            <div class="flex items-baseline gap-2 mt-1">
+              <span id="score-competencies" class="text-2xl font-extrabold text-blue-700">0%</span>
+            </div>
+            <div class="w-full bg-slate-200 h-2 rounded-full mt-2 overflow-hidden">
+              <div id="bar-score-competencies" class="bg-blue-600 h-full rounded-full transition-all" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Evidence Matches Breakdown Tabs -->
+        <div class="space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
+            <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Itemized Evidence Grounding</h3>
+            <!-- Interactive Filter Chips -->
+            <div class="flex flex-wrap items-center gap-1.5 text-xs w-full sm:w-auto" id="analysis-filter-chips">
+              <button data-filter="all" class="filter-chip active px-2.5 py-1 rounded-full text-xs font-semibold border border-slate-300 bg-slate-900 text-white flex items-center gap-1">
+                <span>All</span> (<span id="count-match-all">0</span>)
+              </button>
+              <button data-filter="strong" class="filter-chip px-2.5 py-1 rounded-full text-xs font-medium border border-slate-200 bg-slate-100 text-emerald-800 hover:bg-emerald-50 flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span>Exact Match</span> (<span id="count-match-strong">0</span>)
+              </button>
+              <button data-filter="related" class="filter-chip px-2.5 py-1 rounded-full text-xs font-medium border border-slate-200 bg-slate-100 text-amber-800 hover:bg-amber-50 flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                <span>Equivalent</span> (<span id="count-match-related">0</span>)
+              </button>
+              <button data-filter="missing" class="filter-chip px-2.5 py-1 rounded-full text-xs font-medium border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                <span>Missing / Gap</span> (<span id="count-match-missing">0</span>)
+              </button>
+            </div>
+          </div>
+
+          <div id="analysis-items-container" class="space-y-2 max-h-96 overflow-y-auto pr-1"></div>
+        </div>
+
+        <!-- Guardrails & Guidance Notice -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+          <div class="bg-emerald-50/70 border border-emerald-200 rounded-lg p-3.5 text-xs text-emerald-950 space-y-1">
+            <span class="font-bold flex items-center gap-1.5 text-emerald-900">
+              <i data-lucide="check-circle" class="w-4 h-4 text-emerald-600"></i>
+              <span>Recommended Emphasis</span>
+            </span>
+            <p id="analysis-recommended-emphasis" class="text-slate-700 text-[11px] leading-relaxed">Loaded from analysis...</p>
+          </div>
+          <div class="bg-amber-50/70 border border-amber-200 rounded-lg p-3.5 text-xs text-amber-950 space-y-1">
+            <span class="font-bold flex items-center gap-1.5 text-amber-900">
+              <i data-lucide="shield-alert" class="w-4 h-4 text-amber-600"></i>
+              <span>Factual Guardrails (Do Not Add)</span>
+            </span>
+            <p id="analysis-guardrails" class="text-slate-700 text-[11px] leading-relaxed">No hallucinated tools or non-evidenced technologies may be added during rewrite.</p>
+          </div>
+        </div>
+
+        <!-- Run Configuration Overrides -->
+        <div class="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-3">
+          <h4 class="text-xs font-bold text-slate-900">Pipeline Execution Parameters</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div>
+              <label for="override-theme" class="block font-semibold text-slate-700 mb-1">Resume Render Theme</label>
+              <select id="override-theme" class="w-full bg-white border border-slate-300 rounded-lg p-2 font-medium text-slate-800 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900">
+                <option value="jsonresume-theme-stackoverflow">StackOverflow (Technical standard)</option>
+                <option value="jsonresume-theme-modern-plain">Modern Plain (Minimalist ATS)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">LLM Factual Rewrite</label>
+              <div class="flex items-center gap-2 mt-2 bg-white border border-slate-300 rounded-lg p-2">
+                <input type="checkbox" id="toggle-skip-rewrite" class="w-4 h-4 accent-slate-900 rounded border-slate-300 focus:ring-slate-900 cursor-pointer" style="accent-color: #0f172a;" checked />
+                <label for="toggle-skip-rewrite" class="text-slate-700 text-[11px] font-medium cursor-pointer">Enable LLM Rewrite & Summary</label>
+              </div>
+            </div>
+            <div class="flex flex-col justify-end">
+              <button id="btn-trigger-pipeline-run" class="w-full py-2.5 px-4 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold shadow-xs flex items-center justify-center gap-2">
+                <i data-lucide="play" class="w-4 h-4"></i>
+                <span>Run Full Pipeline</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: STAGE 4 & 5 — LIVE CI/CD PIPELINE EXECUTION -->
+      <div id="stage-pipeline-exec" class="hidden bg-white rounded-xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-6">
+        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <i data-lucide="git-merge" class="w-5 h-5 text-blue-600"></i>
+                <span>Stage 4 & 5: Pipeline Execution Visualizer</span>
+              </h2>
+              <span id="pipeline-status-badge" class="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                Running
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">Deterministic stages sequence with live artifact inspection and technical detail logs.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btn-toggle-tech-logs" class="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-2xs">
+              <i data-lucide="terminal" class="w-3.5 h-3.5"></i>
+              <span id="btn-toggle-logs-text">Hide Console Logs</span>
+            </button>
+            <button id="btn-jump-preview" class="hidden text-xs font-semibold px-4 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs flex items-center gap-1.5">
+              <i data-lucide="eye" class="w-4 h-4"></i>
+              <span>View Results & Preview</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Pipeline CI/CD Stage Flow Nodes -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+          <!-- Stage 1 Node -->
+          <div id="node-analyse" class="stage-node p-2.5 sm:p-3 rounded-lg border border-slate-200 bg-slate-50 space-y-2 flex flex-col justify-between min-w-0">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-slate-800 truncate">1. Analyse</span>
+              <span id="icon-analyse"><i data-lucide="clock" class="w-3.5 h-3.5 text-slate-400"></i></span>
+            </div>
+            <div class="text-[11px] text-slate-500 font-medium" id="duration-analyse">Pending</div>
+            <div id="artifact-analyse" class="text-[10px] text-slate-400 font-mono truncate">analysis.json</div>
+          </div>
+
+          <!-- Stage 2 Node -->
+          <div id="node-tailor" class="stage-node p-2.5 sm:p-3 rounded-lg border border-slate-200 bg-slate-50 space-y-2 flex flex-col justify-between min-w-0">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-slate-800 truncate">2. Tailor</span>
+              <span id="icon-tailor"><i data-lucide="clock" class="w-3.5 h-3.5 text-slate-400"></i></span>
+            </div>
+            <div class="text-[11px] text-slate-500 font-medium" id="duration-tailor">Pending</div>
+            <div id="artifact-tailor" class="text-[10px] text-slate-400 font-mono truncate">tailoring-plan.json</div>
+          </div>
+
+          <!-- Stage 3 Node -->
+          <div id="node-rewrite" class="stage-node p-2.5 sm:p-3 rounded-lg border border-slate-200 bg-slate-50 space-y-2 flex flex-col justify-between min-w-0">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-slate-800 truncate">3. Rewrite</span>
+              <span id="icon-rewrite"><i data-lucide="clock" class="w-3.5 h-3.5 text-slate-400"></i></span>
+            </div>
+            <div class="text-[11px] text-slate-500 font-medium" id="duration-rewrite">Pending</div>
+            <div id="artifact-rewrite" class="text-[10px] text-slate-400 font-mono truncate">resume-rewritten.json</div>
+          </div>
+
+          <!-- Stage 4 Node -->
+          <div id="node-summary" class="stage-node p-2.5 sm:p-3 rounded-lg border border-slate-200 bg-slate-50 space-y-2 flex flex-col justify-between min-w-0">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-slate-800 truncate">4. Summary</span>
+              <span id="icon-summary"><i data-lucide="clock" class="w-3.5 h-3.5 text-slate-400"></i></span>
+            </div>
+            <div class="text-[11px] text-slate-500 font-medium" id="duration-summary">Pending</div>
+            <div id="artifact-summary" class="text-[10px] text-slate-400 font-mono truncate">resume-final.json</div>
+          </div>
+
+          <!-- Stage 5 Node -->
+          <div id="node-finalCheck" class="stage-node p-2.5 sm:p-3 rounded-lg border border-slate-200 bg-slate-50 space-y-2 flex flex-col justify-between min-w-0">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-slate-800 truncate">5. Audit Check</span>
+              <span id="icon-finalCheck"><i data-lucide="clock" class="w-3.5 h-3.5 text-slate-400"></i></span>
+            </div>
+            <div class="text-[11px] text-slate-500 font-medium" id="duration-finalCheck">Pending</div>
+            <div id="artifact-finalCheck" class="text-[10px] text-slate-400 font-mono truncate">final-check.json</div>
+          </div>
+
+          <!-- Stage 6 Node -->
+          <div id="node-render" class="stage-node p-2.5 sm:p-3 rounded-lg border border-slate-200 bg-slate-50 space-y-2 flex flex-col justify-between min-w-0">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-slate-800 truncate">6. Render</span>
+              <span id="icon-render"><i data-lucide="clock" class="w-3.5 h-3.5 text-slate-400"></i></span>
+            </div>
+            <div class="text-[11px] text-slate-500 font-medium" id="duration-render">Pending</div>
+            <div id="artifact-render" class="text-[10px] text-slate-400 font-mono truncate">resume.html / pdf</div>
+          </div>
+        </div>
+
+        <!-- Technical Terminal Logs Drawer -->
+        <div id="terminal-drawer" class="space-y-2">
+          <div class="flex items-center justify-between text-xs text-slate-500">
+            <span class="font-mono text-[11px] font-semibold text-slate-600 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Live Pipeline Stream</span>
+            </span>
+            <button id="btn-clear-logs" class="text-xs text-slate-500 hover:text-slate-800 font-medium">Clear Log</button>
+          </div>
+          <div id="pipeline-log-terminal" class="w-full h-44 bg-slate-950 text-slate-200 font-mono text-xs p-3.5 rounded-lg overflow-y-auto space-y-1 border border-slate-800 break-words">
+            <div class="text-slate-500">[idle] Waiting for pipeline execution...</div>
+          </div>
+        </div>
+
+        <!-- Final Check Structured Audit Card -->
+        <div id="final-check-audit-card" class="hidden bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i data-lucide="shield-check" class="w-5 h-5 text-emerald-600"></i>
+              <h4 class="text-xs font-bold text-slate-900">Stage 5 Audit: Factual Integrity & Hallucination Guard</h4>
+            </div>
+            <span id="final-check-status-badge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">PASS</span>
+          </div>
+          <div id="final-check-summary-text" class="text-xs text-slate-700 leading-relaxed"></div>
+          <div id="final-check-issues-list" class="space-y-1 text-xs"></div>
+        </div>
+      </div>
+
+      <!-- SECTION: STAGE 6 — ARTIFACTS, DIFF & LIVE RESUME PREVIEW -->
+      <div id="stage-preview-artifacts" class="hidden bg-white rounded-xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-6">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="layout" class="w-5 h-5 text-slate-800"></i>
+              <span>Stage 6: Artifacts & Interactive Resume Preview</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">Switch themes dynamically, inspect factual diffs, and download production resumes.</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3">
+            <!-- Dynamic Theme Switcher Bar -->
+            <div class="flex items-center gap-2 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+              <span class="text-xs font-semibold text-slate-600">Theme:</span>
+              <div class="inline-flex rounded-md" role="group">
+                <button id="theme-btn-stackoverflow" class="theme-switch-btn active px-2.5 py-1 text-xs font-semibold rounded-l-md bg-slate-900 text-white">
+                  StackOverflow
+                </button>
+                <button id="theme-btn-modern-plain" class="theme-switch-btn px-2.5 py-1 text-xs font-semibold rounded-r-md bg-slate-100 text-slate-700 hover:bg-slate-200">
+                  Modern Plain
+                </button>
+              </div>
+              <span id="rerender-spinner" class="hidden text-xs text-slate-600 animate-spin"><i data-lucide="loader-2" class="w-3.5 h-3.5"></i></span>
+            </div>
+
+            <!-- Download Buttons -->
+            <div class="flex flex-wrap items-center gap-1.5">
+              <a id="btn-download-pdf" href="#" download class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white flex items-center gap-1.5 shadow-xs whitespace-nowrap">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>PDF</span>
+              </a>
+              <a id="btn-download-html" href="#" download class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 flex items-center gap-1.5 whitespace-nowrap">
+                <i data-lucide="code" class="w-3.5 h-3.5"></i>
+                <span>HTML</span>
+              </a>
+              <a id="btn-download-txt" href="#" download class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 flex items-center gap-1.5 whitespace-nowrap">
+                <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                <span>TXT</span>
+              </a>
+              <a id="btn-download-json" href="#" download class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 flex items-center gap-1.5 whitespace-nowrap">
+                <i data-lucide="file-json" class="w-3.5 h-3.5"></i>
+                <span>JSON</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Preview View Tabs: Live HTML vs Side-by-Side Diff -->
+        <div class="flex items-center gap-2 border-b border-slate-200">
+          <button id="tab-live-preview" class="px-4 py-2 border-b-2 border-slate-900 text-xs font-bold text-slate-900 flex items-center gap-1.5">
+            <i data-lucide="eye" class="w-4 h-4"></i>
+            <span>Rendered Document Preview</span>
+          </button>
+          <button id="tab-diff-view" class="px-4 py-2 border-b-2 border-transparent text-xs font-medium text-slate-500 hover:text-slate-800 flex items-center gap-1.5">
+            <i data-lucide="git-commit" class="w-4 h-4"></i>
+            <span>Side-by-Side Tailoring Diff</span>
+          </button>
+        </div>
+
+        <!-- Container 1: Live Iframe HTML Preview -->
+        <div id="container-live-preview" class="border border-slate-300 rounded-lg overflow-hidden bg-white shadow-inner">
+          <div class="bg-slate-100 px-3.5 py-2 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
+            <span class="flex items-center gap-1.5 font-mono text-[11px] truncate min-w-0">
+              <i data-lucide="monitor" class="w-3.5 h-3.5 text-slate-500 shrink-0"></i>
+              <span id="preview-url-label" class="truncate">output/resume.html</span>
+            </span>
+            <a id="btn-open-preview-tab" href="#" target="_blank" class="text-slate-700 hover:text-slate-900 font-semibold flex items-center gap-1 shrink-0">
+              <span>Open in new tab</span>
+              <i data-lucide="external-link" class="w-3 h-3"></i>
+            </a>
+          </div>
+          <iframe id="resume-preview-frame" src="about:blank" title="Rendered Resume Preview" class="w-full h-[520px] sm:h-[650px] lg:h-[750px] border-0"></iframe>
+        </div>
+
+        <!-- Container 2: Side-by-Side Diff View -->
+        <div id="container-diff-view" class="hidden space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="border border-slate-200 rounded-lg p-4 bg-slate-50 space-y-2">
+              <span class="text-xs font-bold text-slate-700 block border-b border-slate-200 pb-1">Master Base Resume (data/resumes/base.json)</span>
+              <div id="diff-base-content" class="text-xs space-y-2 text-slate-800 max-h-[600px] overflow-y-auto pr-1"></div>
+            </div>
+            <div class="border border-emerald-200 rounded-lg p-4 bg-emerald-50/40 space-y-2">
+              <span class="text-xs font-bold text-emerald-950 block border-b border-emerald-200 pb-1">Tailored Resume (output/resume-final.json)</span>
+              <div id="diff-tailored-content" class="text-xs space-y-2 text-slate-900 max-h-[600px] overflow-y-auto pr-1"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 2: EVIDENCE BASE -->
+    <section id="view-evidence" class="hidden space-y-6">
+      <!-- Evidence Header Metrics -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="database" class="w-5 h-5 text-slate-800"></i>
+              <span>Master Career Evidence Base (<code class="font-mono text-xs text-slate-700">data/evidence.json</code>)</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">The ground truth for all resume tailoring. The pipeline strictly rejects any claim not rooted here.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="btn-open-interview-modal" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white flex items-center gap-1.5 shadow-xs transition-colors">
+              <i data-lucide="message-square" class="w-3.5 h-3.5"></i>
+              <span>Guided Career Interview</span>
+            </button>
+            <button id="btn-add-experience-modal" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 flex items-center gap-1.5 shadow-2xs transition-colors">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+              <span>Add Experience</span>
+            </button>
+            <a href="/api/evidence/export" download class="text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition-colors">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>Export JSON</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Metric Stat Counters -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
+          <div class="p-3.5 bg-slate-50 rounded-lg border border-slate-200">
+            <span class="text-[11px] font-semibold text-slate-500 block">Verified Experiences</span>
+            <span id="metric-experiences-count" class="text-2xl font-black text-slate-900">0</span>
+          </div>
+          <div class="p-3.5 bg-slate-50 rounded-lg border border-slate-200">
+            <span class="text-[11px] font-semibold text-slate-500 block">Documented Career Facts</span>
+            <span id="metric-facts-count" class="text-2xl font-black text-slate-900">0</span>
+          </div>
+          <div class="p-3.5 bg-slate-50 rounded-lg border border-slate-200">
+            <span class="text-[11px] font-semibold text-slate-500 block">Cataloged Skills</span>
+            <span id="metric-skills-count" class="text-2xl font-black text-slate-900">0</span>
+          </div>
+          <div class="p-3.5 bg-slate-50 rounded-lg border border-slate-200">
+            <span class="text-[11px] font-semibold text-slate-500 block">Review Queue Items</span>
+            <span id="metric-queue-count" class="text-2xl font-black text-amber-700">0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CANDIDATE SKILLS & CORE COMPETENCIES SHOWCASE (EMPHASIZED) -->
+      <div id="section-candidate-skills" class="bg-white rounded-xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+          <div class="space-y-0.5">
+            <div class="flex items-center gap-2">
+              <i data-lucide="cpu" class="w-5 h-5 text-slate-800"></i>
+              <h3 class="text-sm font-bold text-slate-900">Candidate Technical Skills & Core Competencies</h3>
+              <span id="evidence-skills-count-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 border border-slate-200">0 cataloged</span>
+            </div>
+            <p class="text-xs text-slate-500">Verified competencies grounded in your career record. Click any skill to filter matching experiences.</p>
+          </div>
+          <div id="active-skill-filter-bar" class="hidden flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-xs">
+            <span class="text-slate-600 font-medium">Filtered by:</span>
+            <span id="active-skill-filter-name" class="font-bold text-slate-900"></span>
+            <button id="btn-clear-skill-filter" class="text-slate-500 hover:text-slate-800 p-0.5 rounded hover:bg-slate-200 transition-colors" title="Clear filter">
+              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Emphasized Categorized Skills Cloud -->
+        <div id="evidence-skills-cloud" class="space-y-3.5">
+          <div class="text-center py-4 text-xs text-slate-400">Loading cataloged skills...</div>
+        </div>
+      </div>
+
+      <!-- Sub-Tabs: Catalog vs Review Queue -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-2">
+        <div class="flex items-center gap-2">
+          <button id="tab-evidence-catalog" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white">
+            Evidence Catalog
+          </button>
+          <button id="tab-evidence-queue" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 flex items-center gap-1.5">
+            <span>Review Queue</span>
+            <span id="badge-queue-pending" class="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">0</span>
+          </button>
+        </div>
+        <!-- Search & Filter Controls -->
+        <div class="flex items-center gap-2">
+          <div class="relative w-full sm:w-64">
+            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2"></i>
+            <input type="text" id="input-evidence-search" placeholder="Search facts, roles, skills..." class="text-xs bg-white border border-slate-300 rounded-lg pl-8 pr-3 py-1.5 w-full focus:ring-1 focus:ring-slate-900 focus:outline-none" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Catalog Experience Cards -->
+      <div id="evidence-catalog-container" class="space-y-4">
+        <div class="text-center py-8 text-xs text-slate-400">Loading career evidence catalog...</div>
+      </div>
+
+      <!-- Review Queue Container -->
+      <div id="evidence-queue-container" class="hidden space-y-4">
+        <div class="text-center py-8 text-xs text-slate-400">Loading review queue...</div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: RUNS & HISTORY -->
+    <section id="view-history" class="hidden space-y-6">
+      <div class="bg-white rounded-xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="history" class="w-5 h-5 text-slate-700"></i>
+              <span>Pipeline Run History & Output Directory</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">Historical tailored resumes preserved under <code class="font-mono text-slate-700">output/</code>.</p>
+          </div>
+          <button id="btn-refresh-history" class="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 shadow-2xs">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span>Refresh</span>
+          </button>
+        </div>
+
+        <div id="history-runs-list" class="space-y-3">
+          <div class="text-center py-8 text-xs text-slate-400">Loading historical runs...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 4: SETTINGS & DIAGNOSTICS -->
+    <section id="view-settings" class="hidden space-y-6">
+      <!-- Doctor Environment Diagnostics Card -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+          <div class="flex items-center gap-2">
+            <i data-lucide="activity" class="w-5 h-5 text-slate-700"></i>
+            <h2 class="text-base font-bold text-slate-900">Environment Diagnostics (<code class="font-mono text-xs text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">doctor</code>)</h2>
+          </div>
+          <button id="btn-rerun-doctor" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white flex items-center gap-1.5 shadow-xs">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span>Re-run Diagnostics</span>
+          </button>
+        </div>
+
+        <div id="doctor-checks-container" class="space-y-2">
+          <div class="text-center py-4 text-xs text-slate-400">Loading diagnostic checks...</div>
+        </div>
+      </div>
+
+      <!-- LLM Configuration Card -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-5">
+        <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="cpu" class="w-5 h-5 text-slate-800"></i>
+              <span>LLM Providers & Configuration (<code class="font-mono text-xs text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">cv-tailor.config.json</code>)</span>
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">Sensitive API keys are stored server-side and never exposed to the client.</p>
+          </div>
+          <button id="btn-save-settings" class="text-xs font-semibold px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white shadow-xs flex items-center gap-1.5">
+            <i data-lucide="save" class="w-4 h-4"></i>
+            <span>Save Configuration</span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div>
+            <label for="settings-llm-provider" class="block font-semibold text-slate-700 mb-1">Active LLM Provider</label>
+            <select id="settings-llm-provider" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-medium text-slate-800 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900">
+              <option value="gemini">Google Gemini</option>
+              <option value="ollama">Ollama (Local)</option>
+              <option value="openai">OpenAI</option>
+              <option value="groq">Groq</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="local">Local HTTP Proxy</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="settings-gemini-key" class="block font-semibold text-slate-700 mb-1">Gemini API Key</label>
+            <div class="relative w-full">
+              <input type="password" id="settings-gemini-key" placeholder="Enter key or leave blank to keep existing" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 pr-8 text-slate-800 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900" />
+              <button type="button" id="btn-toggle-key-visibility" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1" title="Toggle visibility">
+                <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label for="settings-ollama-model" class="block font-semibold text-slate-700 mb-1">Ollama Model</label>
+            <input type="text" id="settings-ollama-model" placeholder="llama3.2" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-800 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900" />
+          </div>
+
+          <div>
+            <label for="settings-ollama-url" class="block font-semibold text-slate-700 mb-1">Ollama Host URL</label>
+            <input type="text" id="settings-ollama-url" placeholder="http://127.0.0.1:11434" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-800 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900" />
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Factual Rewrite Default</label>
+            <div class="flex items-center gap-2 mt-2 bg-slate-50 border border-slate-300 rounded-lg p-2">
+              <input type="checkbox" id="settings-pipeline-rewrite" class="w-4 h-4 accent-slate-900 rounded border-slate-300 cursor-pointer" style="accent-color: #0f172a;" />
+              <label for="settings-pipeline-rewrite" class="text-slate-700 text-[11px] font-medium cursor-pointer">Enables rewrite and summary generation steps</label>
+            </div>
+          </div>
+
+          <div>
+            <label for="settings-max-bullets" class="block font-semibold text-slate-700 mb-1">Max Bullets Per Role</label>
+            <input type="number" id="settings-max-bullets" min="2" max="10" value="4" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-slate-800 focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900" />
+          </div>
+        </div>
+
+        <div id="settings-save-alert" class="hidden p-3 rounded-lg text-xs"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL: Guided Career Interview -->
+  <div id="modal-interview" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-interview-title">
+    <div class="bg-white rounded-xl max-w-xl w-full border border-slate-200 shadow-xl p-4 sm:p-6 space-y-4 modal-content-box">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div class="flex items-center gap-2">
+          <i data-lucide="message-square" class="w-5 h-5 text-slate-800"></i>
+          <h3 id="modal-interview-title" class="text-base font-bold text-slate-900">Guided Career Interview</h3>
+        </div>
+        <button id="btn-close-interview" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg" aria-label="Close dialog">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-500 leading-relaxed">
+        Structure past achievements into verifiable factual claims. Submitting places them into the <strong>Review Queue</strong> for validation before merging into <code class="font-mono">evidence.json</code>.
+      </p>
+
+      <div class="space-y-3 text-xs">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="interview-company" class="block font-semibold text-slate-700 mb-1">Company *</label>
+            <input type="text" id="interview-company" placeholder="e.g. Acme Corp" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900" />
+          </div>
+          <div>
+            <label for="interview-position" class="block font-semibold text-slate-700 mb-1">Role / Position *</label>
+            <input type="text" id="interview-position" placeholder="e.g. Senior Backend Engineer" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900" />
+          </div>
+        </div>
+
+        <div>
+          <label for="interview-period" class="block font-semibold text-slate-700 mb-1">Time Period</label>
+          <input type="text" id="interview-period" placeholder="e.g. 2021-03 — 2024-01" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900" />
+        </div>
+
+        <div>
+          <label for="interview-facts" class="block font-semibold text-slate-700 mb-1">Key Achievements & Facts (one per line) *</label>
+          <textarea id="interview-facts" rows="4" placeholder="Architected event-driven microservices processing 50k events/sec.&#10;Reduced P99 API latency by 45% using Redis caching and gRPC streaming." class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-sans focus:bg-white focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 leading-relaxed"></textarea>
+        </div>
+
+        <div>
+          <label for="interview-skills" class="block font-semibold text-slate-700 mb-1">Technologies & Skills (comma separated)</label>
+          <input type="text" id="interview-skills" placeholder="TypeScript, Node.js, Kubernetes, Redis, gRPC" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900" />
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+        <button id="btn-cancel-interview" class="text-xs px-3.5 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold transition-colors">Cancel</button>
+        <button id="btn-submit-interview" class="text-xs px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-1.5 shadow-xs transition-colors">
+          <i data-lucide="send" class="w-3.5 h-3.5"></i>
+          <span>Submit to Review Queue</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Quick Add Experience / Fact Modal -->
+  <div id="modal-add-experience" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-add-exp-title">
+    <div class="bg-white rounded-xl max-w-lg w-full border border-slate-200 shadow-xl p-4 sm:p-6 space-y-4 modal-content-box">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div class="flex items-center gap-2">
+          <i data-lucide="briefcase" class="w-5 h-5 text-slate-800"></i>
+          <h3 id="modal-add-exp-title" class="text-base font-bold text-slate-900">Add Direct Experience</h3>
+        </div>
+        <button id="btn-close-add-exp" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg" aria-label="Close dialog">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="direct-exp-company" class="block font-semibold text-slate-700 mb-1">Company *</label>
+            <input type="text" id="direct-exp-company" placeholder="Acme Corp" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900" />
+          </div>
+          <div>
+            <label for="direct-exp-position" class="block font-semibold text-slate-700 mb-1">Role / Position *</label>
+            <input type="text" id="direct-exp-position" placeholder="Staff Software Engineer" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900" />
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="direct-exp-period" class="block font-semibold text-slate-700 mb-1">Period</label>
+            <input type="text" id="direct-exp-period" placeholder="2022-01 — Present" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900" />
+          </div>
+          <div>
+            <label for="direct-exp-type" class="block font-semibold text-slate-700 mb-1">Type</label>
+            <select id="direct-exp-type" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 font-medium">
+              <option value="professional">Professional / Employment</option>
+              <option value="contract">Contract / Consulting</option>
+              <option value="project">Open Source / Technical Project</option>
+              <option value="leadership">Technical Leadership</option>
+              <option value="education">Education / Research</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label for="direct-exp-skills" class="block font-semibold text-slate-700 mb-1">Skills & Tools (comma separated)</label>
+          <input type="text" id="direct-exp-skills" placeholder="Docker, PostgreSQL, GraphQL, Python" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900" />
+        </div>
+        <div>
+          <label for="direct-exp-facts" class="block font-semibold text-slate-700 mb-1">Documented Career Facts (one per line)</label>
+          <textarea id="direct-exp-facts" rows="3" placeholder="Led migration to distributed microservices...&#10;Mentored 6 junior engineers on DDD patterns..." class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-sans focus:bg-white focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 leading-relaxed"></textarea>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+        <button id="btn-cancel-add-exp" class="text-xs px-3.5 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold transition-colors">Cancel</button>
+        <button id="btn-save-direct-exp" class="text-xs px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-1.5 shadow-xs transition-colors">
+          <i data-lucide="check" class="w-3.5 h-3.5"></i>
+          <span>Save Experience</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Edit Evidence Experience -->
+  <div id="modal-edit-experience" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-edit-exp-title">
+    <div class="bg-white rounded-xl max-w-xl w-full border border-slate-200 shadow-xl p-4 sm:p-6 space-y-4 modal-content-box">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div class="flex items-center gap-2">
+          <i data-lucide="pencil" class="w-5 h-5 text-slate-800"></i>
+          <h3 id="modal-edit-exp-title" class="text-base font-bold text-slate-900">Edit Career Evidence Card</h3>
+        </div>
+        <button id="btn-close-edit-exp" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg" aria-label="Close dialog">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <input type="hidden" id="edit-exp-id" />
+
+      <div class="space-y-3 text-xs">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="edit-exp-company" class="block font-semibold text-slate-700 mb-1">Company *</label>
+            <input type="text" id="edit-exp-company" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 font-medium" />
+          </div>
+          <div>
+            <label for="edit-exp-position" class="block font-semibold text-slate-700 mb-1">Role / Position *</label>
+            <input type="text" id="edit-exp-position" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 font-medium" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label for="edit-exp-period" class="block font-semibold text-slate-700 mb-1">Time Period</label>
+            <input type="text" id="edit-exp-period" placeholder="e.g. 2023-01 onward" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 font-mono text-[11px]" />
+          </div>
+          <div>
+            <label for="edit-exp-type" class="block font-semibold text-slate-700 mb-1">Experience Type</label>
+            <select id="edit-exp-type" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 font-medium">
+              <option value="professional">Professional / Employment</option>
+              <option value="contract">Contract / Consulting</option>
+              <option value="project">Open Source / Technical Project</option>
+              <option value="leadership">Technical Leadership</option>
+              <option value="education">Education / Research</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label for="edit-exp-skills" class="block font-semibold text-slate-700 mb-1">Demonstrated Skills & Technologies (comma separated)</label>
+          <input type="text" id="edit-exp-skills" placeholder="Java, Spring Boot, MySQL, gRPC, Kotlin" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900" />
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label for="edit-exp-facts" class="font-semibold text-slate-700">Documented Career Facts & Achievements (one bullet per line) *</label>
+            <span id="edit-exp-facts-count" class="text-[10px] text-slate-400 font-mono">0 facts</span>
+          </div>
+          <textarea id="edit-exp-facts" rows="6" placeholder="Documented achievement 1...&#10;Documented achievement 2..." class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 font-sans focus:bg-white focus:outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900 leading-relaxed text-xs"></textarea>
+          <p class="text-[11px] text-slate-400 mt-1">Each line constitutes a ground-truth factual assertion that candidate resumes can reference.</p>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between pt-3 border-t border-slate-200">
+        <button id="btn-delete-edit-exp" type="button" class="text-xs px-3 py-2 rounded-lg border border-rose-200 hover:bg-rose-50 text-rose-600 font-semibold flex items-center gap-1.5 transition-colors">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          <span>Delete Card</span>
+        </button>
+
+        <div class="flex items-center gap-2">
+          <button id="btn-cancel-edit-exp" type="button" class="text-xs px-3.5 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold transition-colors">Cancel</button>
+          <button id="btn-save-edit-exp" type="button" class="text-xs px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-1.5 shadow-xs transition-colors">
+            <i data-lucide="check" class="w-3.5 h-3.5"></i>
+            <span>Save Changes</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Doctor Environment Diagnostics Details -->
+  <div id="modal-doctor-details" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-doctor-title">
+    <div class="bg-white rounded-xl max-w-2xl w-full border border-slate-200 shadow-xl p-4 sm:p-6 space-y-4 modal-content-box">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div class="flex items-center gap-2">
+          <i data-lucide="stethoscope" class="w-5 h-5 text-slate-700"></i>
+          <h3 id="modal-doctor-title" class="text-base font-bold text-slate-900">Environment Diagnostics Status</h3>
+        </div>
+        <button id="btn-close-doctor-modal" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg" aria-label="Close dialog">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div id="doctor-modal-checks" class="space-y-2 max-h-96 overflow-y-auto pr-1"></div>
+
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-slate-200 text-xs">
+        <span class="text-slate-500 font-mono">CLI: npm run doctor</span>
+        <button id="btn-modal-rerun-doctor" class="px-3.5 py-1.5 rounded-lg bg-slate-900 text-white font-semibold hover:bg-slate-800 shadow-xs">
+          Re-check Environment
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Client JavaScript -->
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

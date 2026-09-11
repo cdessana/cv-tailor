@@ -1,0 +1,43 @@
+[
+  {
+    "id": "queue-1789149505293-gb5qr",
+    "company": "Stripe",
+    "position": "Staff Backend Engineer",
+    "period": "2023-01 — Present",
+    "facts": [
+      "Led migration of payment intent worker pool to Node.js 20.",
+      "Reduced transaction latency by 18ms."
+    ],
+    "skills": [
+      "Node.js",
+      "Redis",
+      "Distributed Systems"
+    ],
+    "source": "guided_interview",
+    "provenance": {},
+    "status": "approved",
+    "conflictDetails": null,
+    "createdAt": "2026-09-11T17:58:25.293Z",
+    "approvedAt": "2026-09-11T17:58:25.313Z"
+  },
+  {
+    "id": "queue-1789149501025-f1ely",
+    "company": "Stripe",
+    "position": "Senior Backend Engineer",
+    "period": "2023-01 — Present",
+    "facts": [
+      "Led migration of payment intent worker pool to Node.js 20.",
+      "Reduced transaction latency by 18ms."
+    ],
+    "skills": [
+      "Node.js",
+      "Redis",
+      "Distributed Systems"
+    ],
+    "source": "guided_interview",
+    "provenance": {},
+    "status": "pending",
+    "conflictDetails": null,
+    "createdAt": "2026-09-11T17:58:21.025Z"
+  }
+]
