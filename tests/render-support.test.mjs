@@ -8,6 +8,7 @@ import {
   findExecutableOnPath,
   resolveBrowserExecutable,
 } from "../lib/render/browser.mjs";
+import { ensureOutputDirectory } from "../lib/render/output-directory.mjs";
 
 test("render arguments preserve the positional theme and output directory", () => {
   assert.deepEqual(
@@ -68,5 +69,25 @@ test("PATH lookup ignores files that are not executable", async () => {
       platform: "darwin",
     }),
     null
+  );
+});
+
+test("render output directory errors include the target path and preserve the cause", async () => {
+  const cause = Object.assign(new Error("permission denied"), {
+    code: "EACCES",
+  });
+  await assert.rejects(
+    () =>
+      ensureOutputDirectory("/protected/output", {
+        mkdir: async () => {
+          throw cause;
+        },
+      }),
+    (error) => {
+      assert.match(error.message, /\/protected\/output/u);
+      assert.match(error.message, /permission denied/u);
+      assert.equal(error.cause, cause);
+      return true;
+    }
   );
 });
