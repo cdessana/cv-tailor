@@ -382,6 +382,154 @@ test("Ollama splits a multi-block batch after schema corrections are exhausted",
   assert.equal(extraction.items.length, 2);
 });
 
+test("Ollama corrects only invalid blocks and never requests accepted blocks again", async () => {
+  const document = preprocessJobDescription(
+    [
+      "Requirements",
+      "- Requirement alpha",
+      "- Requirement beta",
+      "- Requirement gamma",
+    ].join("\n")
+  );
+  const requested = [];
+  const provider = createOllamaProvider({
+    batchSize: 3,
+    maxAttempts: 1,
+    maxCorrections: 1,
+    logger: {},
+    chat: async (request) => {
+      const marker = "SOURCE BLOCKS: ";
+      const prompt = request.messages[1].content;
+      const blocks = JSON.parse(
+        prompt.slice(prompt.indexOf(marker) + marker.length)
+      );
+      requested.push(blocks.map((block) => block.id));
+      const results = blocks.map((block) => blockResult(block));
+      if (requested.length === 1) {
+        results[1].items[0].value = "Invented requirement";
+      }
+      return {
+        message: {
+          content: JSON.stringify({
+            blocks: blocks.map((block, index) =>
+              wireBlock(block.id, results[index])
+            ),
+          }),
+        },
+      };
+    },
+  });
+
+  const extraction = await provider({ ...document, unresolved: [] });
+
+  assert.deepEqual(
+    requested.map((ids) => ids.length),
+    [3, 1]
+  );
+  assert.equal(requested[1][0], requested[0][1]);
+  assert.equal(extraction.items.length, 3);
+  assert.deepEqual(
+    extraction.items.map((item) => item.value),
+    ["Requirement alpha", "Requirement beta", "Requirement gamma"]
+  );
+});
+
+test("Ollama localizes wire translation failures to the malformed block", async () => {
+  const document = preprocessJobDescription(
+    [
+      "Requirements",
+      "- Requirement alpha",
+      "- Requirement beta",
+      "- Requirement gamma",
+    ].join("\n")
+  );
+  const requested = [];
+  const provider = createOllamaProvider({
+    batchSize: 3,
+    maxAttempts: 1,
+    maxCorrections: 1,
+    logger: {},
+    chat: async (request) => {
+      const marker = "SOURCE BLOCKS: ";
+      const prompt = request.messages[1].content;
+      const blocks = JSON.parse(
+        prompt.slice(prompt.indexOf(marker) + marker.length)
+      );
+      requested.push(blocks.map((block) => block.id));
+      const results = blocks.map((block) =>
+        wireBlock(block.id, blockResult(block))
+      );
+      if (requested.length === 1) delete results[1].records[0].examples;
+      return {
+        message: { content: JSON.stringify({ blocks: results }) },
+      };
+    },
+  });
+
+  const extraction = await provider({ ...document, unresolved: [] });
+
+  assert.deepEqual(
+    requested.map((ids) => ids.length),
+    [3, 1]
+  );
+  assert.equal(requested[1][0], requested[0][1]);
+  assert.equal(extraction.items.length, 3);
+});
+
+test("Ollama splits only invalid blocks after targeted correction is exhausted", async () => {
+  const document = preprocessJobDescription(
+    [
+      "Requirements",
+      "- Requirement alpha",
+      "- Requirement beta",
+      "- Requirement gamma",
+    ].join("\n")
+  );
+  const requested = [];
+  const provider = createOllamaProvider({
+    batchSize: 3,
+    maxAttempts: 1,
+    maxCorrections: 1,
+    logger: {},
+    chat: async (request) => {
+      const marker = "SOURCE BLOCKS: ";
+      const prompt = request.messages[1].content;
+      const blocks = JSON.parse(
+        prompt.slice(prompt.indexOf(marker) + marker.length)
+      );
+      requested.push(blocks.map((block) => block.id));
+      const results = blocks.map((block) => blockResult(block));
+      if (blocks.length > 1) {
+        const start = requested.length === 1 ? 1 : 0;
+        for (let index = start; index < results.length; index += 1)
+          results[index].items[0].value = `Invented ${index}`;
+      }
+      return {
+        message: {
+          content: JSON.stringify({
+            blocks: blocks.map((block, index) =>
+              wireBlock(block.id, results[index])
+            ),
+          }),
+        },
+      };
+    },
+  });
+
+  const extraction = await provider({ ...document, unresolved: [] });
+
+  assert.deepEqual(
+    requested.map((ids) => ids.length),
+    [3, 2, 1, 1]
+  );
+  assert.equal(
+    requested.slice(1).flat().includes(requested[0][0]),
+    false,
+    "the accepted block must not be corrected or split"
+  );
+  assert.equal(extraction.items.length, 3);
+});
+
 test("Ollama treats an undefined response as correctable and retries", async () => {
   const document = preprocessJobDescription(
     "Requirements\n- Modern cloud experience"
