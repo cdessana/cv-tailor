@@ -366,6 +366,22 @@ export async function runJobParser({
   try {
     console.info(`[job-parser] Writing validated output: ${output}`);
     await writeAtomically(output, mapped.job);
+    await writeAtomically(`${output}.report.json`, {
+      version: 1,
+      input,
+      output,
+      provider: providerInfo,
+      batches: extraction.providerReport ?? null,
+      counts: {
+        items: extraction.items?.length ?? 0,
+        alternatives: extraction.alternatives?.length ?? 0,
+        responsibilities: extraction.responsibilities?.length ?? 0,
+        skills: extraction.skills?.length ?? 0,
+        coverage: extraction.coverage?.length ?? 0,
+      },
+      warnings: mapped.warnings?.length ?? 0,
+      completedAt: new Date().toISOString(),
+    });
   } catch (error) {
     throw new Error(
       `OUTPUT_ERROR: Could not write ${output}: ${error.message}`,

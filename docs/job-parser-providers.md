@@ -84,6 +84,14 @@ parser does not publish a partial `jobs.json`. The final document is assembled i
 source order only after every block has been accepted; an invalid singleton
 fails the run with no final output.
 
+For long-running Ollama parses, pass `--checkpoint <path>` to persist accepted
+blocks and confirmed metadata after each batch. A subsequent run resumes only
+when the input, provider, model, and relevant batching configuration match the
+checkpoint; stale or corrupt checkpoints are ignored. Checkpoints are written
+atomically and removed after a successful final output. Delete the checkpoint
+manually to force a clean run. Checkpoint files may contain job-description
+text and extracted values, so keep them protected like other parser artifacts.
+
 Gemini sends the source job description to Google's Gemini service. Ollama keeps
 processing local only when its URL points to a service running on infrastructure
 you control. Never select a remote Ollama-compatible endpoint under the
