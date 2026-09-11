@@ -51,6 +51,7 @@ const JobParserProviderOptionsSchema = z.object({
 
 const JobParserOllamaSchema = JobParserProviderOptionsSchema.extend({
   model: z.string().min(1).default("granite4.2:3b-q4_K_S"),
+  contextSize: z.number().int().positive().default(16384),
   url: z
     .string()
     .url("jobParser.providers.ollama.url must be a valid URL")
@@ -78,7 +79,7 @@ export const ConfigSchema = z.object({
 
   jobParser: z
     .object({
-      semanticProvider: z.enum(["gemini", "ollama", "none"]).default("gemini"),
+      semanticProvider: z.enum(["gemini", "ollama", "none"]).default("none"),
       providers: z
         .object({
           gemini: JobParserGeminiSchema,
@@ -91,6 +92,7 @@ export const ConfigSchema = z.object({
   render: z
     .object({
       theme: z.string().default("jsonresume-theme-stackoverflow"),
+      browserExecutable: z.string().min(1).optional(),
     })
     .default({}),
 
