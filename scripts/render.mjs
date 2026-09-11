@@ -7,6 +7,7 @@ import { pdf as renderPdf } from "resumed";
 import puppeteer from "puppeteer";
 import { parseRenderArguments } from "../lib/render/arguments.mjs";
 import { resolveBrowserExecutable } from "../lib/render/browser.mjs";
+import { ensureOutputDirectory } from "../lib/render/output-directory.mjs";
 
 const config = loadConfig();
 let parsedArguments;
@@ -36,7 +37,7 @@ const outputDir = outputDirectoryArg
   ? path.resolve(outputDirectoryArg)
   : path.dirname(resumePath);
 
-await fs.mkdir(outputDir, { recursive: true });
+await ensureOutputDirectory(outputDir);
 
 const htmlPath = path.join(outputDir, "resume.html");
 
