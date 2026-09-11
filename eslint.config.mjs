@@ -20,7 +20,22 @@ export default [
     },
   },
   {
-    ignores: ["node_modules/", "output/"],
+    files: ["public/**/*.js"],
+    languageOptions: {
+      ecmaVersion: 2024,
+      sourceType: "module",
+      globals: {
+        ...globals.browser,
+        lucide: "readonly",
+      },
+    },
+    rules: {
+      "no-console": "off",
+      "no-unused-vars": "warn",
+    },
+  },
+  {
+    ignores: ["node_modules/", "output/", "dist/"],
   },
   prettierConfig,
 ];

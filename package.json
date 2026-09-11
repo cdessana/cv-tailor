@@ -4,6 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "build": "echo 'Build completed successfully'",
+    "start": "node server.mjs",
+    "dev": "node server.mjs",
     "lint": "eslint .",
     "doctor": "node scripts/doctor.mjs",
     "test:llm": "node --test test/llm-adapter.test.mjs",
@@ -45,6 +48,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",
     "@google/generative-ai": "^0.24.1",
+    "express": "^5.2.1",
     "jsonresume-theme-modern-plain": "^1.4.6",
     "jsonresume-theme-stackoverflow": "^3.3.0",
     "ollama": "^0.6.3",

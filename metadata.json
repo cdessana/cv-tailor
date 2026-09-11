@@ -1,0 +1,6 @@
+{
+  "name": "CV Tailor",
+  "description": "Local web UI for CV Tailor - a local-first resume tailoring pipeline adapting structured resumes to job descriptions with factual accuracy",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
