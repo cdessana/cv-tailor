@@ -154,6 +154,86 @@ test("preserves a safely representable signaled bullet when a provider excludes 
   assert.equal(contract.inspect(copy).length, 0);
 });
 
+test("preserves a qualified explicit choice as an alternative", () => {
+  const document = preprocess(
+    "Required Qualifications\n• Strong experience in software or systems development using Rust or C/C++;"
+  );
+  const choiceContract = createBlockContract(document);
+  const [block] = choiceContract.blocks;
+  const response = {
+    blocks: {
+      [block.id]: {
+        ...empty(),
+        status: "excluded",
+        reason: "No relevant information found",
+      },
+    },
+  };
+
+  choiceContract.reconcile(response);
+
+  assert.deepEqual(response.blocks[block.id], {
+    ...empty(),
+    status: "extracted",
+    alternatives: [
+      {
+        type: "alternative",
+        operator: "anyOf",
+        values: ["Rust", "C/C++"],
+        kind: "requirement",
+        classification: "required",
+        evidence: {
+          quote:
+            "• Strong experience in software or systems development using Rust or C/C++;",
+        },
+        sourceSection: "Required Qualifications",
+      },
+    ],
+  });
+  assert.equal(choiceContract.inspect(response).length, 0);
+  const extraction = choiceContract.assemble(response);
+  assert.deepEqual(extraction.items[0].values, ["Rust", "C/C++"]);
+});
+
+test("preserves a qualified explicit list choice as an alternative", () => {
+  const document = preprocess(
+    "Required Qualifications\n• Experience or solid understanding of low-level programming, systems development, or high-performance applications;"
+  );
+  const listContract = createBlockContract(document);
+  const [block] = listContract.blocks;
+  const response = {
+    blocks: {
+      [block.id]: {
+        ...empty(),
+        status: "excluded",
+        reason: "No relevant information found",
+      },
+    },
+  };
+
+  listContract.reconcile(response);
+
+  assert.deepEqual(response.blocks[block.id].alternatives[0].values, [
+    "low-level programming",
+    "systems development",
+    "high-performance applications",
+  ]);
+  assert.equal(listContract.inspect(response).length, 0);
+});
+
+test("preserves longer qualified technology lists as alternatives", () => {
+  const document = preprocess(
+    "Preferred Qualifications\n• Knowledge or experience with Nginx, OpenResty, Caddy, Envoy, or similar HTTP proxy/cache technologies;"
+  );
+  const listContract = createBlockContract(document);
+  const [block] = listContract.blocks;
+  const response = { blocks: { [block.id]: { ...empty(), status: "excluded", reason: "No relevant information found" } } };
+  listContract.reconcile(response);
+  assert.deepEqual(response.blocks[block.id].alternatives[0].values, [
+    "Nginx", "OpenResty", "Caddy", "Envoy", "similar HTTP proxy/cache technologies",
+  ]);
+});
+
 test("metadata-only and extracted blocks assemble without model references or indexes", async () => {
   const before = structuredClone(valid);
   const extraction = contract.assemble(valid);
