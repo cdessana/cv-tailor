@@ -692,6 +692,8 @@ Job-parser-specific variables take precedence over the shared Ollama variables.
 Recognized qualification and responsibility headings also protect complete
 bullets from silent model exclusion; this bounded fallback is accepted only
 after the normal local schema, semantic, and source-evidence checks pass.
+During Ollama recovery, valid blocks are retained and only invalid blocks are
+corrected or subdivided. Partial work is never published as a final job file.
 
 ---
 
