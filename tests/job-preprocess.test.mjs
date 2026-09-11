@@ -61,7 +61,8 @@ test("splits only a long paragraph at sentence boundaries outside parentheses", 
   assert.equal(units[0].originalText, `${first}.`);
   assert.equal(units[1].originalText, protectedSentence);
   assert.equal(units[2].originalText, `${final}.`);
-  for (const unit of units) assert.equal(source.slice(unit.start, unit.end), unit.originalText);
+  for (const unit of units)
+    assert.equal(source.slice(unit.start, unit.end), unit.originalText);
 });
 
 test("normalizes mixed endings and horizontal whitespace without losing paragraphs", () => {
@@ -160,23 +161,83 @@ for (const [signal, headings] of Object.entries(portugueseGroups)) {
   for (const heading of headings) {
     test(`detects Portuguese heading ${heading}`, () => {
       for (const suffix of ["", ":", "?", "!", " -"]) {
-      const result = preprocess(`${heading.toUpperCase()}${suffix}\n- Source statement`);
-      assert.equal(result.sections[0].signal, signal);
-      assert.equal(result.sections[0].heading.text, heading.toUpperCase());
-      assert.equal(result.sections[0].units[0].text, "Source statement");
-      checkRanges(result);
+        const result = preprocess(
+          `${heading.toUpperCase()}${suffix}\n- Source statement`
+        );
+        assert.equal(result.sections[0].signal, signal);
+        assert.equal(result.sections[0].heading.text, heading.toUpperCase());
+        assert.equal(result.sections[0].units[0].text, "Source statement");
+        checkRanges(result);
       }
     });
   }
 }
 
 test("Portuguese headings preserve accents and tolerate dash punctuation", () => {
-  const input = "Requisitos obrigatórios -\n- Java\nSerá um diferencial:\n- Azure";
+  const input =
+    "Requisitos obrigatórios -\n- Java\nSerá um diferencial:\n- Azure";
   const result = preprocess(input);
-  assert.deepEqual(result.sections.map(({ signal }) => signal), ["required", "preferred"]);
+  assert.deepEqual(
+    result.sections.map(({ signal }) => signal),
+    ["required", "preferred"]
+  );
   assert.equal(result.sections[0].heading.text, "Requisitos obrigatórios");
   assert.equal(result.sections[1].heading.text, "Será um diferencial");
   checkRanges(result);
+});
+
+test("recognizes exact unmarked headings and ends candidate sections at context", () => {
+  const input = [
+    "JOB DESCRIPTION:",
+    "What You’ll Own",
+    "• Build reliable services.",
+    "What You'll Bring",
+    "• Experience with distributed systems.",
+    "It's a bonus if you have",
+    "• Payments experience.",
+    "About The Team",
+    "We build global products.",
+  ].join("\n");
+  const result = preprocess(input);
+
+  assert.deepEqual(
+    result.sections.map(({ heading, signal, role }) => ({
+      heading: heading?.text,
+      signal,
+      role,
+    })),
+    [
+      { heading: "JOB DESCRIPTION", signal: null, role: "unknown" },
+      {
+        heading: "What You’ll Own",
+        signal: "responsibilities",
+        role: "candidate-content",
+      },
+      {
+        heading: "What You'll Bring",
+        signal: "required",
+        role: "candidate-content",
+      },
+      {
+        heading: "It's a bonus if you have",
+        signal: "preferred",
+        role: "candidate-content",
+      },
+      { heading: "About The Team", signal: null, role: "context" },
+    ]
+  );
+  assert.equal(
+    result.sections.at(-1).units[0].text,
+    "We build global products."
+  );
+  checkRanges(result);
+});
+
+test("does not interpret an unknown short unmarked line as a heading", () => {
+  const result = preprocess("Requirements\nA curious engineer\n- Node.js");
+  assert.equal(result.sections.length, 1);
+  assert.equal(result.sections[0].units[0].text, "A curious engineer");
+  assert.equal(result.sections[0].signal, "required");
 });
 
 test("unknown headings end prior signals and retain original heading text", () => {
