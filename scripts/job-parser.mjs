@@ -25,6 +25,7 @@ export function parseArguments(argv) {
   let input;
   let output;
   let semanticProviderName;
+  let checkpoint;
   const positional = [];
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -32,6 +33,7 @@ export function parseArguments(argv) {
       argument === "--input" ||
       argument === "--output" ||
       argument === "--semantic-provider"
+      || argument === "--checkpoint"
     ) {
       if (index + 1 >= argv.length || argv[index + 1].startsWith("--")) {
         throw new Error(`${argument} requires a value.`);
@@ -43,6 +45,11 @@ export function parseArguments(argv) {
         if (output) throw new Error("--output may be provided only once.");
         output = argv[++index];
       } else {
+        if (argument === "--checkpoint") {
+          if (checkpoint) throw new Error("--checkpoint may be provided only once.");
+          checkpoint = argv[++index];
+          continue;
+        }
         if (semanticProviderName)
           throw new Error("--semantic-provider may be provided only once.");
         semanticProviderName = argv[++index];
@@ -68,6 +75,7 @@ export function parseArguments(argv) {
     input,
     output,
     ...(semanticProviderName ? { semanticProviderName } : {}),
+    ...(checkpoint ? { checkpoint } : {}),
   };
 }
 
@@ -177,6 +185,7 @@ export async function runJobParser({
   output,
   semanticProvider,
   semanticProviderName,
+  checkpoint,
   config,
   env = process.env,
 } = {}) {
@@ -219,6 +228,7 @@ export async function runJobParser({
         const selectedName = resolveSemanticProviderName({
           cli: semanticProviderName,
           env,
+          ...(checkpoint ? { checkpointPath: checkpoint } : {}),
           config,
         });
         providerInfo = {
