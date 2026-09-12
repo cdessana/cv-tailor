@@ -28,6 +28,15 @@ test("consolidates only exact same-section records and remaps coverage", () => {
   assert.equal(extraction.items.length, 2);
 });
 
+test("preserves non-enumerable provider metrics", () => {
+  const document = preprocess("Requirements\n- Node.js");
+  const [unit] = document.sections[0].units;
+  const extraction = { items: [item("Node.js", "Node.js", [unit.id])], coverage: [{ unitId: unit.id, status: "extracted", itemIndices: [0] }] };
+  Object.defineProperty(extraction, "providerReport", { value: { completed: 2 }, enumerable: false });
+  const result = consolidateExtraction(document, extraction);
+  assert.deepEqual(result.providerReport, { completed: 2 });
+});
+
 test("does not merge similar values, different evidence, or records across sections", () => {
   const document = preprocess("Requirements\n- Java experience\n\nPreferred Qualifications\n- Java experience\n- 4 years of Java experience");
   const [required] = document.sections[0].units;
