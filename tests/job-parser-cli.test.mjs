@@ -73,6 +73,7 @@ test("programmatic parser calls default the output path", async () => {
     const result = await runJobParser({ input });
     assert.equal(result.output, path.join("data", "jobs", "job.json"));
     await fs.access(result.output);
+    await fs.access(`${result.output}.report.json`);
   } finally {
     process.chdir(previous);
   }
