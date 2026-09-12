@@ -135,6 +135,7 @@ const portugueseGroups = {
     "Qualificações obrigatórias",
     "O que esperamos de você",
     "Conhecimentos necessários",
+    "O que procuramos",
   ],
   preferred: [
     "Será um diferencial",
