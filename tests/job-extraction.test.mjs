@@ -63,6 +63,10 @@ for (const [text, values] of [
   ["Nice to have: AWS, GCP, or Azure", ["AWS", "GCP", "Azure"]],
   ["Required: Java or Kotlin", ["Java", "Kotlin"]],
   ["Preferred: nodejs or k8s", ["nodejs", "k8s"]],
+  [
+    "Preferred Qualifications\n- Experiência em ambientes ágeis ou transformação digital",
+    ["Experiência em ambientes ágeis", "transformação digital"],
+  ],
 ]) {
   test(`alternative ${text}`, () => {
     const { extraction } = extract(preprocess(text));
@@ -336,8 +340,11 @@ test("extracts BairesDev Portuguese candidate sections", () => {
   assert.deepEqual(result.extraction.items.map(({ kind, classification, value }) => ({ kind, classification, value })), [
     { kind: "responsibility", classification: "not-applicable", value: "Projetar aplicações .NET." },
     { kind: "requirement", classification: "required", value: "3+ anos de experiência em desenvolvimento .NET." },
+    { kind: "requirement", classification: "required", value: undefined },
   ]);
-  assert.equal(result.unresolved.length, 1);
+  assert.equal(result.extraction.items[2].type, "alternative");
+  assert.deepEqual(result.extraction.items[2].values, ["Experiência com ASP.NET", ".NET Core."]);
+  assert.equal(result.unresolved.length, 0);
 });
 
 test("extracts bullets from structured qualification headings while retaining complex choices", () => {
@@ -684,4 +691,69 @@ test("handles flattened activity requirements and archive recruiting copy", () =
     ]
   );
   assert.equal(result.extraction.coverage.filter(({ status }) => status === "excluded").length, 5);
+});
+
+test("extracts Accenture-style Portuguese role and candidate sections", () => {
+  const result = extract(
+    preprocess(
+      [
+        "O que você vai fazer no seu dia a dia:",
+        "- Executar testes unitários e integrados.",
+        "",
+        "O que estamos procurando na pessoa que vai fazer parte do time:",
+        "- Domínio de Cobol, CICS, DB2, VSAM e JCL.",
+        "",
+        "Além disso, é desejável conhecimento:",
+        "- Experiência em ambientes ágeis ou transformação digital",
+        "",
+        "Benefícios:",
+        "- Assistência médica",
+      ].join("\n")
+    )
+  );
+  assert.equal(result.unresolved.length, 0);
+  assert.deepEqual(
+    result.extraction.items.map(({ type, kind, classification, value, values }) => ({
+      type,
+      kind,
+      classification,
+      value,
+      values,
+    })),
+    [
+      {
+        type: "item",
+        kind: "responsibility",
+        classification: "not-applicable",
+        value: "Executar testes unitários e integrados.",
+        values: undefined,
+      },
+      {
+        type: "item",
+        kind: "requirement",
+        classification: "required",
+        value: "Domínio de Cobol, CICS, DB2, VSAM e JCL.",
+        values: undefined,
+      },
+      {
+        type: "alternative",
+        kind: "requirement",
+        classification: "preferred",
+        value: undefined,
+        values: ["Experiência em ambientes ágeis", "transformação digital"],
+      },
+    ]
+  );
+  assert.equal(result.extraction.coverage.filter(({ status }) => status === "excluded").length, 1);
+});
+
+test("excludes archive separators joined to employer context", () => {
+  const result = extract(
+    preprocess(
+      "JOB POSTING ARCHIVE: ENGINEER\n\nJOB DESCRIPTION:\n--------------------------------------------------------------------------------\nSobre a Accenture"
+    )
+  );
+  assert.equal(result.unresolved.length, 0);
+  assert.equal(result.extraction.items.length, 0);
+  assert.equal(result.extraction.coverage.length, 2);
 });
