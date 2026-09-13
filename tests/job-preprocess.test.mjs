@@ -130,6 +130,7 @@ for (const [signal, headings] of Object.entries(groups)) {
 
 for (const heading of [
   "Why join Clara",
+  "Sobre a Accenture",
   "About Azion",
   "About The Job",
   "About Zerohash",
@@ -151,6 +152,7 @@ for (const heading of [
   "Segurança para o seu futuro",
   "Apoio à sua vida e à sua família",
   "Diversidade",
+  "Benefícios",
 ]) {
   test(`detects company context heading ${heading}`, () => {
     const result = preprocess(`${heading}\nCompany context`);
