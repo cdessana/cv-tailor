@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 import { preprocessJobDescription } from "../lib/job-parser/preprocess.mjs";
 import { createBlockContract } from "../lib/job-parser/providers/block-contract.mjs";
@@ -9,6 +12,11 @@ import {
   ollamaWireSchema,
   translateOllamaWireResponse,
 } from "../lib/job-parser/providers/ollama-wire-contract.mjs";
+import {
+  createCheckpoint,
+  executionIdentity,
+  writeCheckpoint,
+} from "../lib/job-parser/providers/checkpoint.mjs";
 
 function blockResult(block) {
   const quote = block.text.replace(/^-\s*/u, "");
@@ -123,6 +131,107 @@ test("Ollama preserves Portuguese alternatives across sequential batches", async
     ["Java", "Kotlin"]
   );
   assert.equal(extraction.coverage.length, 4);
+});
+
+test("Ollama resumes a compatible checkpoint without resending accepted blocks", async () => {
+  const document = preprocessJobDescription("Requirements\n- Node.js\n- PostgreSQL");
+  const blocks = createBlockContract(document).blocks;
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "ollama-checkpoint-"));
+  const checkpointPath = path.join(directory, "parse.checkpoint.json");
+  const options = {
+    timeoutMs: 120000,
+    contextSize: 16384,
+    maxPromptTokens: 10000,
+    responseTokenReserve: 4000,
+    batchSize: 1,
+    maxCorrections: 0,
+  };
+  const identity = executionIdentity({
+    inputText: document.normalizedText,
+    provider: "ollama",
+    model: "test-model",
+    options,
+  });
+  await writeCheckpoint(
+    checkpointPath,
+    createCheckpoint(identity, {
+      acceptedBlocks: { [blocks[0].id]: blockResult(blocks[0]) },
+      confirmedMetadata: {},
+      pendingIds: [blocks[1].id],
+    })
+  );
+  const calls = [];
+  const provider = createOllamaProvider({
+    model: "test-model",
+    batchSize: 1,
+    maxAttempts: 1,
+    maxCorrections: 0,
+    checkpointPath,
+    logger: {},
+    chat: async (request) => {
+      calls.push(request);
+      return {
+        message: {
+          content: JSON.stringify({
+            blocks: [wireBlock(blocks[1].id, blockResult(blocks[1]))],
+          }),
+        },
+      };
+    },
+  });
+  const extraction = await provider({ ...document, unresolved: [] });
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].messages[1].content, /PostgreSQL/u);
+  assert.doesNotMatch(calls[0].messages[1].content, /Node\.js/u);
+  assert.equal(extraction.coverage.length, 2);
+  await assert.rejects(fs.access(checkpointPath));
+  await fs.rm(directory, { recursive: true, force: true });
+});
+
+test("Ollama ignores an incompatible checkpoint", async () => {
+  const document = preprocessJobDescription("Requirements\n- Node.js");
+  const [block] = createBlockContract(document).blocks;
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "ollama-checkpoint-"));
+  const checkpointPath = path.join(directory, "parse.checkpoint.json");
+  await writeCheckpoint(
+    checkpointPath,
+    createCheckpoint(
+      executionIdentity({ inputText: "different job", provider: "ollama", model: "test-model" }),
+      { acceptedBlocks: { [block.id]: blockResult(block) } }
+    )
+  );
+  let calls = 0;
+  const provider = createOllamaProvider({
+    model: "test-model", maxAttempts: 1, maxCorrections: 0, checkpointPath, logger: {},
+    chat: async () => {
+      calls += 1;
+      return { message: { content: JSON.stringify({ blocks: [wireBlock(block.id, blockResult(block))] }) } };
+    },
+  });
+  await provider({ ...document, unresolved: [] });
+  assert.equal(calls, 1);
+  await fs.rm(directory, { recursive: true, force: true });
+});
+
+test("Ollama retains its checkpoint after a later batch fails", async () => {
+  const document = preprocessJobDescription("Requirements\n- Node.js\n- PostgreSQL");
+  const blocks = createBlockContract(document).blocks;
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "ollama-checkpoint-"));
+  const checkpointPath = path.join(directory, "parse.checkpoint.json");
+  let calls = 0;
+  const provider = createOllamaProvider({
+    model: "test-model", batchSize: 1, maxAttempts: 1, maxCorrections: 0, checkpointPath, logger: {},
+    chat: async () => {
+      calls += 1;
+      if (calls === 1)
+        return { message: { content: JSON.stringify({ blocks: [wireBlock(blocks[0].id, blockResult(blocks[0]))] }) } };
+      throw Object.assign(new Error("service unavailable"), { code: "ECONNREFUSED" });
+    },
+  });
+  await assert.rejects(provider({ ...document, unresolved: [] }));
+  const checkpoint = JSON.parse(await fs.readFile(checkpointPath, "utf8"));
+  assert.ok(checkpoint.acceptedBlocks[blocks[0].id]);
+  await fs.rm(directory, { recursive: true, force: true });
 });
 
 test("Ollama preserves a signaled bullet that the model silently excludes", async () => {
