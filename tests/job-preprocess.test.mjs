@@ -104,7 +104,7 @@ const groups = {
     "What You'll Need",
   ],
   preferred: ["Preferred Qualifications", "Nice to Have", "Bonus", "Desirable"],
-  responsibilities: ["Responsibilities", "What You'll Do", "Your Role"],
+  responsibilities: ["Responsibilities", "What You'll Do", "Your Role", "In this role, you will"],
 };
 for (const [signal, headings] of Object.entries(groups)) {
   for (const heading of headings) {
@@ -127,6 +127,45 @@ for (const [signal, headings] of Object.entries(groups)) {
     });
   }
 }
+
+for (const heading of [
+  "Why join Clara",
+  "About Azion",
+  "About The Job",
+  "About Zerohash",
+  "Benefits",
+  "The zerohash Culture",
+  "Follow us",
+  "See something suspicious",
+  "Offer Description",
+  "About The Position",
+  "What we believe in",
+  "What we offer",
+  "Clara's Hybrid Policy",
+  "Sobre o Bradesco",
+  "Sobre a área",
+  "Modelo de trabalho",
+  "O que você encontra aqui",
+  "Cuidar de você",
+  "Crescer com você",
+  "Segurança para o seu futuro",
+  "Apoio à sua vida e à sua família",
+  "Diversidade",
+]) {
+  test(`detects company context heading ${heading}`, () => {
+    const result = preprocess(`${heading}\nCompany context`);
+    assert.equal(result.sections[0].role, "context");
+    assert.equal(result.sections[0].signal, null);
+  });
+}
+
+test("recognizes conservative unmarked scraped section labels", () => {
+  const result = preprocess("Qualifications\n- Java\n\nBenefits and Perks\n- Health plan");
+  assert.deepEqual(result.sections.map(({ signal, role }) => ({ signal, role })), [
+    { signal: "required", role: "candidate-content" },
+    { signal: null, role: "context" },
+  ]);
+});
 
 const portugueseGroups = {
   required: [
@@ -411,4 +450,18 @@ test("long or punctuated colon-terminated prose stays content", () => {
   assert.equal(result.sections.length, 1);
   assert.equal(result.sections[0].units[0].type, "paragraph");
   assert.equal(result.sections[0].units[1].text, "Build APIs");
+});
+
+test("recognizes a known heading with presentation full-stop punctuation", () => {
+  const result = preprocess("Activities.\nProvide technical support");
+  assert.equal(result.sections.length, 1);
+  assert.equal(result.sections[0].heading.text, "Activities.");
+  assert.equal(result.sections[0].signal, "responsibilities");
+  assert.equal(result.sections[0].units[0].text, "Provide technical support");
+});
+
+test("recognizes an unmarked company about heading as context", () => {
+  const result = preprocess("About EXAMPLE DATA\nEmployer description");
+  assert.equal(result.sections[0].role, "context");
+  assert.equal(result.sections[0].signal, null);
 });

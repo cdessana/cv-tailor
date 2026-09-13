@@ -20,3 +20,7 @@ test("optional groups and preferred groups are valid", () => {
 test("plural organization wording is descriptive", () => {
   assert.throws(() => validateAlternativeSemantics({ ...group, context: "fast-moving organizations or companies" }), /Descriptive OR/);
 });
+
+test("partner-or-customer wording is descriptive", () => {
+  assert.throws(() => validateAlternativeSemantics({ ...group, context: "working directly with external partners or customers" }), /Descriptive OR/);
+});
