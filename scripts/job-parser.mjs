@@ -44,12 +44,10 @@ export function parseArguments(argv) {
       } else if (argument === "--output") {
         if (output) throw new Error("--output may be provided only once.");
         output = argv[++index];
+      } else if (argument === "--checkpoint") {
+        if (checkpoint) throw new Error("--checkpoint may be provided only once.");
+        checkpoint = argv[++index];
       } else {
-        if (argument === "--checkpoint") {
-          if (checkpoint) throw new Error("--checkpoint may be provided only once.");
-          checkpoint = argv[++index];
-          continue;
-        }
         if (semanticProviderName)
           throw new Error("--semantic-provider may be provided only once.");
         semanticProviderName = argv[++index];
