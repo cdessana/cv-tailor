@@ -148,10 +148,11 @@
         </div>
 
         <div class="flex items-center justify-between sm:justify-end gap-2 shrink-0 border-t md:border-t-0 pt-2.5 md:pt-0 border-slate-100 w-full md:w-auto">
-          <button id="btn-load-sample" class="text-xs text-slate-700 hover:text-slate-900 px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 font-semibold flex items-center gap-1.5 shadow-2xs whitespace-nowrap">
-            <i data-lucide="file-code" class="w-3.5 h-3.5 text-slate-500"></i>
-            <span>Load Sample Job</span>
+          <button id="btn-open-file" class="text-xs text-slate-700 hover:text-slate-900 px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 font-semibold flex items-center gap-1.5 shadow-2xs whitespace-nowrap">
+            <i data-lucide="folder-open" class="w-3.5 h-3.5 text-slate-500"></i>
+            <span>Open File</span>
           </button>
+          <input type="file" id="input-file-loader" class="hidden" accept=".json,.txt" />
           <button id="btn-reset-workspace" class="text-xs text-slate-500 hover:text-rose-600 px-2.5 py-1.5 rounded-lg hover:bg-rose-50 font-medium transition-colors whitespace-nowrap">
             Reset
           </button>
@@ -344,6 +345,19 @@
               <span>Add Competency Item</span>
             </button>
           </div>
+        </div>
+
+        <!-- Alternative Requirements Container (Option A) -->
+        <div id="alternative-requirements-section" class="hidden bg-slate-50 rounded-lg p-4 border border-slate-200 space-y-3 mt-4">
+          <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+            <span class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded bg-indigo-500"></span>
+              <span>Alternative Requirements / Choices (anyOf)</span>
+            </span>
+            <span id="count-req-alternatives" class="text-[11px] font-bold bg-white border border-slate-200 px-2 py-0.5 rounded-full text-slate-700">0</span>
+          </div>
+          <p class="text-[11px] text-slate-500">These requirements represent options where any of the choices satisfy the requirement. They are evaluated as alternatives by the matching engine.</p>
+          <div id="list-req-alternatives" class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1"></div>
         </div>
       </div>
 

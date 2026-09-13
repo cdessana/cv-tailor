@@ -297,28 +297,40 @@
       }
     });
 
-    // Load Sample Button
-    $("#btn-load-sample")?.addEventListener("click", async () => {
-      try {
-        const res = await fetch("/api/jobs/flash-senior-backend.json");
-        if (res.ok) {
-          const data = await res.json();
-          loadJobIntoReview(data.job, "data/jobs/flash-senior-backend.json");
+    // Open File Button (Option to load a local .json or .txt file)
+    const fileLoader = $("#input-file-loader");
+    $("#btn-open-file")?.addEventListener("click", () => {
+      fileLoader?.click();
+    });
+
+    fileLoader?.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target.result;
+        if (file.name.endsWith(".json")) {
+          try {
+            const parsed = JSON.parse(content);
+            const jobData = parsed.job || parsed; // support both envelope format and raw job format
+            loadJobIntoReview(jobData, file.name);
+            showToast(`Loaded parsed job from ${file.name}`);
+          } catch (err) {
+            alert(`Failed to parse JSON file: ${err.message}`);
+          }
         } else {
-          // Fill textarea with sample text
+          // It's a text file, put in Stage 1 raw description textarea
           if (rawTextarea) {
-            rawTextarea.value = getSampleJobText();
-            charCount.textContent = `${rawTextarea.value.length} characters`;
-            $("#input-target-company").value = "Flash";
+            rawTextarea.value = content;
+            charCount.textContent = `${content.length} characters`;
+            showToast(`Loaded raw job description from ${file.name}`);
           }
         }
-      } catch {
-        if (rawTextarea) {
-          rawTextarea.value = getSampleJobText();
-          charCount.textContent = `${rawTextarea.value.length} characters`;
-          $("#input-target-company").value = "Flash";
-        }
-      }
+      };
+      reader.readAsText(file);
+      // Reset value to allow uploading the same file again if needed
+      e.target.value = "";
     });
 
     // Select Existing Job from Dropdown
@@ -471,14 +483,73 @@
     const reqs = job.requirements.required || [];
     const prefs = job.requirements.preferred || [];
     const comps = job.requirements.competencies || [];
+    const alts = job.alternativeRequirements || [];
 
     if ($("#count-req-required")) $("#count-req-required").textContent = reqs.length;
     if ($("#count-req-preferred")) $("#count-req-preferred").textContent = prefs.length;
     if ($("#count-req-competencies")) $("#count-req-competencies").textContent = comps.length;
+    if ($("#count-req-alternatives")) $("#count-req-alternatives").textContent = alts.length;
+
+    const altSection = $("#alternative-requirements-section");
+    if (altSection) {
+      if (alts.length > 0) {
+        altSection.classList.remove("hidden");
+      } else {
+        altSection.classList.add("hidden");
+      }
+    }
 
     renderRequirementList($("#list-req-required"), reqs, "required");
     renderRequirementList($("#list-req-preferred"), prefs, "preferred");
     renderRequirementList($("#list-req-competencies"), comps, "competencies");
+    renderAlternativesList($("#list-req-alternatives"), alts);
+  }
+
+  function renderAlternativesList(container, items) {
+    if (!container) return;
+    container.innerHTML = "";
+    if (!items || !items.length) {
+      return;
+    }
+
+    items.forEach((item, index) => {
+      const optionsText = item.values.join(" OR ");
+      const row = document.createElement("div");
+      row.className = "bg-white p-3 rounded-lg border border-slate-200 text-xs text-slate-800 flex flex-col justify-between gap-2 shadow-2xs hover:border-indigo-200 transition-colors";
+
+      row.innerHTML = `
+        <div class="space-y-1.5 flex-1">
+          <div class="flex items-center gap-1.5">
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-indigo-50 text-indigo-700 tracking-wider">Choice</span>
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-600 tracking-wider">${escapeHtml(item.classification)}</span>
+          </div>
+          <p class="font-bold text-slate-900 select-text text-sm">${escapeHtml(optionsText)}</p>
+          <p class="text-[11px] text-slate-400 italic font-normal leading-relaxed select-text">Context: "${escapeHtml(item.context)}"</p>
+        </div>
+        <div class="flex items-center justify-end gap-1 shrink-0 border-t border-slate-100 pt-2 mt-1">
+          <button class="btn-del-alt text-slate-400 hover:text-rose-600 p-1.5 rounded hover:bg-slate-50 text-[11px] font-semibold flex items-center gap-1" data-index="${index}" title="Remove alternative">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            <span>Remove Choice</span>
+          </button>
+        </div>
+      `;
+      container.appendChild(row);
+    });
+
+    // Delete handler
+    container.querySelectorAll(".btn-del-alt").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const target = e.currentTarget;
+        const idx = Number.parseInt(target.getAttribute("data-index"), 10);
+        state.currentJob.alternativeRequirements.splice(idx, 1);
+        renderRequirementsColumns();
+        if ($("#raw-job-json-textarea")) {
+          $("#raw-job-json-textarea").value = JSON.stringify(state.currentJob, null, 2);
+        }
+      });
+    });
+
+    if (window.lucide) lucide.createIcons();
   }
 
   function renderRequirementList(container, items, category) {
@@ -760,10 +831,12 @@
 
     // Guidance
     if (analysis.tailoring?.recommendedEmphasis?.length && $("#analysis-recommended-emphasis")) {
-      $("#analysis-recommended-emphasis").textContent = analysis.tailoring.recommendedEmphasis.join(", ");
+      const emphasisTerms = analysis.tailoring.recommendedEmphasis.map(x => typeof x === "string" ? x : x.term || "").filter(Boolean);
+      $("#analysis-recommended-emphasis").textContent = emphasisTerms.join(", ");
     }
     if (analysis.tailoring?.doNotAdd?.length && $("#analysis-guardrails")) {
-      $("#analysis-guardrails").textContent = `Prohibited non-evidenced claims: ${analysis.tailoring.doNotAdd.join(", ")}`;
+      const prohibitedTerms = analysis.tailoring.doNotAdd.map(x => typeof x === "string" ? x : x.term || "").filter(Boolean);
+      $("#analysis-guardrails").textContent = `Prohibited non-evidenced claims: ${prohibitedTerms.join(", ")}`;
     }
 
     if (window.lucide) lucide.createIcons();

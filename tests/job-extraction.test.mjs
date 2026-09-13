@@ -650,6 +650,35 @@ test("extracts action-led paragraphs in a known responsibilities section", () =>
   assert.equal(result.unresolved.length, 0);
 });
 
+test("extracts a clear competency mixed into activities without guessing tenure", () => {
+  const result = extract(
+    preprocess(
+      [
+        "Activities.",
+        "Validated collaboration and communication skills, being able to lead in a global environment",
+        "",
+        "Preferably we are looking for people with five or more years of experience.",
+      ].join("\n")
+    )
+  );
+  assert.equal(result.unresolved.length, 1);
+  assert.deepEqual(
+    result.extraction.items.map(({ value, kind, classification }) => ({
+      value,
+      kind,
+      classification,
+    })),
+    [
+      {
+        value: "Validated collaboration and communication skills, being able to lead in a global environment",
+        kind: "competency",
+        classification: "ambiguous",
+      },
+    ]
+  );
+  assert.equal(result.unresolved[0].unit.text, "Preferably we are looking for people with five or more years of experience.");
+});
+
 test("excludes application instructions misplaced below a qualification heading", () => {
   const result = extract(
     preprocess(
