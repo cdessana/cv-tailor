@@ -91,7 +91,8 @@ test("runs the full flow with an injected semantic provider and writes valid out
   const result = await runJobParser({
     input,
     output,
-    semanticProvider: ({ unresolved }) => ({
+    semanticProvider: ({ unresolved }) => {
+      const extraction = {
       metadata: {
         company: { value: "Example", evidence: { quote: "Example" } },
         title: { value: "Example role", evidence: { quote: "Example role" } },
@@ -106,11 +107,21 @@ test("runs the full flow with an injected semantic provider and writes valid out
           sourceSection: "Responsibilities",
         },
       ],
-      ...(unresolved.length ? {} : {}),
-    }),
+        ...(unresolved.length ? {} : {}),
+      };
+      Object.defineProperty(extraction, "providerReport", {
+        value: { completed: 1, corrections: 0 },
+        enumerable: false,
+      });
+      return extraction;
+    },
   });
   assert.equal(result.job.company, "Example");
   assert.deepEqual(JSON.parse(await fs.readFile(output, "utf8")), result.job);
+  assert.deepEqual(
+    JSON.parse(await fs.readFile(`${output}.report.json`, "utf8")).batches,
+    { completed: 1, corrections: 0 }
+  );
 });
 
 test("runs a fully deterministic raw JD without a semantic provider", async () => {
