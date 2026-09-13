@@ -92,6 +92,48 @@ test("flags silent exclusion of substantive content under a signaled heading", (
   );
 });
 
+test("permits exclusion of a generic section lead", () => {
+  const document = preprocess("Must haves\nWe're looking for someone who meets the minimum requirements to be considered for the role.");
+  const [block] = createBlockContract(document).blocks;
+  const response = { blocks: { [block.id]: { ...empty(), status: "excluded", reason: "Section introduction" } } };
+  assert.equal(createBlockContract(document).inspect(response).some(error => error.code === "suspicious_signaled_exclusion"), false);
+});
+
+test("permits exclusion of company hybrid-work policy context", () => {
+  const document = preprocess("Nice to haves\nClara is committed to hybrid work, combining remote flexibility with office collaboration.");
+  const [block] = createBlockContract(document).blocks;
+  const response = { blocks: { [block.id]: { ...empty(), status: "excluded", reason: "Company work policy" } } };
+  assert.equal(createBlockContract(document).inspect(response).some(error => error.code === "suspicious_signaled_exclusion"), false);
+});
+
+test("permits exclusion of a responsibilities section lead", () => {
+  const document = preprocess(
+    "Como será seu dia a dia\nComo Software Engineer III, você atuará na área de Cartões e suas principais atividades serão:"
+  );
+  const [block] = createBlockContract(document).blocks;
+  const response = {
+    blocks: { [block.id]: { ...empty(), status: "excluded", reason: "Section lead" } },
+  };
+  assert.deepEqual(createBlockContract(document).inspect(response), []);
+});
+
+test("preserves one-or-more qualifications as a complete requirement", () => {
+  const document = preprocess("Must haves\n- Strong proficiency in one or more backend languages (preferably Java)");
+  const [block] = createBlockContract(document).blocks;
+  const response = { blocks: { [block.id]: { ...empty(), status: "excluded", reason: "No requirement found" } } };
+  createBlockContract(document).reconcile(response);
+  assert.equal(response.blocks[block.id].items[0].value, "Strong proficiency in one or more backend languages (preferably Java)");
+});
+
+test("preserves e.g. lists as examples rather than alternatives", () => {
+  const value = "Exposure to integration platforms or connector frameworks (e.g. N8N, Zapier, or custom-built equivalents)";
+  const document = preprocess(`Must haves\n- ${value}`);
+  const [block] = createBlockContract(document).blocks;
+  const response = { blocks: { [block.id]: { ...empty(), status: "excluded", reason: "No requirement found" } } };
+  createBlockContract(document).reconcile(response);
+  assert.equal(response.blocks[block.id].items[0].value, value);
+});
+
 test("rejects provider records that contradict the enclosing section signal", () => {
   const copy = structuredClone(valid);
   copy.blocks[ai.id].items[0].classification = "preferred";

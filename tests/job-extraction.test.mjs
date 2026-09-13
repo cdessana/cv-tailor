@@ -33,7 +33,6 @@ for (const text of [
   "Experience with Node.js is required if available",
   "Node.js is required. Java is preferred.",
   "Requirements\n- You will mentor engineers",
-  "Responsibilities\n- Node.js is required",
   "Nice to have: AWS and GCP",
   "Required: AWS or (GCP and Azure)",
   "Required: AWS, GCP",
@@ -52,6 +51,13 @@ for (const text of [
     assert.deepEqual(result.unresolved[0].unit, doc.sections[0].units[0]);
   });
 }
+test("preserves the explicit high-confidence responsibilities section signal", () => {
+  const result = extract(preprocess("In this role, you will\n- Node.js is required"));
+  assert.equal(result.unresolved.length, 0);
+  assert.deepEqual(result.extraction.items.map(({ kind, classification, value }) => ({ kind, classification, value })), [
+    { kind: "responsibility", classification: "not-applicable", value: "Node.js is required" },
+  ]);
+});
 for (const [text, values] of [
   ["Experience with AWS or GCP is required", ["AWS", "GCP"]],
   ["Nice to have: AWS, GCP, or Azure", ["AWS", "GCP", "Azure"]],
@@ -228,6 +234,307 @@ test("does not treat prose under a skills heading as a keyword", () => {
   assert.equal(result.unresolved.length, 1);
 });
 
+test("extracts complete bullets from recognized candidate sections without a provider", () => {
+  const result = extract(
+    preprocess(
+      [
+        "In this role, you will",
+        "- Own the integration lifecycle for customers.",
+        "",
+        "Must haves",
+        "- Strong proficiency in one or more backend languages (preferably Java).",
+        "- Java or Kotlin",
+        "",
+        "Nice to haves",
+        "- Exposure to connector frameworks (e.g. N8N or Zapier).",
+      ].join("\n")
+    )
+  );
+  assert.equal(result.unresolved.length, 0);
+  assert.deepEqual(
+    result.extraction.items.map(({ type, kind, classification, value, values }) => ({
+      type,
+      kind,
+      classification,
+      value,
+      values,
+    })),
+    [
+      {
+        type: "item",
+        kind: "responsibility",
+        classification: "not-applicable",
+        value: "Own the integration lifecycle for customers.",
+        values: undefined,
+      },
+      {
+        type: "item",
+        kind: "requirement",
+        classification: "required",
+        value: "Strong proficiency in one or more backend languages (preferably Java).",
+        values: undefined,
+      },
+      {
+        type: "alternative",
+        kind: "requirement",
+        classification: "required",
+        value: undefined,
+        values: ["Java", "Kotlin"],
+      },
+      {
+        type: "item",
+        kind: "requirement",
+        classification: "preferred",
+        value: "Exposure to connector frameworks (e.g. N8N or Zapier).",
+        values: undefined,
+      },
+    ]
+  );
+});
+
+test("extracts Worldpay-style ownership, qualification, and bonus bullets", () => {
+  const document = preprocess(
+    [
+      "What You’ll Own",
+      "- Develop and maintain application code.",
+      "",
+      "What You’ll Bring",
+      "- Previous experience as a Software Developer.",
+      "- Experience with Java, C/C++, and/or Free Pascal.",
+      "",
+      "It’s a bonus if you have",
+      "- A proactive mindset.",
+    ].join("\n")
+  );
+  const result = extract(document);
+  assert.deepEqual(
+    result.extraction.items.map(({ kind, classification, value }) => ({ kind, classification, value })),
+    [
+      { kind: "responsibility", classification: "not-applicable", value: "Develop and maintain application code." },
+      { kind: "requirement", classification: "required", value: "Previous experience as a Software Developer." },
+      { kind: "requirement", classification: "preferred", value: "A proactive mindset." },
+    ]
+  );
+  assert.deepEqual(result.unresolved.map(({ unit }) => unit.text), [
+    "Experience with Java, C/C++, and/or Free Pascal.",
+  ]);
+});
+
+test("extracts BairesDev Portuguese candidate sections", () => {
+  const result = extract(
+    preprocess(
+      [
+        "O Que Você Fará",
+        "- Projetar aplicações .NET.",
+        "",
+        "O Que Procuramos",
+        "- 3+ anos de experiência em desenvolvimento .NET.",
+        "- Experiência com ASP.NET ou .NET Core.",
+      ].join("\n")
+    )
+  );
+  assert.deepEqual(result.extraction.items.map(({ kind, classification, value }) => ({ kind, classification, value })), [
+    { kind: "responsibility", classification: "not-applicable", value: "Projetar aplicações .NET." },
+    { kind: "requirement", classification: "required", value: "3+ anos de experiência em desenvolvimento .NET." },
+  ]);
+  assert.equal(result.unresolved.length, 1);
+});
+
+test("extracts bullets from structured qualification headings while retaining complex choices", () => {
+  const document = preprocess(
+    [
+      "Key Responsibilities",
+      "- Develop and maintain systems.",
+      "",
+      "Required Qualifications",
+      "- Understanding of networking concepts.",
+      "- Strong experience using Rust or C/C++.",
+      "",
+      "Preferred Qualifications",
+      "- Familiarity with Docker and Kubernetes.",
+    ].join("\n")
+  );
+  const result = extract(document);
+  assert.deepEqual(
+    result.extraction.items.map(({ kind, classification, value }) => ({
+      kind,
+      classification,
+      value,
+    })),
+    [
+      {
+        kind: "responsibility",
+        classification: "not-applicable",
+        value: "Develop and maintain systems.",
+      },
+      {
+        kind: "requirement",
+        classification: "required",
+        value: "Understanding of networking concepts.",
+      },
+      {
+        kind: "requirement",
+        classification: "preferred",
+        value: "Familiarity with Docker and Kubernetes.",
+      },
+    ]
+  );
+  assert.deepEqual(result.unresolved.map(({ unit }) => unit.text), [
+    "Strong experience using Rust or C/C++.",
+  ]);
+});
+
+test("extracts nested job sections and excludes employer policy copy", () => {
+  const result = extract(
+    preprocess(
+      [
+        "Requirements Description",
+        "- Bachelor's degree in computer science.",
+        "",
+        "Your Responsibilities",
+        "- Write automated tests.",
+        "",
+        "Desired",
+        "- Python",
+        "",
+        "Soft Skills",
+        "- Solution oriented",
+        "",
+        "Foreign language",
+        "- English fluent",
+        "",
+        "Example is a leading global provider of research services.",
+        "Example maintains a zero tolerance policy for candidate fraud.",
+      ].join("\n")
+    )
+  );
+  assert.equal(result.unresolved.length, 0);
+  assert.deepEqual(
+    result.extraction.items.map(({ kind, classification, value }) => ({ kind, classification, value })),
+    [
+      { kind: "requirement", classification: "required", value: "Bachelor's degree in computer science." },
+      { kind: "responsibility", classification: "not-applicable", value: "Write automated tests." },
+      { kind: "requirement", classification: "preferred", value: "Python" },
+      { kind: "competency", classification: "ambiguous", value: "Solution oriented" },
+      { kind: "requirement", classification: "required", value: "English fluent" },
+    ]
+  );
+  assert.equal(result.extraction.coverage.filter(({ status }) => status === "excluded").length, 1);
+});
+
+test("excludes recognized context and non-qualification leads before provider fallback", () => {
+  const result = extract(
+    preprocess(
+      [
+        "Must haves",
+        "We're looking for someone who meets the minimum requirements to be considered for the role.",
+        "- Experience with Java.",
+        "",
+        "Nice to haves",
+        "Clara is committed to hybrid work, combining remote flexibility with office collaboration.",
+        "",
+        "What we offer",
+        "- Flexible schedule.",
+      ].join("\n")
+    )
+  );
+  assert.equal(result.unresolved.length, 0);
+  assert.equal(result.extraction.items.length, 1);
+  assert.equal(result.extraction.items[0].value, "Java");
+  assert.equal(result.extraction.coverage.length, 3);
+});
+
+test("leaves complex choices under high-confidence headings for semantic extraction", () => {
+  const document = preprocess(
+    "Must haves\n- Working proficiency in English and Spanish, or English and Portuguese"
+  );
+  const result = extract(document);
+  assert.deepEqual(result.extraction.items, []);
+  assert.equal(result.unresolved.length, 1);
+  assert.equal(result.unresolved[0].unit.id, document.sections[0].units[0].id);
+});
+
+test("extracts structured Portuguese sections and separates benefits from requirements", () => {
+  const result = extract(
+    preprocess(
+      [
+        "JOB POSTING ARCHIVE: ENGINEER",
+        "Company: Banco Example",
+        "Job Title: Pessoa Desenvolvedora",
+        "Workplace Type: On-site",
+        "",
+        "Como será seu dia a dia",
+        "- Implementar sistemas.",
+        "",
+        "Modelo de trabalho",
+        "Híbrido - 2x Presencial",
+        "",
+        "Requisitos",
+        "- Experiência com microsserviços.",
+        "- Linguagem de programação: Java.",
+        "",
+        "O que você encontra aqui",
+        "Cuidar de você",
+        "- Plano de saúde e odontológico",
+      ].join("\n")
+    )
+  );
+  assert.equal(result.unresolved.length, 0);
+  assert.deepEqual(
+    result.extraction.items.map(({ value, kind, classification }) => ({
+      value,
+      kind,
+      classification,
+    })),
+    [
+      {
+        value: "Implementar sistemas.",
+        kind: "responsibility",
+        classification: "not-applicable",
+      },
+      {
+        value: "Experiência com microsserviços.",
+        kind: "requirement",
+        classification: "required",
+      },
+      {
+        value: "Linguagem de programação: Java.",
+        kind: "requirement",
+        classification: "required",
+      },
+    ]
+  );
+  assert.equal(result.extraction.metadata.workArrangement.value, "On-site");
+  assert.deepEqual(result.extraction.metadata.workArrangement.candidates, [
+    {
+      value: "On-site",
+      evidence: { quote: "Workplace Type: On-site" },
+    },
+    {
+      value: "Híbrido - 2x Presencial",
+      evidence: { quote: "Híbrido - 2x Presencial" },
+      sourceSection: "Modelo de trabalho",
+    },
+  ]);
+  assert.equal(result.extraction.coverage.filter(({ status }) => status === "excluded").length, 1);
+});
+
+test("excludes a Portuguese responsibilities lead without suppressing its bullets", () => {
+  const result = extract(
+    preprocess(
+      [
+        "Como será seu dia a dia",
+        "Como Software Engineer III, você atuará na área de Cartões e suas principais atividades serão:",
+        "- Implementar sistemas.",
+      ].join("\n")
+    )
+  );
+  assert.equal(result.unresolved.length, 0);
+  assert.equal(result.extraction.items.length, 1);
+  assert.equal(result.extraction.items[0].kind, "responsibility");
+  assert.equal(result.extraction.coverage[0].status, "excluded");
+});
+
 test("excludes LinkedIn archive boilerplate deterministically", () => {
   const source = [
     "JOB POSTING ARCHIVE: ENGINEER",
@@ -306,4 +613,75 @@ test("reject alternatives collapsed by normalization without mutation", () => {
     /collapses alternative/
   );
   assert.deepEqual(result, before);
+});
+
+test("extracts action-led paragraphs in a known responsibilities section", () => {
+  const result = extract(
+    preprocess(
+      "Activities.\nProvide technical support to development teams\n\nGood knowledge of Unix"
+    )
+  );
+  assert.deepEqual(
+    result.extraction.items.map(({ kind, classification, value }) => ({
+      kind,
+      classification,
+      value,
+    })),
+    [
+      {
+        kind: "responsibility",
+        classification: "not-applicable",
+        value: "Provide technical support to development teams",
+      },
+      {
+        kind: "requirement",
+        classification: "required",
+        value: "Unix",
+      },
+    ]
+  );
+  assert.equal(result.unresolved.length, 0);
+});
+
+test("excludes application instructions misplaced below a qualification heading", () => {
+  const result = extract(
+    preprocess(
+      "Basic Qualifications\n- Experience with SQL\n\nIf you are interested, please send your resume.\n\nLic. Salvador Velasco."
+    )
+  );
+  assert.equal(result.unresolved.length, 0);
+  assert.equal(result.extraction.items.length, 1);
+  assert.equal(result.extraction.coverage.filter(({ status }) => status === "excluded").length, 2);
+});
+
+test("handles flattened activity requirements and archive recruiting copy", () => {
+  const result = extract(
+    preprocess(
+      [
+        "JOB POSTING ARCHIVE: ENGINEER",
+        "Req ID: 12345",
+        "Example strives to hire exceptional people who want to grow with us.",
+        "We are currently seeking an Engineer to join our team.",
+        "Location: Manaus",
+        "Activities.",
+        "Good knowledge of Unix, SQL and scripting languages",
+      ].join("\n\n")
+    )
+  );
+  assert.equal(result.unresolved.length, 0);
+  assert.deepEqual(
+    result.extraction.items.map(({ value, kind, classification }) => ({
+      value,
+      kind,
+      classification,
+    })),
+    [
+      {
+        value: "Unix, SQL and scripting languages",
+        kind: "requirement",
+        classification: "required",
+      },
+    ]
+  );
+  assert.equal(result.extraction.coverage.filter(({ status }) => status === "excluded").length, 5);
 });
