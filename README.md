@@ -262,6 +262,23 @@ It contains the stable version of:
 
 It should remain concise.
 
+### Import an existing resume
+
+Use the local resume parser to create a reviewable JSON Resume candidate from a
+plain-text or Markdown resume:
+
+```bash
+npm run resume:parse -- \
+  --input resume.md \
+  --output data/resumes/imported.json
+```
+
+The parser writes a separate `imported.json.report.json` file. Review that
+report before promoting the candidate to `base.json`; the parser never replaces
+the master resume automatically. Text-based PDFs are also supported when
+Poppler's `pdftotext` is installed. Scanned PDFs require OCR and are rejected
+instead of guessed.
+
 ### `evidence.json`
 
 The factual evidence database.

@@ -26,6 +26,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "validate": "node scripts/validate.mjs data/resumes/base.json",
+    "resume:parse": "node scripts/resume-parser.mjs",
     "base:html": "resumed render data/resumes/base.json --theme jsonresume-theme-stackoverflow --output output/resume.html",
     "base:pdf": "node scripts/render.mjs data/resumes/base.json --output-dir output",
     "flash:html": "resumed render output/flash/resume.json --theme jsonresume-theme-stackoverflow --output output/flash/resume.html",
