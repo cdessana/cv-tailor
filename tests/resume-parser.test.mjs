@@ -493,3 +493,101 @@ test("rejects a shared candidate and report output path", async () => {
     (error) => error.code === "RESUME_OUTPUT_PATH_CONFLICT"
   );
 });
+
+test("preserves metrics and cautious wording without inventing technologies", async () => {
+  const fixturePath = new URL("./fixtures/resume-parser/factual-resume.txt", import.meta.url);
+  const sourceText = await fs.readFile(fixturePath, "utf8");
+  const { resume, report } = parseResumeText(sourceText);
+  const serialized = JSON.stringify(resume);
+
+  assert.equal(report.status, "ready");
+  assert.equal(resume.basics.summary, "Contributed to reliable backend systems and measurable delivery improvements.");
+  assert.deepEqual(resume.work[0].highlights, ["Reduced API latency by 37% using Node.js and MongoDB."]);
+  assert.deepEqual(resume.work[1].highlights, ["Contributed to C# and gRPC services."]);
+  assert.equal(serialized.includes("37%"), true);
+  assert.equal(serialized.includes("Led"), false);
+  assert.equal(serialized.includes("Spring"), false);
+  assert.equal(serialized.includes("Kafka"), false);
+  assert.equal(serialized.includes("Kubernetes"), false);
+});
+
+test("keeps technologies and metrics attached to their source roles", async () => {
+  const fixturePath = new URL("./fixtures/resume-parser/factual-resume.txt", import.meta.url);
+  const { resume } = parseResumeText(await fs.readFile(fixturePath, "utf8"));
+  const firstRole = JSON.stringify(resume.work[0]);
+  const secondRole = JSON.stringify(resume.work[1]);
+
+  assert.equal(firstRole.includes("Node.js"), true);
+  assert.equal(firstRole.includes("MongoDB"), true);
+  assert.equal(firstRole.includes("C#"), false);
+  assert.equal(firstRole.includes("gRPC"), false);
+  assert.equal(secondRole.includes("C#"), true);
+  assert.equal(secondRole.includes("gRPC"), true);
+  assert.equal(secondRole.includes("Node.js"), false);
+  assert.equal(secondRole.includes("37%"), false);
+});
+
+test("does not infer a skills section from the candidate title or work entries", () => {
+  const { resume } = parseResumeText(`Jane Doe
+Java Developer
+Experience
+Example Corp | Java Developer | 2020 - 2022
+Maintained internal services.`);
+
+  assert.equal(resume.basics.label, "Java Developer");
+  assert.equal(resume.skills, undefined);
+  assert.equal(JSON.stringify(resume).includes("Spring"), false);
+});
+
+test("does not access a semantic provider or network during deterministic parsing", () => {
+  const originalFetch = globalThis.fetch;
+  let requested = false;
+  globalThis.fetch = () => {
+    requested = true;
+    throw new Error("network access is forbidden in resume parser tests");
+  };
+  try {
+    const { resume } = parseResumeText("Jane Doe\nSkills\nBackend: Node.js");
+    assert.deepEqual(resume.skills, [{ name: "Backend", keywords: ["Node.js"] }]);
+    assert.equal(requested, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("does not leave artifacts when the source format is unsupported", async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "resume-parser-"));
+  const input = path.join(directory, "resume.docx");
+  const output = path.join(directory, "candidate.json");
+  const report = `${output}.report.json`;
+  await fs.writeFile(input, "not a supported resume");
+
+  await assert.rejects(
+    runResumeParser(
+      { input, output },
+      { loadConfiguration: () => ({ paths: { baseResume: path.join(directory, "base.json") } }) }
+    ),
+    (error) => error.code === "RESUME_FORMAT_UNSUPPORTED"
+  );
+  await assert.rejects(fs.access(output));
+  await assert.rejects(fs.access(report));
+});
+
+test("does not leave artifacts when PDF text extraction fails", async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "resume-parser-"));
+  const output = path.join(directory, "candidate.json");
+  const report = `${output}.report.json`;
+
+  await assert.rejects(
+    runResumeParser(
+      { input: "broken.pdf", output },
+      {
+        loadConfiguration: () => ({ paths: { baseResume: path.join(directory, "base.json") } }),
+        readSource: () => readResumeSource("broken.pdf", { extractPdf: async () => { throw new Error("pdftotext failed"); } }),
+      }
+    ),
+    (error) => error.code === "RESUME_TEXT_EXTRACTION_FAILED"
+  );
+  await assert.rejects(fs.access(output));
+  await assert.rejects(fs.access(report));
+});

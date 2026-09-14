@@ -1,0 +1,17 @@
+Jane Doe
+Senior Software Engineer
+
+Professional Summary
+Contributed to reliable backend systems and measurable delivery improvements.
+
+Experience
+Example Corp | Backend Engineer | 2020 - 2021
+Reduced API latency by 37% using Node.js and MongoDB.
+Other Corp | Software Engineer | 2022 - Present
+Contributed to C# and gRPC services.
+
+Education
+Example University | Bachelor of Science | Computer Science | 2015 - 2019
+
+Skills
+Backend: Node.js, MongoDB, C#, gRPC
