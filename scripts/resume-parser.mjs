@@ -114,9 +114,14 @@ export async function runResumeParser(options, {
       throw new ResumeParserError("RESUME_REPORT_WRITE_FAILED", "Resume parsing failed and its diagnostic report could not be written.", { cause: error, details: { reportPath } });
     }
     const malformed = result.report.issues.some((issue) => issue.code === "malformed_resume_content");
+    const groundingFailed = result.report.issues.some((issue) => issue.kind === "grounding");
     throw new ResumeParserError(
-      malformed ? "RESUME_MALFORMED_INPUT" : "RESUME_VALIDATION_FAILED",
-      malformed ? "The source does not contain enough recognizable resume structure." : "Resume parsing produced an invalid JSON Resume candidate.",
+      malformed ? "RESUME_MALFORMED_INPUT" : groundingFailed ? "RESUME_GROUNDING_FAILED" : "RESUME_VALIDATION_FAILED",
+      malformed
+        ? "The source does not contain enough recognizable resume structure."
+        : groundingFailed
+          ? "Resume extraction produced values that are not grounded in the source document."
+          : "Resume parsing produced an invalid JSON Resume candidate.",
       { details: { reportPath, issues: result.report.issues } }
     );
   }
