@@ -124,6 +124,16 @@ test("writes a reviewable candidate without replacing base.json", async () => {
   assert.equal(JSON.parse(await fs.readFile(`${output}.report.json`, "utf8")).status, "ready");
 });
 
+test("refuses to overwrite the master resume and standardizes review issues", async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "resume-parser-"));
+  const input = path.join(directory, "resume.txt");
+  await fs.writeFile(input, resumeText);
+  await assert.rejects(runResumeParser({ input, output: path.resolve("data/resumes/base.json") }), /Refusing to overwrite/u);
+  const { report } = parseResumeText("Jane Doe\n## Experience\nUnclear role");
+  assert.equal(report.status, "review_required");
+  assert.equal(report.issues[0].severity, "warning");
+});
+
 test("requires explicit parser input and output options", () => {
   assert.throws(() => parseArguments(["--input", "resume.txt"]));
   assert.deepEqual(parseArguments(["--input", "resume.txt", "--output", "candidate.json"]), {
