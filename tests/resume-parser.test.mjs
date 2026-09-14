@@ -66,6 +66,26 @@ Other Corp
   assert.deepEqual(resume.work[0].highlights, ["Built APIs using Node.js."]);
 });
 
+test("extracts multi-line education and keeps certificates distinct from skills", () => {
+  const { resume, report } = parseResumeText(`Jane Doe
+## Education
+Master of Science in Computer Science
+Example University
+2020 - 2022
+## Certificates
+React Nanodegree — Udacity
+## Languages
+Portuguese: Native
+English — Fluent
+## Skills
+Backend: Node.js, PostgreSQL`);
+  assert.equal(report.status, "ready");
+  assert.deepEqual(resume.education[0], { institution: "Example University", studyType: "Master of Science in Computer Science", startDate: "2020", endDate: "2022" });
+  assert.deepEqual(resume.certificates, [{ name: "React Nanodegree", issuer: "Udacity" }]);
+  assert.deepEqual(resume.languages, [{ language: "Portuguese", fluency: "Native" }, { language: "English", fluency: "Fluent" }]);
+  assert.deepEqual(resume.skills, [{ name: "Backend", keywords: ["Node.js", "PostgreSQL"] }]);
+});
+
 test("reads Markdown locally and rejects scanned PDF text", async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "resume-parser-"));
   const input = path.join(directory, "resume.md");
