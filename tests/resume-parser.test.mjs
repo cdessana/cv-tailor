@@ -591,3 +591,48 @@ test("does not leave artifacts when PDF text extraction fails", async () => {
   await assert.rejects(fs.access(output));
   await assert.rejects(fs.access(report));
 });
+
+test("parses the minimum plain-text role format with an em dash", () => {
+  const { resume, report } = parseResumeText(`Jane Doe
+Experience
+Software Engineer — Example Corp
+2021 - 2024
+Developed services using Java.`);
+
+  assert.equal(report.status, "ready");
+  assert.deepEqual(resume.work, [{
+    name: "Example Corp",
+    position: "Software Engineer",
+    startDate: "2021",
+    endDate: "2024",
+    highlights: ["Developed services using Java."],
+  }]);
+  assert.equal(JSON.stringify(resume).includes("Spring"), false);
+});
+
+test("keeps an explicit undated work entry without inventing dates", () => {
+  const { resume, report } = parseResumeText(`Jane Doe
+Experience
+Software Engineer
+Example Corp
+Maintained internal services.`);
+
+  assert.deepEqual(resume.work, [{
+    name: "Example Corp",
+    position: "Software Engineer",
+    highlights: ["Maintained internal services."],
+  }]);
+  assert.equal(Object.hasOwn(resume.work[0], "startDate"), false);
+  assert.equal(Object.hasOwn(resume.work[0], "endDate"), false);
+  assert.equal(report.issues.some(({ code }) => code === "missing_work_dates"), true);
+});
+
+test("does not convert certificate evidence into work experience or skills", () => {
+  const { resume } = parseResumeText(`Jane Doe
+Certificates
+React Nanodegree — Udacity`);
+
+  assert.deepEqual(resume.certificates, [{ name: "React Nanodegree", issuer: "Udacity" }]);
+  assert.equal(resume.work, undefined);
+  assert.equal(resume.skills, undefined);
+});
