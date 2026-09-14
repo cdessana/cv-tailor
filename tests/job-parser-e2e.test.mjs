@@ -81,7 +81,7 @@ test("unresolved and unrepresentable cases fail without accepted output", async 
   const directory = await tempDir();
   const input = path.join(directory, "raw.txt");
   const output = path.join(directory, "job.json");
-  await fs.writeFile(input, "Example is hiring a Senior Engineer\nRequirements\n- AWS or GCP", "utf8");
+  await fs.writeFile(input, "Example is hiring a Senior Engineer\nRequirements\n- AWS or GCP, Azure", "utf8");
   const result = await command([path.join(root, "scripts/job-parser.mjs"), input, "--output", output], directory);
   assert.notEqual(result.code, 0);
   assert.match(result.stderr, /SEMANTIC_ERROR|MAPPING_ERROR/);

@@ -16,16 +16,16 @@ async function run(text, response) {
 }
 
 test("accepts responsibilities, competencies, ambiguity, alternatives, and metadata", async () => {
-  const text = "Senior Engineer at Example\nResponsibilities\n- You will mentor engineers\nRequirements\n- Strong communication skills\n- Java or Kotlin";
+  const text = "Senior Engineer at Example\nCandidate profile\n- You will mentor engineers\n- Strong communication skills\n- Java or Kotlin";
   const response = {
     metadata: {
       company: { value: "Example", evidence: { quote: "at Example" } },
       title: { value: "Senior Engineer", evidence: { quote: "Senior Engineer" } },
     },
     items: [
-      { type: "item", value: "You will mentor engineers", kind: "responsibility", classification: "not-applicable", evidence: { quote: "You will mentor engineers" }, sourceSection: "Responsibilities" },
-      { type: "item", value: "Strong communication skills", kind: "competency", classification: "ambiguous", evidence: { quote: "Strong communication skills" }, sourceSection: "Requirements" },
-      { type: "alternative", operator: "anyOf", values: ["Java", "Kotlin"], kind: "skill", classification: "required", evidence: { quote: "Java or Kotlin" }, sourceSection: "Requirements" },
+      { type: "item", value: "You will mentor engineers", kind: "responsibility", classification: "not-applicable", evidence: { quote: "You will mentor engineers" }, sourceSection: "Candidate profile" },
+      { type: "item", value: "Strong communication skills", kind: "competency", classification: "ambiguous", evidence: { quote: "Strong communication skills" }, sourceSection: "Candidate profile" },
+      { type: "alternative", operator: "anyOf", values: ["Java", "Kotlin"], kind: "skill", classification: "required", evidence: { quote: "Java or Kotlin" }, sourceSection: "Candidate profile" },
     ],
   };
   const { result } = await run(text, response);
@@ -102,7 +102,7 @@ test("preserves conflicting metadata candidates and item ambiguity", async () =>
   const merged = await semanticExtract(document, { metadata: { company: { value: "Example", evidence: { quote: "Example" } } }, items: [] }, () => ({ metadata: { company: { value: "Other", evidence: { quote: "Other" } } }, items: [] }));
   assert.equal(merged.metadata.company.value, "Example");
   assert.deepEqual(merged.metadata.company.candidates.map(candidate => candidate.value), ["Example", "Other"]);
-  const { result } = await run("Requirements\n- Modern cloud experience", { items: [{ type: "item", value: "Modern cloud experience", kind: "ambiguous", classification: "ambiguous", evidence: { quote: "Modern cloud experience" } }] });
+  const { result } = await run("Candidate profile\n- Modern cloud experience", { items: [{ type: "item", value: "Modern cloud experience", kind: "ambiguous", classification: "ambiguous", evidence: { quote: "Modern cloud experience" } }] });
   assert.equal(result.items[0].classification, "ambiguous");
 });
 

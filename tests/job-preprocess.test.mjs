@@ -96,6 +96,18 @@ for (const marker of ["-", "*", "+", "•", "◦", "▪", "1.", "12)"]) {
   });
 }
 
+test("splits a compact heading and bullet without changing evidence offsets", () => {
+  const source = "Obrigatório \t •   Graduação em Computação";
+  const result = preprocess(source);
+  assert.equal(result.sections[0].heading.originalText, "Obrigatório");
+  assert.equal(
+    result.sections[0].units[0].originalText,
+    "•   Graduação em Computação"
+  );
+  assert.equal(result.sections[0].units[0].text, "Graduação em Computação");
+  checkRanges(result);
+});
+
 const groups = {
   required: [
     "Requirements",
