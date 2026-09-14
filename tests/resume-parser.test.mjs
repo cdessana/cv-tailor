@@ -6,6 +6,7 @@ import test from "node:test";
 import { parseResumeDocument, parseResumeText } from "../lib/resume-parser/parse.mjs";
 import { readResumeSource } from "../lib/resume-parser/read-source.mjs";
 import { parseArguments, runResumeParser } from "../scripts/resume-parser.mjs";
+import { extractedEntry, provenanceForEntry } from "../lib/resume-parser/extracted-entry.mjs";
 
 const resumeText = `# Jane Doe
 Senior Software Engineer
@@ -155,6 +156,13 @@ test("keeps a repeated skill attached to its later source line", () => {
   });
   const nodeSources = result.report.provenance.filter((entry) => entry.path.endsWith("/keywords/0"));
   assert.equal(nodeSources.at(-1).source.lineStart, 4);
+});
+
+test("keeps extracted values and parser provenance separate", () => {
+  const source = { page: 1, lineStart: 4, text: "Example Corp" };
+  const entry = extractedEntry({ name: "Example Corp" }, { name: source });
+  assert.deepEqual(entry.value, { name: "Example Corp" });
+  assert.deepEqual(provenanceForEntry("/work/0", entry.sources), [{ path: "/work/0/name", source }]);
 });
 
 test("requires explicit parser input and output options", () => {
