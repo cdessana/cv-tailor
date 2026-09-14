@@ -1,5 +1,5 @@
 Example is hiring a Senior Engineer
 
-Requirements
+Candidate profile
 - Experience with Node.js is required
 - Familiarity with cloud platforms is helpful

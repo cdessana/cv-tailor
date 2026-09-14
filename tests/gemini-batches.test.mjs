@@ -8,7 +8,9 @@ import { preprocessJobDescription as preprocess } from "../lib/job-parser/prepro
 import { validateCoverage } from "../lib/job-parser/coverage.mjs";
 import { runJobParser } from "../scripts/job-parser.mjs";
 
-const source="Company: Example\nPosition: Engineer\n\nRequirements\n"+Array.from({length:6},(_,i)=>`- Experience building service ${i}`).join("\n");
+// Keep the batching fixture outside a recognized candidate heading. These
+// tests exercise provider batching, not deterministic classification.
+const source="Company: Example\nPosition: Engineer\n\nCandidate profile:\n"+Array.from({length:6},(_,i)=>`- Experience building service ${i}`).join("\n");
 const input={...preprocess(source),unresolved:[]};
 const targets=body=>JSON.parse(body.contents[0].parts[0].text.split("SOURCE BLOCKS (ordered; each ID is adjacent to its original text):\n")[1]);
 

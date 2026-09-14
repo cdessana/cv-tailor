@@ -143,7 +143,7 @@ test("fails without a semantic provider and does not create output", async () =>
   const directory = await tempDir();
   const input = path.join(directory, "job.txt");
   const output = path.join(directory, "job.json");
-  await fs.writeFile(input, "Requirements\n- Modern cloud experience", "utf8");
+  await fs.writeFile(input, "Example is hiring a Senior Engineer\nCandidate profile\n- Modern cloud experience", "utf8");
   await assert.rejects(() => runJobParser({ input, output }), /SEMANTIC_ERROR/);
   await assert.rejects(() => fs.access(output));
 });
@@ -187,7 +187,7 @@ test("failed replacement preserves an existing output", async () => {
   const directory = await tempDir();
   const input = path.join(directory, "job.txt");
   const output = path.join(directory, "job.json");
-  await fs.writeFile(input, "Requirements\n- Modern cloud experience", "utf8");
+  await fs.writeFile(input, "Example is hiring a Senior Engineer\nCandidate profile\n- Modern cloud experience", "utf8");
   await fs.writeFile(output, '{"company":"Previous","title":"Job"}\n', "utf8");
   await assert.rejects(() => runJobParser({ input, output }), /SEMANTIC_ERROR/);
   assert.equal(

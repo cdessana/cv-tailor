@@ -251,7 +251,7 @@ test("none fails unresolved parsing without replacing an existing output", async
   );
   const input = path.join(directory, "job.txt");
   const output = path.join(directory, "job.json");
-  await fs.writeFile(input, "Requirements\n- Modern cloud experience", "utf8");
+  await fs.writeFile(input, "Example is hiring a Senior Engineer\nCandidate profile\n- Modern cloud experience", "utf8");
   await fs.writeFile(output, '{"company":"Previous","title":"Job"}\n', "utf8");
   const config = ConfigSchema.parse({
     jobParser: { semanticProvider: "none" },
@@ -275,7 +275,7 @@ test("debug audit records a disabled provider failure before accepted output", a
   );
   const input = path.join(directory, "job.txt");
   const output = path.join(directory, "job.json");
-  await fs.writeFile(input, "Requirements\n- Modern cloud experience", "utf8");
+  await fs.writeFile(input, "Example is hiring a Senior Engineer\nCandidate profile\n- Modern cloud experience", "utf8");
   const config = ConfigSchema.parse({
     jobParser: { semanticProvider: "none" },
   });
@@ -299,7 +299,7 @@ test("debug audit records provider misconfiguration without credentials", async 
   );
   const input = path.join(directory, "job.txt");
   const output = path.join(directory, "job.json");
-  await fs.writeFile(input, "Requirements\n- Modern cloud experience", "utf8");
+  await fs.writeFile(input, "Example is hiring a Senior Engineer\nCandidate profile\n- Modern cloud experience", "utf8");
   const config = ConfigSchema.parse({
     jobParser: { semanticProvider: "gemini" },
   });
@@ -327,7 +327,7 @@ test("configuration-file validation failures use the provider configuration cate
   );
   const input = path.join(directory, "job.txt");
   const output = path.join(directory, "job.json");
-  await fs.writeFile(input, "Requirements\n- Modern cloud experience", "utf8");
+  await fs.writeFile(input, "Example is hiring a Senior Engineer\nCandidate profile\n- Modern cloud experience", "utf8");
   await fs.writeFile(
     path.join(directory, "cv-tailor.config.json"),
     JSON.stringify({
