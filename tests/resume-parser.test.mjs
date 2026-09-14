@@ -10,6 +10,7 @@ import { extractedEntry, provenanceForEntry } from "../lib/resume-parser/extract
 import { extractEducationEntries } from "../lib/resume-parser/education.mjs";
 import { sectionLines } from "../lib/resume-parser/source-lines.mjs";
 import { extractBasicsEntry } from "../lib/resume-parser/basics.mjs";
+import { findEntryConflicts } from "../lib/resume-parser/conflicts.mjs";
 
 const resumeText = `# Jane Doe
 Senior Software Engineer
@@ -223,4 +224,17 @@ test("extracts basics with field-level sources", () => {
   assert.equal(entry.value.name, "Jane Doe");
   assert.equal(entry.sources.name, source);
   assert.equal(entry.sources.email.lineStart, 3);
+});
+
+test("reports structured conflict candidates with their sources", () => {
+  const sourceA = { page: 1, lineStart: 4 };
+  const sourceB = { page: 2, lineStart: 6 };
+  const entries = [
+    { value: { name: "Example Corp", position: "Engineer", startDate: "2020", endDate: "2021" }, sources: { startDate: sourceA } },
+    { value: { name: "Example Corp", position: "Engineer", startDate: "2021", endDate: "2022" }, sources: { startDate: sourceB } },
+  ];
+  const [issue] = findEntryConflicts(entries, "work");
+  assert.equal(issue.code, "conflicting_work_dates");
+  assert.equal(issue.candidates[0].source.startDate, sourceA);
+  assert.equal(issue.candidates[1].source.startDate, sourceB);
 });
