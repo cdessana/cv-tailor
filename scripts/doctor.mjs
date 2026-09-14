@@ -22,6 +22,7 @@ export function commandRunner(command, args, { timeout = 5_000 } = {}) {
     let stderr = "";
     let settled = false;
     let timer;
+    let forceKillTimer;
     const complete = (result) => {
       if (settled) return;
       settled = true;
@@ -39,6 +40,13 @@ export function commandRunner(command, args, { timeout = 5_000 } = {}) {
 
     timer = setTimeout(() => {
       child.kill("SIGTERM");
+      if (process.platform !== "win32") {
+        forceKillTimer = setTimeout(() => {
+          if (child.exitCode === null && child.signalCode === null) {
+            child.kill("SIGKILL");
+          }
+        }, 250);
+      }
       complete({ ok: false, timedOut: true });
     }, timeout);
 
@@ -50,6 +58,7 @@ export function commandRunner(command, args, { timeout = 5_000 } = {}) {
     });
     child.on("error", () => complete({ ok: false }));
     child.on("close", (code) => {
+      clearTimeout(forceKillTimer);
       complete(
         code === 0
           ? { ok: true, version: (stdout || stderr).trim().split("\n")[0] }
