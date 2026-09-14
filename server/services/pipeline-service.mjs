@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { spawnSafe } from "../process/spawn-safe.mjs";
 import { loadConfig } from "../../config/load-config.mjs";
 import { renderResume } from "./render-service.mjs";
@@ -27,6 +28,29 @@ async function fileExists(filePath) {
 // In-memory active runs registry & locks
 const activeRunLocks = new Set();
 const runHistoryCache = new Map();
+const MAX_RUN_LOG_ENTRIES = 2_000;
+const MAX_RUN_EVENTS = 2_000;
+
+function sanitizeLogValue(value) {
+  return String(value ?? "")
+    .replace(/(api[_-]?key|token|secret|password)\s*([=:])\s*[^\s,;]+/gi, "$1$2[REDACTED]")
+    .replace(/(Bearer\s+)[^\s]+/gi, "$1[REDACTED]")
+    .replace(/([?&](?:key|api[_-]?key|token)=)[^&\s]+/gi, "$1[REDACTED]");
+}
+
+function errorDetails(error, stage) {
+  const cause = error?.cause;
+  return {
+    code: error?.code ?? cause?.code ?? "PIPELINE_STAGE_ERROR",
+    message: sanitizeLogValue(error?.message ?? "Unexpected pipeline failure."),
+    stage,
+    ...(cause?.message ? { cause: sanitizeLogValue(cause.message) } : {}),
+  };
+}
+
+function durationSeconds(startedAt) {
+  return Number(((Date.now() - startedAt) / 1000).toFixed(2));
+}
 
 /**
  * Execute the full pipeline or step-by-step with structured events.
@@ -38,8 +62,11 @@ export async function runPipeline({
   providerOverride,
   modelOverride,
   onProgress = () => {},
+  processRunner = spawnSafe,
+  renderService = renderResume,
+  configOverride,
 }) {
-  const config = loadConfig();
+  const config = configOverride ?? loadConfig();
 
   const resolvedJobPath = path.resolve(PROJECT_ROOT, jobPath);
   if (!resolvedJobPath.startsWith(PROJECT_ROOT)) {
@@ -62,7 +89,7 @@ export async function runPipeline({
 
   activeRunLocks.add(companySlug);
 
-  const runId = `${companySlug}-${Date.now()}`;
+  const runId = `${companySlug}-${randomUUID()}`;
   const outputRoot = config.paths.output;
   const outputDir = path.join(outputRoot, companySlug);
   await fs.mkdir(outputDir, { recursive: true });
@@ -99,20 +126,89 @@ export async function runPipeline({
     },
     artifacts: {},
     logs: [],
+    events: [],
     error: null,
   };
 
   runHistoryCache.set(runId, runState);
 
   function log(message) {
-    const entry = `[${new Date().toISOString().slice(11, 19)}] ${message}`;
+    const entry = `[${new Date().toISOString().slice(11, 19)}] ${sanitizeLogValue(message)}`;
+    if (runState.logs.length >= MAX_RUN_LOG_ENTRIES) return;
     runState.logs.push(entry);
     onProgress({ type: "log", message: entry, runState });
+  }
+
+  function emitEvent(event, details = {}) {
+    if (runState.events.length >= MAX_RUN_EVENTS) return null;
+    const entry = {
+      version: 1,
+      runId,
+      event,
+      at: new Date().toISOString(),
+      ...details,
+    };
+    runState.events.push(entry);
+    onProgress({ type: "pipeline_event", event: entry, runState });
+    return entry;
   }
 
   function updateStage(stageKey, updates) {
     runState.stages[stageKey] = { ...runState.stages[stageKey], ...updates };
     onProgress({ type: "stage_update", stage: stageKey, data: runState.stages[stageKey], runState });
+  }
+
+  function startStage(stageKey) {
+    const startedAt = Date.now();
+    updateStage(stageKey, { status: "running", startedAt });
+    emitEvent("stage.started", { stage: stageKey });
+    return startedAt;
+  }
+
+  function finishStage(stageKey, startedAt, updates = {}) {
+    const duration = durationSeconds(startedAt);
+    updateStage(stageKey, { ...updates, duration });
+    emitEvent(runState.stages[stageKey].status === "failed" ? "stage.failed" : "stage.completed", {
+      stage: stageKey,
+      status: runState.stages[stageKey].status,
+      duration,
+      ...(runState.stages[stageKey].artifact
+        ? {
+            artifact: runState.stages[stageKey].artifact,
+            artifactPath: path.join(outputDir, runState.stages[stageKey].artifact),
+          }
+        : {}),
+    });
+  }
+
+  function recordChildOutput(stage, stream, line) {
+    const message = `[${stage}][${stream}] ${line}`;
+    log(message);
+    emitEvent("process.output", { stage, stream, message: sanitizeLogValue(line) });
+  }
+
+  async function runChildStage(stage, args) {
+    const buffers = { stdout: "", stderr: "" };
+    const flush = (stream, chunk) => {
+      buffers[stream] += chunk;
+      const lines = buffers[stream].split("\n");
+      buffers[stream] = lines.pop() || "";
+      for (const line of lines) {
+        if (line.trim()) recordChildOutput(stage, stream, line);
+      }
+    };
+    try {
+      return await processRunner("node", args, {
+        cwd: PROJECT_ROOT,
+        env: childEnv,
+        onStdout: (chunk) => flush("stdout", chunk),
+        onStderr: (chunk) => flush("stderr", chunk),
+      });
+    } finally {
+      for (const stream of ["stdout", "stderr"]) {
+        if (buffers[stream].trim()) recordChildOutput(stage, stream, buffers[stream]);
+      }
+    }
   }
 
   // Set environment overrides for child process if requested
@@ -125,6 +221,11 @@ export async function runPipeline({
   }
 
   try {
+    emitEvent("pipeline.started", {
+      job: { company: job.company, title: job.title },
+      outputDir,
+      rewriteEnabled: !skipRewrite,
+    });
     log(`Starting CV Tailor pipeline for ${job.company} — ${job.title}`);
     log(`Target output: ${outputDir}/`);
     log(`LLM rewrite enabled: ${!skipRewrite}`);
@@ -132,21 +233,20 @@ export async function runPipeline({
     // -------------------------------------------------------------
     // STAGE 1: ANALYSE
     // -------------------------------------------------------------
-    updateStage("analyse", { status: "running", startedAt: Date.now() });
+    const t0 = startStage("analyse");
     log("▶ Running Stage 1: Analyse (matching requirements against evidence)");
-    const t0 = Date.now();
 
     const generatedAnalysisPath = path.join(outputRoot, `${companySlug}-${titleSlug}-analysis.json`);
     const analysisPath = path.join(outputDir, "analysis.json");
 
-    await spawnSafe("node", [
+    await runChildStage("analyse", [
       "scripts/analyse.mjs",
       resumePath,
       resolvedJobPath,
       aliasesPath,
       evidencePath,
       outputRoot,
-    ], { cwd: PROJECT_ROOT, env: childEnv });
+    ]);
 
     if (!(await fileExists(generatedAnalysisPath))) {
       throw new Error(`Expected analysis output file was not found: ${generatedAnalysisPath}`);
@@ -158,9 +258,8 @@ export async function runPipeline({
     const analysisData = JSON.parse(await fs.readFile(analysisPath, "utf8"));
     runState.artifacts.analysis = analysisData;
 
-    updateStage("analyse", {
+    finishStage("analyse", t0, {
       status: "success",
-      duration: ((Date.now() - t0) / 1000).toFixed(2),
       artifact: "analysis.json",
       data: {
         scores: analysisData.scores,
@@ -174,19 +273,18 @@ export async function runPipeline({
     // -------------------------------------------------------------
     // STAGE 2: TAILOR
     // -------------------------------------------------------------
-    updateStage("tailor", { status: "running", startedAt: Date.now() });
+    const t1 = startStage("tailor");
     log("▶ Running Stage 2: Tailor (experience & bullet selection)");
-    const t1 = Date.now();
 
     const tailoringPlanPath = path.join(outputDir, "tailoring-plan.json");
 
-    await spawnSafe("node", [
+    await runChildStage("tailor", [
       "scripts/tailor.mjs",
       resumePath,
       analysisPath,
       aliasesPath,
       evidencePath,
-    ], { cwd: PROJECT_ROOT, env: childEnv });
+    ]);
 
     if (!(await fileExists(tailoringPlanPath))) {
       throw new Error(`Expected tailoring plan not found: ${tailoringPlanPath}`);
@@ -200,12 +298,25 @@ export async function runPipeline({
       runState.artifacts.tailoringReport = JSON.parse(await fs.readFile(tailoringReportPath, "utf8"));
     }
 
-    updateStage("tailor", {
+    // High-signal summary logging
+    const totalExperiences = tailoringPlan.roles?.length || 0;
+    const totalBullets = tailoringPlan.roles?.reduce((sum, role) => sum + (role.selected?.length || 0), 0) || 0;
+    const coveredTerms = tailoringPlan.globalCoverage?.filter((c) => c.covered).length || 0;
+    const totalTerms = tailoringPlan.globalCoverage?.length || 0;
+    const unsupportedCount = tailoringPlan.safety?.unsupportedTerms?.length || 0;
+
+    log("Tailoring Summary:");
+    log(`- Selected ${totalExperiences} roles/experiences containing ${totalBullets} total items/bullets.`);
+    log(`- Global requirement coverage: ${coveredTerms}/${totalTerms} terms matched.`);
+    if (unsupportedCount > 0) {
+      log(`- Safety guardrails: ${unsupportedCount} unsupported terms will be avoided.`);
+    }
+
+    finishStage("tailor", t1, {
       status: "success",
-      duration: ((Date.now() - t1) / 1000).toFixed(2),
       artifact: "tailoring-plan.json",
       data: {
-        totalExperiences: tailoringPlan.roles?.length || 0,
+        totalExperiences,
       },
     });
     log(`✓ Tailor complete in ${((Date.now() - t1) / 1000).toFixed(2)}s`);
@@ -217,31 +328,30 @@ export async function runPipeline({
     const rewriteReportPath = path.join(outputDir, "rewrite-report.json");
 
     if (!skipRewrite) {
-      updateStage("rewrite", { status: "running", startedAt: Date.now() });
+      const t2 = startStage("rewrite");
       log("▶ Running Stage 3: LLM Rewrite (focussing bullets within factual boundary)");
-      const t2 = Date.now();
 
-      await spawnSafe("node", [
+      await runChildStage("rewrite", [
         "scripts/rewrite.mjs",
         resumePath,
         tailoringPlanPath,
         resumeRewrittenPath,
         rewriteReportPath,
-      ], { cwd: PROJECT_ROOT, env: childEnv });
+      ]);
 
       if (await fileExists(rewriteReportPath)) {
         runState.artifacts.rewriteReport = JSON.parse(await fs.readFile(rewriteReportPath, "utf8"));
       }
 
-      updateStage("rewrite", {
+      finishStage("rewrite", t2, {
         status: "success",
-        duration: ((Date.now() - t2) / 1000).toFixed(2),
         artifact: "resume-rewritten.json",
       });
       log(`✓ Rewrite complete in ${((Date.now() - t2) / 1000).toFixed(2)}s`);
     } else {
       log("○ Skipping LLM rewrite step (rewriteEnabled is false or --skip-rewrite passed)");
       updateStage("rewrite", { status: "skipped", duration: "0.00" });
+      emitEvent("stage.completed", { stage: "rewrite", status: "skipped", duration: 0 });
     }
 
     // -------------------------------------------------------------
@@ -254,39 +364,37 @@ export async function runPipeline({
     const summaryReportPath = path.join(outputDir, "summary-report.json");
 
     if (!skipRewrite) {
-      updateStage("summary", { status: "running", startedAt: Date.now() });
+      const t3 = startStage("summary");
       log("▶ Running Stage 4: Summary Generation");
-      const t3 = Date.now();
 
-      await spawnSafe("node", [
+      await runChildStage("summary", [
         "scripts/summary.mjs",
         summaryInputPath,
         tailoringPlanPath,
         resumeFinalPath,
         summaryReportPath,
-      ], { cwd: PROJECT_ROOT, env: childEnv });
+      ]);
 
       if (await fileExists(summaryReportPath)) {
         runState.artifacts.summaryReport = JSON.parse(await fs.readFile(summaryReportPath, "utf8"));
       }
 
-      updateStage("summary", {
+      finishStage("summary", t3, {
         status: "success",
-        duration: ((Date.now() - t3) / 1000).toFixed(2),
         artifact: "resume-final.json",
       });
       log(`✓ Summary complete in ${((Date.now() - t3) / 1000).toFixed(2)}s`);
     } else {
       log("○ Skipping LLM summary step (rewrite skipped)");
       updateStage("summary", { status: "skipped", duration: "0.00" });
+      emitEvent("stage.completed", { stage: "summary", status: "skipped", duration: 0 });
     }
 
     // -------------------------------------------------------------
     // STAGE 5: FINAL CHECK
     // -------------------------------------------------------------
-    updateStage("finalCheck", { status: "running", startedAt: Date.now() });
+    const t4 = startStage("finalCheck");
     log("▶ Running Stage 5: Final Check (strict factual validation)");
-    const t4 = Date.now();
 
     const finalCheckInputPath = skipRewrite
       ? path.join(outputDir, "resume.json")
@@ -295,12 +403,12 @@ export async function runPipeline({
 
     // final-check exits with code 1 if errors exist, but still writes final-check.json
     try {
-      await spawnSafe("node", [
+      await runChildStage("finalCheck", [
         "scripts/final-check.mjs",
         finalCheckInputPath,
         tailoringPlanPath,
         finalCheckPath,
-      ], { cwd: PROJECT_ROOT, env: childEnv });
+      ]);
     } catch {
       // Handled below by reading final-check.json
     }
@@ -319,9 +427,8 @@ export async function runPipeline({
         ? "warning"
         : "success";
 
-    updateStage("finalCheck", {
+    finishStage("finalCheck", t4, {
       status: checkStatus,
-      duration: ((Date.now() - t4) / 1000).toFixed(2),
       artifact: "final-check.json",
       data: {
         status: finalCheck.status,
@@ -330,15 +437,23 @@ export async function runPipeline({
         warnings: finalCheck.warnings || [],
         info: finalCheck.info || [],
       },
+      ...(checkStatus === "failed"
+        ? {
+            error: {
+              code: "FINAL_CHECK_FAILED",
+              message: "Final factual validation reported errors.",
+              stage: "finalCheck",
+            },
+          }
+        : {}),
     });
     log(`✓ Final Check: ${finalCheck.status.toUpperCase()} (${finalCheck.counts?.errors || 0} errors, ${finalCheck.counts?.warnings || 0} warnings)`);
 
     // -------------------------------------------------------------
     // STAGE 6: RENDER
     // -------------------------------------------------------------
-    updateStage("render", { status: "running", startedAt: Date.now() });
+    const t5 = startStage("render");
     log(`▶ Running Stage 6: Render (theme: ${effectiveTheme})`);
-    const t5 = Date.now();
 
     const resumeToRender = skipRewrite
       ? path.join(outputDir, "resume.json")
@@ -350,7 +465,7 @@ export async function runPipeline({
     }
 
     try {
-      const renderResult = await renderResume({
+      const renderResult = await renderService({
         resumePath: resumeToRender,
         theme: effectiveTheme,
         outputDir,
@@ -360,9 +475,8 @@ export async function runPipeline({
       runState.artifacts.pdf = renderResult.pdfPath;
       runState.artifacts.txt = renderResult.txtPath;
 
-      updateStage("render", {
+      finishStage("render", t5, {
         status: renderResult.success ? "success" : "warning",
-        duration: ((Date.now() - t5) / 1000).toFixed(2),
         artifact: "resume.html",
         data: {
           htmlPath: renderResult.htmlPath,
@@ -374,26 +488,42 @@ export async function runPipeline({
       log(`✓ Render completed in ${((Date.now() - t5) / 1000).toFixed(2)}s`);
     } catch (renderError) {
       log(`! Render encountered an issue: ${renderError.message}`);
-      updateStage("render", {
-        status: "warning",
-        duration: ((Date.now() - t5) / 1000).toFixed(2),
-        error: renderError.message,
+      finishStage("render", t5, {
+        status: "failed",
+        error: errorDetails(renderError, "render"),
       });
     }
 
     // Done
-    runState.status = checkStatus === "failed" ? "failed" : "success";
+    runState.status = [checkStatus, runState.stages.render.status].includes("failed")
+      ? "failed"
+      : "success";
     runState.completedAt = new Date().toISOString();
+    if (runState.status === "failed") {
+      const failure = runState.stages.finalCheck.status === "failed"
+        ? runState.stages.finalCheck.error
+        : runState.stages.render.error;
+      emitEvent("pipeline.failed", failure);
+    } else {
+      emitEvent("pipeline.completed", { status: runState.status, artifacts: Object.keys(runState.artifacts) });
+    }
     log(`Pipeline completed with status: ${runState.status.toUpperCase()}`);
 
     onProgress({ type: "complete", runState });
     return runState;
   } catch (error) {
+    const failedStage = Object.entries(runState.stages).find(([, value]) => value.status === "running")?.[0] ?? "pipeline";
+    const details = errorDetails(error, failedStage);
     runState.status = "failed";
-    runState.error = error.message;
+    runState.error = details;
     runState.completedAt = new Date().toISOString();
-    log(`Pipeline failed: ${error.message}`);
-    onProgress({ type: "error", error: error.message, runState });
+    if (failedStage !== "pipeline") {
+      updateStage(failedStage, { status: "failed", error: details });
+    }
+    emitEvent("stage.failed", details);
+    emitEvent("pipeline.failed", details);
+    log(`Pipeline failed at ${failedStage}: ${details.message}`);
+    onProgress({ type: "error", error: details, runState });
     throw error;
   } finally {
     activeRunLocks.delete(companySlug);
