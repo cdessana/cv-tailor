@@ -10,6 +10,7 @@ import {
 import {
   inspectConfiguredPaths,
   resolveBrowser,
+  commandRunner,
   runDoctorCli,
 } from "../scripts/doctor.mjs";
 
@@ -121,6 +122,28 @@ test("doctor identifies an individually missing Poppler command", async () => {
     report.checks.find((candidate) => candidate.id === "pdfinfo").status,
     "fail"
   );
+});
+
+test("doctor supports asynchronous command checks", async () => {
+  const report = await diagnoseEnvironment(
+    dependencies({
+      commandRunner: async (command) => ({
+        ok: command !== "pdfinfo",
+        version: `${command} test version`,
+      }),
+    })
+  );
+  assert.equal(report.checks.find((check) => check.id === "npm").status, "pass");
+  assert.equal(report.checks.find((check) => check.id === "pdfinfo").status, "fail");
+});
+
+test("doctor command runner times out without blocking", async () => {
+  const result = await commandRunner(
+    process.execPath,
+    ["-e", "setTimeout(() => {}, 1_000)"],
+    { timeout: 20 }
+  );
+  assert.deepEqual(result, { ok: false, timedOut: true });
 });
 
 test("doctor never exposes the Gemini credential", async () => {
