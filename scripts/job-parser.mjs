@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { loadConfig } from "../config/load-config.mjs";
 import { extract } from "../lib/job-parser/extract.mjs";
@@ -187,6 +188,15 @@ export async function runJobParser({
   config,
   env = process.env,
 } = {}) {
+  const observability = {
+    version: 1,
+    runId: `job-parser-${randomUUID()}`,
+    startedAt: new Date().toISOString(),
+    events: [],
+  };
+  const recordEvent = (event, details = {}) => {
+    observability.events.push({ event, at: new Date().toISOString(), ...details });
+  };
   if (!input) throw new Error("INPUT_ERROR: An input file is required.");
   output ??= path.join(
     "data",
@@ -194,6 +204,7 @@ export async function runJobParser({
     `${path.basename(input, path.extname(input))}.json`
   );
   if (output) await fs.mkdir(path.dirname(output), { recursive: true });
+  recordEvent("parser.started", { input, output });
   console.info(`[job-parser] Reading input: ${input}`);
   let source;
   try {
@@ -209,11 +220,17 @@ export async function runJobParser({
   console.info(
     `[job-parser] Preprocessing complete (${document.sections.length} sections).`
   );
+  recordEvent("stage.completed", { stage: "preprocess", sections: document.sections.length });
   console.info("[job-parser] Running deterministic extraction.");
   const deterministic = extract(document);
   console.info(
     `[job-parser] Deterministic extraction complete (${deterministic.extraction.items.length} items, ${deterministic.unresolved.length} unresolved).`
   );
+  recordEvent("stage.completed", {
+    stage: "deterministic-extraction",
+    items: deterministic.extraction.items.length,
+    unresolved: deterministic.unresolved.length,
+  });
   let extraction = deterministic.extraction;
   let providerInfo = semanticProvider
     ? { name: "injected", model: null, used: false }
@@ -306,6 +323,12 @@ export async function runJobParser({
       console.info(
         `[job-parser] Semantic extraction complete (${extraction.items.length} items).`
       );
+      recordEvent("stage.completed", {
+        stage: "semantic-extraction",
+        provider: providerInfo.name,
+        model: providerInfo.model,
+        metrics: extraction.providerReport ?? null,
+      });
     } catch (error) {
       providerInfo.status = "failed";
       await writeProviderAudit(output, providerInfo, config, env, error);
@@ -358,6 +381,7 @@ export async function runJobParser({
   if (!mapped.valid) {
     throw new Error(`MAPPING_ERROR: ${JSON.stringify(mapped.errors)}`);
   }
+  recordEvent("stage.completed", { stage: "mapping" });
   if (mapped.warnings?.length) {
     reportWarnings(mapped.warnings);
   }
@@ -378,6 +402,15 @@ export async function runJobParser({
         coverage: extraction.coverage?.length ?? 0,
       },
       warnings: mapped.warnings?.length ?? 0,
+      observability: {
+        ...observability,
+        completedAt: new Date().toISOString(),
+        events: [...observability.events, {
+          event: "parser.completed",
+          at: new Date().toISOString(),
+          artifactPath: output,
+        }],
+      },
       completedAt: new Date().toISOString(),
     });
   } catch (error) {

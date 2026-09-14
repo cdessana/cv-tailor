@@ -34,6 +34,10 @@ The CV Tailor web application provides a responsive, single-page interface for m
 - **Features**:
   - Real-time Server-Sent Events (SSE) terminal streaming output.
   - Pipeline node status indicators (pending, running, success, skipped, warning).
+  - Structured `pipeline_event` messages containing a run ID, stage, timestamp,
+    duration, artifact name, and normalized failure code. `process.output` events
+    attribute child-process output to its originating stage without recording
+    configuration secrets or full source payloads.
 
 ### 5. Stage 5: Artifacts, Preview & Dynamic Theme Switcher
 - **Purpose**: Preview generated resume HTML, PDF, and text artifacts with side-by-side diffing against the base master resume.

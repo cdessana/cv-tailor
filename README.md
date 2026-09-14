@@ -779,7 +779,7 @@ Start the full-stack local server:
 npm start
 ```
 
-Open `http://localhost:3000` in your browser. You can paste any job description, curate parsed requirements, inspect matching evidence, execute the 6-stage pipeline with real-time streaming logs, and inspect live HTML previews alongside side-by-side diffs against your master resume.
+Open `http://localhost:3000` in your browser. You can paste any job description, curate parsed requirements, inspect matching evidence, execute the 6-stage pipeline with real-time streaming logs, and inspect live HTML previews alongside side-by-side diffs against your master resume. Each web run has a stable run ID and records structured stage start, completion, failure, duration, artifact, and child-process-output events in addition to the readable terminal log.
 
 ### Option B: Using the CLI
 
