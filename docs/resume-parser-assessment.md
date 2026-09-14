@@ -42,7 +42,9 @@ not add a parallel provider/client layer.
 
 Resume-specific tests additionally enforce numeric preservation, cautious
 wording, role isolation, evidence-type separation, and no inferred skills or
-technologies.
+technologies. The runtime grounding gate also checks every scalar candidate
+value against its JSON Pointer provenance before publication and reports the
+number of checked, grounded, and failed values.
 
 ## 5. Downstream modules affected
 
