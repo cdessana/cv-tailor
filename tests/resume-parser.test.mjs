@@ -11,6 +11,7 @@ import { extractEducationEntries } from "../lib/resume-parser/education.mjs";
 import { sectionLines } from "../lib/resume-parser/source-lines.mjs";
 import { extractBasicsEntry } from "../lib/resume-parser/basics.mjs";
 import { findEntryConflicts } from "../lib/resume-parser/conflicts.mjs";
+import { inspectDateRange, parseDateRange } from "../lib/resume-parser/dates.mjs";
 
 const resumeText = `# Jane Doe
 Senior Software Engineer
@@ -306,4 +307,51 @@ Experience
 Example Corp | Engineer | 2020 - 2021
 Example Corp | Engineer | 2021 - 2022`);
   assert.equal(report.issues.filter(({ code }) => code === "conflicting_work_dates").length, 1);
+});
+
+test("normalizes supported date precision and rejects invalid calendar dates", () => {
+  assert.deepEqual(parseDateRange("Mar 1999 - Apr 2000"), { startDate: "1999-03", endDate: "2000-04" });
+  assert.deepEqual(parseDateRange("2020-02-29 - 2021-03-01"), { startDate: "2020-02-29", endDate: "2021-03-01" });
+  assert.deepEqual(parseDateRange("03/2021 - Present"), { startDate: "2021-03" });
+  assert.deepEqual(parseDateRange("2021-12 - 2021"), { startDate: "2021-12", endDate: "2021" });
+  assert.equal(inspectDateRange("2021-02-29").error, "invalid_start_date");
+  assert.equal(inspectDateRange("2023 - 2021").error, "inverted_date_range");
+});
+
+test("reports malformed work and education dates for human review", () => {
+  const { resume, report } = parseResumeText(`Jane Doe
+Experience
+Example Corp | Engineer | 2023 - 2021
+Education
+Example University | Master of Science | 2021-02-29`);
+  assert.equal(resume.work, undefined);
+  assert.equal(resume.education, undefined);
+  assert.equal(report.status, "review_required");
+  assert.deepEqual(report.issues.map(({ code }) => code), ["invalid_work_date", "invalid_education_date"]);
+});
+
+test("uses structured error codes for source extraction failures", async () => {
+  await assert.rejects(readResumeSource("resume.docx"), (error) => error.code === "RESUME_FORMAT_UNSUPPORTED");
+  await assert.rejects(
+    readResumeSource("resume.pdf", { extractPdf: async () => { throw new Error("poppler unavailable"); } }),
+    (error) => error.code === "RESUME_TEXT_EXTRACTION_FAILED" && !error.message.includes("poppler unavailable")
+  );
+  assert.throws(() => parseArguments(["--input", "resume.txt"]), (error) => error.code === "RESUME_ARGUMENT_ERROR");
+});
+
+test("writes a failed validation report without writing a candidate", async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "resume-parser-"));
+  const output = path.join(directory, "candidate.json");
+  const reportPath = path.join(directory, "review.json");
+  const failedReport = { status: "failed", issues: [{ code: "schema_validation", message: "invalid" }] };
+
+  await assert.rejects(
+    runResumeParser(
+      { input: "resume.txt", output, report: reportPath },
+      { readSource: async () => ({ text: "Jane", lines: [] }), parseDocument: () => ({ resume: {}, report: failedReport }) }
+    ),
+    (error) => error.code === "RESUME_VALIDATION_FAILED" && error.details.reportPath === reportPath
+  );
+  assert.deepEqual(JSON.parse(await fs.readFile(reportPath, "utf8")), failedReport);
+  await assert.rejects(fs.access(output));
 });
