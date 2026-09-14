@@ -9,6 +9,7 @@ import { parseArguments, runResumeParser } from "../scripts/resume-parser.mjs";
 import { extractedEntry, provenanceForEntry } from "../lib/resume-parser/extracted-entry.mjs";
 import { extractEducationEntries } from "../lib/resume-parser/education.mjs";
 import { sectionLines } from "../lib/resume-parser/source-lines.mjs";
+import { extractBasicsEntry } from "../lib/resume-parser/basics.mjs";
 
 const resumeText = `# Jane Doe
 Senior Software Engineer
@@ -214,4 +215,12 @@ test("requires explicit parser input and output options", () => {
 test("preserves structured source lines while detecting sections", () => {
   const document = { lines: [{ text: "Jane Doe", source: { lineStart: 1 } }, { text: "## Education", source: { lineStart: 2 } }, { text: "University", source: { lineStart: 3 } }], text: "Jane Doe\n## Education\nUniversity" };
   assert.deepEqual(sectionLines(document, "education"), [document.lines[2]]);
+});
+
+test("extracts basics with field-level sources", () => {
+  const source = { page: 1, lineStart: 1, text: "Jane Doe" };
+  const entry = extractBasicsEntry([{ text: "Jane Doe", source }, { text: "Engineer", source: { page: 1, lineStart: 2 } }, { text: "jane@example.com", source: { page: 1, lineStart: 3 } }]);
+  assert.equal(entry.value.name, "Jane Doe");
+  assert.equal(entry.sources.name, source);
+  assert.equal(entry.sources.email.lineStart, 3);
 });
