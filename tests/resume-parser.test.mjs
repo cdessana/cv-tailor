@@ -145,6 +145,18 @@ Example Corp | Engineer | 2021 - 2022`);
   assert.equal(JSON.stringify(resume).includes("requiresHumanReview"), false);
 });
 
+test("keeps a repeated skill attached to its later source line", () => {
+  const result = parseResumeDocument({
+    format: "txt", pages: 1, text: "Jane Doe\n## Skills\nBackend: Node.js\nFrontend: Node.js",
+    lines: [
+      { text: "Jane Doe", source: { page: 1, lineStart: 1 } }, { text: "## Skills", source: { page: 1, lineStart: 2 } },
+      { text: "Backend: Node.js", source: { page: 1, lineStart: 3 } }, { text: "Frontend: Node.js", source: { page: 1, lineStart: 4 } },
+    ],
+  });
+  const nodeSources = result.report.provenance.filter((entry) => entry.path.endsWith("/keywords/0"));
+  assert.equal(nodeSources.at(-1).source.lineStart, 4);
+});
+
 test("requires explicit parser input and output options", () => {
   assert.throws(() => parseArguments(["--input", "resume.txt"]));
   assert.deepEqual(parseArguments(["--input", "resume.txt", "--output", "candidate.json"]), {
