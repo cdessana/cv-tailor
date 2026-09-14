@@ -226,6 +226,38 @@ test("extracts basics with field-level sources", () => {
   assert.equal(entry.sources.email.lineStart, 3);
 });
 
+test("extracts an explicit location and summary without treating them as name or label", () => {
+  const values = [
+    "Jane Doe",
+    "Senior Software Engineer",
+    "Manaus, AM, Brazil",
+    "jane@example.com | +55 92 99999-0000 | https://linkedin.com/in/jane",
+    "Professional Summary",
+    "Builds reliable distributed systems.",
+    "Preserves factual wording and measurable outcomes.",
+  ];
+  const lines = values.map((text, index) => ({
+    text,
+    source: { page: 1, lineStart: index + 1, lineEnd: index + 1, text, format: "txt" },
+  }));
+  const { resume, report } = parseResumeDocument({ format: "txt", pages: 1, text: values.join("\n"), lines });
+  const sources = Object.fromEntries(report.provenance.map(({ path, source }) => [path, source]));
+
+  assert.equal(report.status, "ready");
+  assert.equal(resume.basics.name, "Jane Doe");
+  assert.equal(resume.basics.label, "Senior Software Engineer");
+  assert.deepEqual(resume.basics.location, { address: "Manaus, AM, Brazil" });
+  assert.equal(resume.basics.summary, "Builds reliable distributed systems. Preserves factual wording and measurable outcomes.");
+  assert.equal(sources["/basics/location"].lineStart, 3);
+  assert.equal(sources["/basics/summary"].lineStart, 6);
+  assert.equal(sources["/basics/summary"].lineEnd, 7);
+});
+
+test("only extracts location from an explicit location-shaped line", () => {
+  const entry = extractBasicsEntry(["Jane Doe", "Senior Software Engineer", "Available for remote work"]);
+  assert.deepEqual(entry.value, { name: "Jane Doe", label: "Senior Software Engineer" });
+});
+
 test("reports structured conflict candidates with their sources", () => {
   const sourceA = { page: 1, lineStart: 4 };
   const sourceB = { page: 2, lineStart: 6 };
