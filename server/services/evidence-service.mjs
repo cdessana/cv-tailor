@@ -85,15 +85,29 @@ export function validateEvidenceStructure(data) {
   if (!Array.isArray(data.experiences)) {
     throw new Error("Evidence data must have an experiences array.");
   }
+  const experienceIds = new Set();
   for (const exp of data.experiences) {
+    if (!exp || typeof exp !== "object" || Array.isArray(exp)) {
+      throw new Error("Each experience entry must be an object.");
+    }
     if (!exp.id || typeof exp.id !== "string") {
       throw new Error(`Experience entry missing valid string 'id'.`);
     }
+    if (experienceIds.has(exp.id)) {
+      throw new Error(`Experience ID '${exp.id}' is duplicated.`);
+    }
+    experienceIds.add(exp.id);
     if (!exp.company || typeof exp.company !== "string") {
       throw new Error(`Experience '${exp.id}' missing valid string 'company'.`);
     }
     if (!Array.isArray(exp.facts)) {
       throw new Error(`Experience '${exp.id}' facts must be an array of strings.`);
+    }
+    if (exp.facts.some((fact) => typeof fact !== "string" || !fact.trim())) {
+      throw new Error(`Experience '${exp.id}' facts must contain non-empty strings.`);
+    }
+    if (exp.skills !== undefined && (!Array.isArray(exp.skills) || exp.skills.some((skill) => typeof skill !== "string" || !skill.trim()))) {
+      throw new Error(`Experience '${exp.id}' skills must contain non-empty strings.`);
     }
   }
   return true;
