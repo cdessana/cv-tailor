@@ -13,11 +13,13 @@
     currentTheme: "jsonresume-theme-stackoverflow",
     activeEvidenceFilter: "all",
     activeEvidenceSkill: "",
+    activeEvidenceType: "",
     catalogExperiences: [],
     catalogSkills: {},
     catalogBaseSkills: [],
     catalogSkillFrequencies: {},
     doctorReport: null,
+    doctorCheckInFlight: false,
     config: null,
     evidenceSummary: null,
   };
@@ -87,7 +89,10 @@
         }
       }
 
-      if (target === "evidence") loadEvidenceCatalog();
+      if (target === "evidence") {
+        loadEvidenceCatalog();
+        loadEvidenceBuilder();
+      }
       if (target === "history") loadHistoryRuns();
       if (target === "settings") loadSettingsForm();
 
@@ -100,12 +105,11 @@
     $("#nav-settings")?.addEventListener("click", () => switchView("settings"));
 
     // Doctor modal triggers
-    $("#btn-doctor-status")?.addEventListener("click", openDoctorModal);
-    $("#btn-close-doctor-modal")?.addEventListener("click", closeDoctorModal);
-    $("#btn-modal-rerun-doctor")?.addEventListener("click", async () => {
-      await fetchDoctorStatus();
-      renderDoctorModal();
+    $$(".btn-doctor-trigger").forEach((button) => {
+      button.addEventListener("click", () => refreshDoctorStatus({ openModal: true }));
     });
+    $("#btn-close-doctor-modal")?.addEventListener("click", closeDoctorModal);
+    $("#btn-modal-rerun-doctor")?.addEventListener("click", () => refreshDoctorStatus({ openModal: true }));
   }
 
   // -------------------------------------------------------------
@@ -157,24 +161,70 @@
     }
   }
 
-  function updateDoctorBadge(report) {
-    const dot = $("#doctor-status-dot");
-    const text = $("#doctor-status-text");
-    const btn = $("#btn-doctor-status");
-    if (!dot || !text || !btn) return;
+  async function refreshDoctorStatus({ openModal = false } = {}) {
+    if (openModal) {
+      $("#modal-doctor-details")?.classList.remove("hidden");
+    }
+    if (state.doctorCheckInFlight) return;
 
-    if (report.status === "pass" || report.status === "ready") {
-      dot.className = "w-2 h-2 rounded-full bg-emerald-500 shrink-0";
-      text.textContent = "Env: Ready";
-      btn.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border shadow-xs bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100";
-    } else if (report.status === "warn" || report.status === "ready_with_warnings" || report.status === "ready-with-warnings") {
-      dot.className = "w-2 h-2 rounded-full bg-amber-500 shrink-0";
-      text.textContent = "Env: Ready (Warnings)";
-      btn.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border shadow-xs bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100";
-    } else {
-      dot.className = "w-2 h-2 rounded-full bg-rose-500 shrink-0";
-      text.textContent = "Env: Blocked";
-      btn.className = "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border shadow-xs bg-rose-50 text-rose-800 border-rose-300 hover:bg-rose-100";
+    state.doctorCheckInFlight = true;
+    setDoctorLoadingState(true);
+    renderDoctorModal();
+    loadSettingsDoctorSection();
+
+    try {
+      await fetchDoctorStatus();
+    } finally {
+      state.doctorCheckInFlight = false;
+      setDoctorLoadingState(false);
+      if (state.doctorReport) updateDoctorBadge(state.doctorReport);
+      renderDoctorModal();
+      loadSettingsDoctorSection();
+    }
+  }
+
+  function setDoctorLoadingState(isLoading) {
+    for (const button of [
+      ...$$(".btn-doctor-trigger"),
+      $("#btn-modal-rerun-doctor"),
+      $("#btn-rerun-doctor"),
+    ].filter(Boolean)) {
+      const label = button.querySelector("span:last-child");
+      if (isLoading) {
+        button.dataset.originalLabel = label?.textContent || button.textContent.trim();
+        button.disabled = true;
+        button.setAttribute("aria-busy", "true");
+        button.classList.add("opacity-60", "cursor-wait");
+        if (label) label.textContent = "Checking...";
+        else button.textContent = "Checking...";
+      } else {
+        button.disabled = false;
+        button.removeAttribute("aria-busy");
+        button.classList.remove("opacity-60", "cursor-wait");
+        const originalLabel = button.dataset.originalLabel;
+        if (originalLabel) {
+          if (label) label.textContent = originalLabel;
+          else button.textContent = originalLabel;
+        }
+      }
+    }
+  }
+
+  function updateDoctorBadge(report) {
+    const status = report.status === "pass" || report.status === "ready"
+      ? { text: "Env: Ready", dot: "bg-emerald-500", surface: ["bg-emerald-50", "text-emerald-800", "border-emerald-300"] }
+      : report.status === "warn" || report.status === "ready_with_warnings" || report.status === "ready-with-warnings"
+      ? { text: "Env: Ready (Warnings)", dot: "bg-amber-500", surface: ["bg-amber-50", "text-amber-800", "border-amber-300"] }
+      : { text: "Env: Blocked", dot: "bg-rose-500", surface: ["bg-rose-50", "text-rose-800", "border-rose-300"] };
+
+    for (const button of $$(".btn-doctor-trigger")) {
+      const dot = button.querySelector(".doctor-status-dot");
+      const text = button.querySelector(".doctor-status-text");
+      dot?.classList.remove("bg-slate-400", "bg-emerald-500", "bg-amber-500", "bg-rose-500");
+      dot?.classList.add(status.dot);
+      if (text) text.textContent = status.text;
+      button.classList.remove("bg-slate-100", "bg-emerald-50", "bg-amber-50", "bg-rose-50", "text-slate-700", "text-emerald-800", "text-amber-800", "text-rose-800", "border-slate-300", "border-emerald-300", "border-amber-300", "border-rose-300");
+      button.classList.add(...status.surface);
     }
   }
 
@@ -190,6 +240,11 @@
   function renderDoctorModal() {
     const container = $("#doctor-modal-checks");
     if (!container) return;
+
+    if (state.doctorCheckInFlight) {
+      container.innerHTML = `<div class="text-xs text-slate-500 p-4 text-center" role="status" aria-live="polite">Checking environment diagnostics...</div>`;
+      return;
+    }
 
     if (!state.doctorReport || !state.doctorReport.checks) {
       container.innerHTML = `<div class="text-xs text-slate-500 p-4 text-center">No diagnostic checks available.</div>`;
@@ -781,7 +836,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           jobPath: state.currentJobPath,
-          skipRewrite: true, // initial quick analysis
+          analysisOnly: true,
         }),
       });
 
@@ -827,17 +882,28 @@
     if ($("#count-match-related")) $("#count-match-related").textContent = related.length;
     if ($("#count-match-missing")) $("#count-match-missing").textContent = missing.length;
 
-    renderFilteredEvidenceItems();
-
     // Guidance
-    if (analysis.tailoring?.recommendedEmphasis?.length && $("#analysis-recommended-emphasis")) {
-      const emphasisTerms = analysis.tailoring.recommendedEmphasis.map(x => typeof x === "string" ? x : x.term || "").filter(Boolean);
-      $("#analysis-recommended-emphasis").textContent = emphasisTerms.join(", ");
+    const emphasisTerms = (analysis.tailoring?.recommendedEmphasis || [])
+      .map((item) => typeof item === "string" ? item : item.term || "")
+      .filter(Boolean);
+    if ($("#analysis-recommended-emphasis")) {
+      $("#analysis-recommended-emphasis").textContent = emphasisTerms.length > 0
+        ? emphasisTerms.join(", ")
+        : "No evidence-backed requirements were identified for emphasis.";
     }
-    if (analysis.tailoring?.doNotAdd?.length && $("#analysis-guardrails")) {
-      const prohibitedTerms = analysis.tailoring.doNotAdd.map(x => typeof x === "string" ? x : x.term || "").filter(Boolean);
-      $("#analysis-guardrails").textContent = `Prohibited non-evidenced claims: ${prohibitedTerms.join(", ")}`;
+    if ($("#count-match-emphasis")) $("#count-match-emphasis").textContent = emphasisTerms.length;
+    $("#btn-view-emphasis")?.classList.toggle("hidden", emphasisTerms.length === 0);
+
+    const prohibitedTerms = (analysis.tailoring?.doNotAdd || [])
+      .map((item) => typeof item === "string" ? item : item.term || "")
+      .filter(Boolean);
+    if ($("#analysis-guardrails")) {
+      $("#analysis-guardrails").textContent = prohibitedTerms.length > 0
+        ? `Prohibited non-evidenced claims: ${prohibitedTerms.join(", ")}`
+        : "No unsupported requirements were identified by the analysis.";
     }
+
+    renderFilteredEvidenceItems();
 
     if (window.lucide) lucide.createIcons();
   }
@@ -855,6 +921,13 @@
       itemsToRender = strong;
     } else if (state.activeEvidenceFilter === "related") {
       itemsToRender = related;
+    } else if (state.activeEvidenceFilter === "emphasis") {
+      const recommendedTerms = new Set(
+        (analysis.tailoring?.recommendedEmphasis || [])
+          .map((item) => typeof item === "string" ? item : item.term)
+          .filter(Boolean),
+      );
+      itemsToRender = [...strong, ...related].filter((item) => recommendedTerms.has(item.term));
     } else if (state.activeEvidenceFilter === "missing") {
       itemsToRender = missing;
     } else {
@@ -880,19 +953,39 @@
         : "bg-slate-100 text-slate-700 border-slate-200";
 
       const badgeLabel = isStrong ? "Exact Match" : isRelated ? "Equivalent" : "Gap / Missing";
+      const requirement = item.term || item.requirement || item.text || item.skill || "Requirement";
+      const evidence = formatAnalysisEvidence(item.evidence);
 
       const el = document.createElement("div");
       el.className = "p-3 rounded-lg border border-slate-200 bg-white text-xs space-y-1.5 shadow-2xs hover:border-slate-300 transition-colors";
       el.innerHTML = `
         <div class="flex items-start justify-between gap-2">
-          <span class="font-bold text-slate-900 text-[13px] leading-snug">${escapeHtml(item.requirement || item.text || item.skill || "Requirement")}</span>
+          <span class="font-bold text-slate-900 text-[13px] leading-snug">${escapeHtml(requirement)}</span>
           <span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase border shrink-0 ${badgeClass}">${badgeLabel}</span>
         </div>
-        ${item.evidence ? `<p class="text-slate-700 bg-slate-50 p-2.5 rounded border border-slate-100 font-mono text-[11px] leading-relaxed">Evidence: ${escapeHtml(item.evidence)}</p>` : ""}
+        <p class="text-slate-700 bg-slate-50 p-2.5 rounded border border-slate-100 font-mono text-[11px] leading-relaxed whitespace-pre-line">Evidence: ${escapeHtml(evidence)}</p>
         ${item.notes ? `<p class="text-slate-500 text-[11px] italic leading-normal">${escapeHtml(item.notes)}</p>` : ""}
       `;
       container.appendChild(el);
     }
+  }
+
+  function formatAnalysisEvidence(evidence) {
+    if (!Array.isArray(evidence) || evidence.length === 0) {
+      return "No grounded evidence found in the master resume or evidence catalog.";
+    }
+
+    return evidence.map((entry) => {
+      const source = [entry.company, entry.position].filter(Boolean).join(" — ");
+      const detail = entry.text
+        || entry.facts?.[0]
+        || entry.matchedAs
+        || entry.skill
+        || entry.name
+        || "Grounded evidence";
+      const type = entry.type ? `[${entry.type}] ` : "";
+      return `${type}${source ? `${source}: ` : ""}${detail}`;
+    }).join("\n");
   }
 
   function setupAnalysisEvents() {
@@ -916,6 +1009,10 @@
 
     $("#btn-run-full-pipeline")?.addEventListener("click", () => triggerFullPipeline());
     $("#btn-trigger-pipeline-run")?.addEventListener("click", () => triggerFullPipeline());
+    $("#btn-view-emphasis")?.addEventListener("click", () => {
+      $("#analysis-filter-chips [data-filter=\"emphasis\"]")?.click();
+      $("#analysis-items-container")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
   }
 
   // -------------------------------------------------------------
@@ -1343,9 +1440,55 @@
   }
 
   function setupEvidenceEvents() {
+    $("#btn-build-evidence")?.addEventListener("click", async () => {
+      try {
+        const res = await fetch("/api/evidence/builder", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Could not build candidate evidence.");
+        showToast("Candidate evidence created. Review claims before promotion.");
+        renderEvidenceBuilder(data);
+      } catch (err) { alert(`Evidence Builder error: ${err.message}`); }
+    });
     // Search filter
     $("#input-evidence-search")?.addEventListener("input", (e) => {
       loadEvidenceCatalog(e.target.value);
+    });
+
+    $("#select-evidence-type")?.addEventListener("change", (e) => {
+      state.activeEvidenceType = e.target.value;
+      loadEvidenceCatalog($("#input-evidence-search")?.value || "");
+    });
+
+    // Import replaces the local evidence base only after server-side schema validation.
+    $("#btn-import-evidence")?.addEventListener("click", () => {
+      $("#input-import-evidence")?.click();
+    });
+
+    $("#input-import-evidence")?.addEventListener("change", async (event) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const evidence = JSON.parse(text);
+        const res = await fetch("/api/evidence/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(evidence),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "The evidence file could not be imported.");
+
+        showToast("Evidence base imported and validated.");
+        await fetchEvidenceSummary();
+        await loadEvidenceCatalog($("#input-evidence-search")?.value || "");
+      } catch (err) {
+        const message = err instanceof SyntaxError
+          ? "Choose a valid JSON evidence export."
+          : err.message;
+        alert(`Import error: ${message}`);
+      }
     });
 
     // Clear skill filter
@@ -1457,7 +1600,7 @@
       const facts = rawFacts.split("\n").map((f) => f.trim()).filter(Boolean);
 
       try {
-        const res = await fetch("/api/evidence/experiences", {
+        const res = await fetch("/api/evidence/queue", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1467,6 +1610,7 @@
             type,
             skills,
             facts,
+            source: "manual",
           }),
         });
 
@@ -1479,7 +1623,7 @@
         $("#direct-exp-skills").value = "";
         if ($("#direct-exp-facts")) $("#direct-exp-facts").value = "";
 
-        showToast("Experience record saved to evidence base.");
+        showToast("Experience submitted to the Review Queue.");
         await fetchEvidenceSummary();
         loadEvidenceCatalog($("#input-evidence-search")?.value || "");
       } catch (err) {
@@ -1899,8 +2043,10 @@
       const url = new URL("/api/evidence/catalog", window.location.origin);
       if (query) url.searchParams.set("q", query);
       if (state.activeEvidenceSkill) url.searchParams.set("skill", state.activeEvidenceSkill);
+      if (state.activeEvidenceType) url.searchParams.set("type", state.activeEvidenceType);
 
       const res = await fetch(url.toString());
+      if (!res.ok) throw new Error("Could not load the evidence catalog.");
       const data = await res.json();
       state.catalogExperiences = data.experiences || [];
       state.catalogSkills = data.skills || {};
@@ -1912,6 +2058,57 @@
     } catch (err) {
       container.innerHTML = `<div class="text-xs text-rose-600 p-4 text-center">Error loading catalog: ${escapeHtml(err.message)}</div>`;
     }
+  }
+
+  async function loadEvidenceBuilder() {
+    try {
+      const res = await fetch("/api/evidence/builder");
+      if (!res.ok) throw new Error("Could not load Evidence Builder.");
+      renderEvidenceBuilder(await res.json());
+    } catch (err) { console.error("Evidence Builder error:", err); }
+  }
+
+  function renderEvidenceBuilder(data) {
+    const container = $("#evidence-builder-container");
+    if (!container) return;
+    const report = data.report;
+    if (!data.candidate || !report) { container.classList.add("hidden"); return; }
+    container.classList.remove("hidden");
+    const claims = data.candidate.claims || [];
+    const issues = report.issues || [];
+    container.innerHTML = `
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
+        <div><h3 class="text-sm font-bold text-slate-900">Evidence Builder Review</h3><p class="text-xs text-slate-500">${escapeHtml(report.status)} · ${report.summary.approved}/${report.summary.factsExtracted} approved</p></div>
+        <button id="btn-promote-evidence" class="text-xs font-bold px-3 py-1.5 rounded-lg ${report.promotionSafe ? "bg-emerald-700 text-white hover:bg-emerald-800" : "bg-slate-100 text-slate-400 cursor-not-allowed"}" ${report.promotionSafe ? "" : "disabled"}>Promote approved evidence</button>
+      </div>
+      ${issues.length ? `<div class="text-xs bg-rose-50 border border-rose-200 rounded-lg p-3 text-rose-900">${issues.map((issue) => `<div class="flex flex-wrap items-center justify-between gap-2"><span>${escapeHtml(issue.type)}: ${escapeHtml((issue.values || []).join(" ↔ "))}</span>${issue.resolved ? "<span class=\"font-bold\">Resolved</span>" : `<button data-issue="${escapeHtml(issue.id)}" class="btn-resolve-issue text-[11px] underline font-bold">Use first value</button>`}</div>`).join("")}</div>` : ""}
+      ${data.candidate.questionnaire?.questions?.length ? `<div class="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2"><h4 class="text-xs font-bold text-slate-800">Follow-up questions</h4><p class="text-[11px] text-slate-500">Answer only what you can confirm. “I don't remember” is valid.</p>${data.candidate.questionnaire.questions.slice(0, 8).map((question) => `<label class="block text-[11px] font-semibold text-slate-700">${escapeHtml(question.prompt)}<textarea data-question="${escapeHtml(question.id)}" rows="2" class="w-full mt-1 text-xs font-normal bg-white border border-slate-300 rounded p-2"></textarea></label>`).join("")}<button id="btn-submit-builder-answers" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-800 text-white hover:bg-slate-700">Save answers for review</button></div>` : ""}
+      <div class="space-y-2 max-h-72 overflow-y-auto">${claims.map((claim) => `<div class="border border-slate-200 rounded-lg p-3 text-xs"><div class="flex justify-between gap-2"><span class="font-semibold text-slate-900">${escapeHtml(claim.claim)}</span><span class="text-[10px] uppercase font-bold">${escapeHtml(claim.reviewStatus)}</span></div><p class="text-slate-500 mt-1">${escapeHtml(claim.contextId)} · ${escapeHtml(claim.source.type)}:${escapeHtml(claim.source.reference)}</p>${claim.reviewStatus === "pending" ? `<div class="mt-2 flex gap-2"><button data-claim="${escapeHtml(claim.id)}" data-status="approved" class="btn-review-claim text-[11px] font-bold text-emerald-700">Approve</button><button data-claim="${escapeHtml(claim.id)}" data-status="rejected" class="btn-review-claim text-[11px] font-bold text-slate-600">Reject</button></div>` : ""}</div>`).join("")}</div>`;
+    container.querySelectorAll(".btn-review-claim").forEach((button) => button.addEventListener("click", async () => {
+      const res = await fetch("/api/evidence/builder/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decisions: [{ claimId: button.dataset.claim, status: button.dataset.status }] }) });
+      const updated = await res.json();
+      if (!res.ok) return alert(updated.error || "Review could not be saved.");
+      renderEvidenceBuilder(updated);
+    }));
+    container.querySelector("#btn-submit-builder-answers")?.addEventListener("click", async () => {
+      const answers = [...container.querySelectorAll("textarea[data-question]")].map((field) => ({ questionId: field.dataset.question, answer: field.value }));
+      const res = await fetch("/api/evidence/builder/questionnaire", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answers }) });
+      const result = await res.json();
+      if (!res.ok) return alert(result.error || "Answers could not be saved.");
+      showToast("Answers added as pending claims."); renderEvidenceBuilder(result);
+    });
+    container.querySelectorAll(".btn-resolve-issue").forEach((button) => button.addEventListener("click", async () => {
+      const issue = issues.find((item) => item.id === button.dataset.issue);
+      const res = await fetch("/api/evidence/builder/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decisions: [{ issueId: issue.id, status: "resolved", values: [issue.values[0]], note: "Confirmed through review." }] }) });
+      const result = await res.json(); if (!res.ok) return alert(result.error || "Conflict could not be resolved."); renderEvidenceBuilder(result);
+    }));
+    container.querySelector("#btn-promote-evidence")?.addEventListener("click", async () => {
+      const res = await fetch("/api/evidence/builder/promote", { method: "POST" });
+      const result = await res.json();
+      if (!res.ok) return alert(result.error || "Promotion blocked.");
+      showToast("Approved evidence promoted to the canonical base.");
+      await fetchEvidenceSummary(); await loadEvidenceCatalog(); await loadEvidenceBuilder();
+    });
   }
 
   async function loadReviewQueue() {
@@ -2078,10 +2275,7 @@
   // Settings & Configuration Form
   // -------------------------------------------------------------
   function setupSettingsEvents() {
-    $("#btn-rerun-doctor")?.addEventListener("click", async () => {
-      await fetchDoctorStatus();
-      loadSettingsDoctorSection();
-    });
+    $("#btn-rerun-doctor")?.addEventListener("click", () => refreshDoctorStatus());
 
     // Password visibility toggle
     $("#btn-toggle-key-visibility")?.addEventListener("click", () => {
@@ -2096,8 +2290,15 @@
 
     $("#btn-save-settings")?.addEventListener("click", async () => {
       const alertBox = $("#settings-save-alert");
+      const saveButton = $("#btn-save-settings");
       if (!alertBox) return;
       alertBox.classList.add("hidden");
+      saveButton.disabled = true;
+      saveButton.setAttribute("aria-busy", "true");
+      saveButton.classList.add("opacity-60", "cursor-wait");
+      const saveLabel = saveButton.querySelector("span");
+      const originalSaveLabel = saveLabel?.textContent;
+      if (saveLabel) saveLabel.textContent = "Saving...";
 
       const provider = $("#settings-llm-provider").value;
       const geminiKey = $("#settings-gemini-key").value.trim();
@@ -2144,6 +2345,11 @@
         alertBox.textContent = `Error saving settings: ${err.message}`;
         alertBox.className = "p-3 rounded-lg text-xs bg-rose-50 text-rose-800 border border-rose-200";
         alertBox.classList.remove("hidden");
+      } finally {
+        saveButton.disabled = false;
+        saveButton.removeAttribute("aria-busy");
+        saveButton.classList.remove("opacity-60", "cursor-wait");
+        if (saveLabel && originalSaveLabel) saveLabel.textContent = originalSaveLabel;
       }
     });
   }
@@ -2175,7 +2381,12 @@
 
   function loadSettingsDoctorSection() {
     const container = $("#doctor-checks-container");
-    if (!container || !state.doctorReport || !state.doctorReport.checks) return;
+    if (!container) return;
+    if (state.doctorCheckInFlight) {
+      container.innerHTML = `<div class="text-xs text-slate-500 p-4 text-center" role="status" aria-live="polite">Checking environment diagnostics...</div>`;
+      return;
+    }
+    if (!state.doctorReport || !state.doctorReport.checks) return;
 
     container.innerHTML = state.doctorReport.checks.map((c) => `
       <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between text-xs">

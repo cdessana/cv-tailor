@@ -2,7 +2,6 @@ import { Router } from "express";
 import {
   getEvidenceSummary,
   getEvidenceCatalog,
-  addExperience,
   updateExperience,
   deleteExperience,
   submitToReviewQueue,
@@ -12,8 +11,40 @@ import {
   loadEvidence,
   saveEvidence,
 } from "../services/evidence-service.mjs";
+import {
+  answerEvidenceQuestionnaire,
+  buildEvidence,
+  evidenceBuilderStatus,
+  promoteEvidenceCandidate,
+  reviewEvidenceCandidate,
+} from "../services/evidence-builder-service.mjs";
 
 const router = Router();
+
+// Candidate evidence is deliberately stored outside evidence.json until reviewed.
+router.get("/builder", async (req, res, next) => {
+  try { res.json(await evidenceBuilderStatus()); } catch (err) { next(err); }
+});
+
+router.post("/builder", async (req, res) => {
+  try { res.status(201).json(await buildEvidence(req.body || {})); }
+  catch (err) { res.status(400).json({ error: err.message, code: err.code, details: err.details }); }
+});
+
+router.post("/builder/questionnaire", async (req, res) => {
+  try { res.json(await answerEvidenceQuestionnaire(req.body?.answers)); }
+  catch (err) { res.status(400).json({ error: err.message, code: err.code, details: err.details }); }
+});
+
+router.post("/builder/review", async (req, res) => {
+  try { res.json(await reviewEvidenceCandidate(req.body?.decisions)); }
+  catch (err) { res.status(400).json({ error: err.message, code: err.code, details: err.details }); }
+});
+
+router.post("/builder/promote", async (req, res) => {
+  try { res.json(await promoteEvidenceCandidate()); }
+  catch (err) { res.status(409).json({ error: err.message, code: err.code, details: err.details }); }
+});
 
 // Evidence base overview metrics
 router.get("/summary", async (req, res, next) => {
@@ -41,14 +72,9 @@ router.get("/catalog", async (req, res, next) => {
   }
 });
 
-// Add experience directly
+// New facts must enter review before they can become canonical evidence.
 router.post("/experiences", async (req, res) => {
-  try {
-    const created = await addExperience(req.body);
-    res.status(201).json(created);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
+  res.status(410).json({ error: "Direct writes to canonical evidence are disabled. Submit the claim to the review queue or Evidence Builder.", code: "EVIDENCE_DIRECT_WRITE_DISABLED" });
 });
 
 // Update experience directly
