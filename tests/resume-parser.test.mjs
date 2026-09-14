@@ -7,6 +7,7 @@ import { parseResumeDocument, parseResumeText } from "../lib/resume-parser/parse
 import { readResumeSource } from "../lib/resume-parser/read-source.mjs";
 import { parseArguments, runResumeParser } from "../scripts/resume-parser.mjs";
 import { extractedEntry, provenanceForEntry } from "../lib/resume-parser/extracted-entry.mjs";
+import { extractEducationEntries } from "../lib/resume-parser/education.mjs";
 
 const resumeText = `# Jane Doe
 Senior Software Engineer
@@ -163,6 +164,16 @@ test("keeps extracted values and parser provenance separate", () => {
   const entry = extractedEntry({ name: "Example Corp" }, { name: source });
   assert.deepEqual(entry.value, { name: "Example Corp" });
   assert.deepEqual(provenanceForEntry("/work/0", entry.sources), [{ path: "/work/0/name", source }]);
+});
+
+test("education extraction returns field-level sourced entries", () => {
+  const source = (lineStart, text) => ({ page: 1, lineStart, lineEnd: lineStart, text });
+  const entries = extractEducationEntries([
+    { text: "Example University | Master of Science | 2020 - 2022", source: source(8, "Example University | Master of Science | 2020 - 2022") },
+  ]);
+  assert.deepEqual(entries[0].value, { institution: "Example University", studyType: "Master of Science", startDate: "2020", endDate: "2022" });
+  assert.equal(entries[0].sources.institution.lineStart, 8);
+  assert.equal(entries[0].sources.endDate.lineStart, 8);
 });
 
 test("requires explicit parser input and output options", () => {
