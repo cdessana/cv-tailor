@@ -753,3 +753,51 @@ test("retains original bullet source text in provenance", () => {
 
   assert.equal(evidence.source.text, "- Collaborated with the lead engineer on APIs.");
 });
+
+test("rejects readable text without minimum resume structure", () => {
+  for (const text of [
+    "This is not a resume",
+    "Markets closed higher today after a broad rally across technology companies.",
+    "Jane Doe",
+  ]) {
+    const { report } = parseResumeText(text);
+    assert.equal(report.status, "failed", text);
+    const issue = report.issues.find(({ code }) => code === "malformed_resume_content");
+    assert.equal(issue.severity, "error");
+    assert.equal(issue.requiresHumanReview, false);
+  }
+});
+
+test("accepts minimal resumes with an independent contact, title, or section signal", () => {
+  const contact = parseResumeText("Jane Doe\njane@example.com");
+  assert.equal(contact.report.status, "ready");
+  assert.equal(contact.resume.basics.email, "jane@example.com");
+
+  const title = parseResumeText("Jane Doe\nSoftware Engineer");
+  assert.equal(title.report.status, "ready");
+  assert.equal(title.resume.basics.label, "Software Engineer");
+
+  const ambiguousWork = parseResumeText("Jane Doe\nExperience\nWorked with messaging systems.");
+  assert.equal(ambiguousWork.report.status, "review_required");
+  assert.equal(ambiguousWork.report.issues.some(({ code }) => code === "malformed_resume_content"), false);
+});
+
+test("writes a malformed-input report without publishing a candidate", async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "resume-parser-malformed-"));
+  const input = path.join(directory, "input.txt");
+  const output = path.join(directory, "candidate.json");
+  const reportPath = `${output}.report.json`;
+  await fs.writeFile(input, "This is not a resume");
+
+  await assert.rejects(
+    runResumeParser(
+      { input, output },
+      { loadConfiguration: () => ({ paths: { baseResume: path.join(directory, "base.json") } }) }
+    ),
+    (error) => error.code === "RESUME_MALFORMED_INPUT" && error.details.reportPath === reportPath
+  );
+  await assert.rejects(fs.access(output));
+  const report = JSON.parse(await fs.readFile(reportPath, "utf8"));
+  assert.equal(report.status, "failed");
+  assert.equal(report.issues.some(({ code }) => code === "malformed_resume_content"), true);
+});

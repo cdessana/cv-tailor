@@ -113,7 +113,12 @@ export async function runResumeParser(options, {
     } catch (error) {
       throw new ResumeParserError("RESUME_REPORT_WRITE_FAILED", "Resume parsing failed and its diagnostic report could not be written.", { cause: error, details: { reportPath } });
     }
-    throw new ResumeParserError("RESUME_VALIDATION_FAILED", "Resume parsing produced an invalid JSON Resume candidate.", { details: { reportPath, issues: result.report.issues } });
+    const malformed = result.report.issues.some((issue) => issue.code === "malformed_resume_content");
+    throw new ResumeParserError(
+      malformed ? "RESUME_MALFORMED_INPUT" : "RESUME_VALIDATION_FAILED",
+      malformed ? "The source does not contain enough recognizable resume structure." : "Resume parsing produced an invalid JSON Resume candidate.",
+      { details: { reportPath, issues: result.report.issues } }
+    );
   }
   try {
     await writeJsonPairTransactional(options.output, result.resume, reportPath, result.report, { fileSystem });
