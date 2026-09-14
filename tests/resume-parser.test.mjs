@@ -694,3 +694,62 @@ test("keeps the existing base resume valid without migration", async () => {
   assert.deepEqual(validateResume(resume), { valid: true, errors: [] });
   assert.equal(await fs.readFile(basePath, "utf8"), before);
 });
+
+test("preserves bullets containing role words and still detects the next work entry", () => {
+  const { resume, report } = parseResumeText(`Jane Doe
+Experience
+Example Corp | Software Engineer | 2021 - 2024
+- Collaborated with the lead engineer on APIs.
+* Supported the software architect during migration.
+• Mentored a developer through onboarding.
+1. Partnered with the engineering manager.
+Other Corp | Backend Engineer | 2024 - Present
+- Built reliable services.`);
+
+  assert.equal(report.status, "ready");
+  assert.deepEqual(resume.work[0].highlights, [
+    "Collaborated with the lead engineer on APIs.",
+    "Supported the software architect during migration.",
+    "Mentored a developer through onboarding.",
+    "Partnered with the engineering manager.",
+  ]);
+  assert.deepEqual(resume.work[1].highlights, ["Built reliable services."]);
+});
+
+test("associates a standalone PDF bullet marker with the following line", () => {
+  const values = [
+    "Jane Doe",
+    "Experience",
+    "Example Corp | Software Engineer | 2021 - 2024",
+    "•",
+    "Collaborated with the lead engineer on APIs.",
+  ];
+  const lines = values.map((text, index) => ({
+    text,
+    source: { page: 1, lineStart: index + 1, lineEnd: index + 1, text, format: "pdf" },
+  }));
+  const { resume, report } = parseResumeDocument({ format: "pdf", pages: 1, text: values.join("\n"), lines });
+
+  assert.equal(report.status, "ready");
+  assert.deepEqual(resume.work[0].highlights, ["Collaborated with the lead engineer on APIs."]);
+  const evidence = report.provenance.find(({ path }) => path === "/work/0/highlights/0");
+  assert.equal(evidence.source.lineStart, 5);
+  assert.equal(evidence.source.text, "Collaborated with the lead engineer on APIs.");
+});
+
+test("retains original bullet source text in provenance", () => {
+  const values = [
+    "Jane Doe",
+    "Experience",
+    "Example Corp | Software Engineer | 2021 - 2024",
+    "- Collaborated with the lead engineer on APIs.",
+  ];
+  const lines = values.map((text, index) => ({
+    text,
+    source: { page: 1, lineStart: index + 1, lineEnd: index + 1, text, format: "md" },
+  }));
+  const { report } = parseResumeDocument({ format: "md", pages: 1, text: values.join("\n"), lines });
+  const evidence = report.provenance.find(({ path }) => path === "/work/0/highlights/0");
+
+  assert.equal(evidence.source.text, "- Collaborated with the lead engineer on APIs.");
+});
