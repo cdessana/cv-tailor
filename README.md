@@ -264,8 +264,8 @@ It should remain concise.
 
 ### Import an existing resume
 
-Use the local resume parser to create a reviewable JSON Resume candidate from a
-plain-text or Markdown resume:
+Use the local, deterministic resume parser to create a reviewable JSON Resume
+candidate from TXT, Markdown, or a text-based PDF:
 
 ```bash
 npm run resume:parse -- \
@@ -278,6 +278,18 @@ report before promoting the candidate to `base.json`; the parser never replaces
 the master resume automatically. Text-based PDFs are also supported when
 Poppler's `pdftotext` is installed. Scanned PDFs require OCR and are rejected
 instead of guessed.
+
+The report keeps JSON Pointer provenance and review issues separate from the
+clean JSON Resume candidate. Dates retain their source precision, metrics and
+wording are copied without enrichment, and unsupported or ambiguous facts are
+omitted for review. Candidate/report publication is transactional and the
+configured `paths.baseResume` is protected.
+
+For architecture, supported extraction conventions, structured errors,
+limitations, and the review workflow, see
+[Resume parser](docs/resume-parser.md). The external dependency and prior-art
+decisions are recorded in the
+[resume parser implementation assessment](docs/resume-parser-assessment.md).
 
 ### `evidence.json`
 
