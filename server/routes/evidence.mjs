@@ -2,14 +2,11 @@ import { Router } from "express";
 import {
   getEvidenceSummary,
   getEvidenceCatalog,
-  updateExperience,
-  deleteExperience,
   submitToReviewQueue,
   loadReviewQueue,
   approveQueueItem,
   rejectQueueItem,
   loadEvidence,
-  saveEvidence,
 } from "../services/evidence-service.mjs";
 import {
   answerEvidenceQuestionnaire,
@@ -77,24 +74,14 @@ router.post("/experiences", async (req, res) => {
   res.status(410).json({ error: "Direct writes to canonical evidence are disabled. Submit the claim to the review queue or Evidence Builder.", code: "EVIDENCE_DIRECT_WRITE_DISABLED" });
 });
 
-// Update experience directly
+// Canonical evidence is immutable outside builder promotion.
 router.put("/experiences/:id", async (req, res) => {
-  try {
-    const updated = await updateExperience(req.params.id, req.body);
-    res.json(updated);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
+  res.status(410).json({ error: "Canonical evidence is immutable outside Evidence Builder promotion.", code: "EVIDENCE_DIRECT_WRITE_DISABLED" });
 });
 
 // Delete experience
 router.delete("/experiences/:id", async (req, res) => {
-  try {
-    const result = await deleteExperience(req.params.id);
-    res.json(result);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
+  res.status(410).json({ error: "Canonical evidence is immutable outside Evidence Builder promotion.", code: "EVIDENCE_DIRECT_WRITE_DISABLED" });
 });
 
 // Review queue listing
@@ -151,14 +138,7 @@ router.get("/export", async (req, res, next) => {
 
 // Import full evidence JSON
 router.post("/import", async (req, res) => {
-  try {
-    const data = req.body;
-    await saveEvidence(data);
-    const summary = await getEvidenceSummary();
-    res.json({ success: true, summary });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
+  res.status(410).json({ error: "Direct canonical imports are disabled. Build and review a candidate before promotion.", code: "EVIDENCE_DIRECT_WRITE_DISABLED" });
 });
 
 export default router;

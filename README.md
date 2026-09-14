@@ -576,14 +576,18 @@ The backend Express server provides RESTful endpoints utilized by the web UI and
 | `/api/render/download/:company/:fmt` | `GET` | Download resume artifact (`pdf`, `html`, or `txt`). |
 | `/api/evidence/summary` | `GET` | Retrieve evidence statistics (experiences, facts, skills, queue). |
 | `/api/evidence/catalog` | `GET` | Search and filter experiences with query and skill parameters. |
-| `/api/evidence/experiences` | `POST` | Add a new verified career experience. |
-| `/api/evidence/experiences/:id` | `PUT` | Update an existing career experience card by ID. |
-| `/api/evidence/experiences/:id` | `DELETE` | Delete an experience card by ID. |
+| `/api/evidence/experiences` | `POST` | Disabled; submit new claims to the review workflow. |
+| `/api/evidence/experiences/:id` | `PUT/DELETE` | Disabled; canonical evidence is immutable outside builder promotion. |
+| `/api/evidence/builder` | `GET/POST` | Read or build a reviewable evidence candidate. |
+| `/api/evidence/builder/questionnaire` | `POST` | Record questionnaire answers as pending claims/issues. |
+| `/api/evidence/builder/review` | `POST` | Apply structured claim or conflict decisions. |
+| `/api/evidence/builder/promote` | `POST` | Promote only fully reviewed evidence to canonical storage. |
 | `/api/evidence/queue` | `GET` | List items pending review in the evidence queue. |
 | `/api/evidence/queue` | `POST` | Submit facts to the review queue from interview or manual input. |
 | `/api/evidence/queue/:id/approve` | `POST` | Approve a review queue item and merge into evidence. |
 | `/api/evidence/queue/:id/reject` | `POST` | Reject a review queue item. |
 | `/api/evidence/export` | `GET` | Export and download full `evidence.json`. |
+| `/api/evidence/import` | `POST` | Disabled; imports must enter the Evidence Builder review flow. |
 | `/api/config` | `GET` | Read centralized `cv-tailor.config.json`. |
 | `/api/config` | `PUT` | Update and validate `cv-tailor.config.json` via Zod schema. |
 | `/api/doctor` | `GET` | Run environment readiness checks and return diagnostic status. |
