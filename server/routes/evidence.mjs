@@ -4,7 +4,6 @@ import {
   getEvidenceCatalog,
   submitToReviewQueue,
   loadReviewQueue,
-  approveQueueItem,
   rejectQueueItem,
   loadEvidence,
 } from "../services/evidence-service.mjs";
@@ -116,12 +115,7 @@ router.post("/queue", async (req, res) => {
 
 // Approve review queue item
 router.post("/queue/:id/approve", async (req, res) => {
-  try {
-    const result = await approveQueueItem(req.params.id, req.body || {});
-    res.json(result);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
+  res.status(410).json({ error: "Legacy queue approval is disabled. Review and promote through Evidence Builder.", code: "EVIDENCE_DIRECT_WRITE_DISABLED" });
 });
 
 // Reject review queue item

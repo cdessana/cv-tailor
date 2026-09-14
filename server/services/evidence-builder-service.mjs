@@ -1,7 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { loadConfig } from "../../config/load-config.mjs";
-import { loadEvidence, saveEvidence } from "./evidence-service.mjs";
+import { loadEvidence } from "./evidence-service.mjs";
+import { promoteApprovedEvidence } from "../../lib/evidence/promote.mjs";
 import { applyQuestionnaireAnswers, applyReviewDecisions, createCandidate, createReport, EvidenceBuilderError, promoteCandidate } from "../../lib/evidence/builder.mjs";
 
 function paths(config = loadConfig()) {
@@ -77,7 +78,7 @@ export async function reviewEvidenceCandidate(decisions, { config = loadConfig()
 export async function promoteEvidenceCandidate({ config = loadConfig() } = {}) {
   const { candidate } = await getEvidenceCandidate({ config });
   const evidence = promoteCandidate(candidate);
-  await saveEvidence(evidence);
+  await promoteApprovedEvidence(evidence, config.paths.evidence);
   return { evidence, report: createReport(candidate), canonicalPath: config.paths.evidence };
 }
 

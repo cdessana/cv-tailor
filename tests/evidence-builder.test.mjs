@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { applyQuestionnaireAnswers, applyReviewDecisions, createCandidate, EvidenceBuilderError, promoteCandidate } from "../lib/evidence/builder.mjs";
-import { buildEvidence, getEvidenceCandidate } from "../server/services/evidence-builder-service.mjs";
+import { buildEvidence, getEvidenceCandidate, promoteEvidenceCandidate, reviewEvidenceCandidate } from "../server/services/evidence-builder-service.mjs";
 
 const resume = {
   basics: { name: "Synthetic Candidate", email: "candidate@example.com" },
@@ -91,5 +91,16 @@ test("persists candidate and report together and can reload them", async () => {
   const loaded = await getEvidenceCandidate({ config });
   assert.equal(loaded.candidate.claims.length, built.candidate.claims.length);
   assert.equal(loaded.report.promotionSafe, false);
+  await fs.rm(root, { recursive: true, force: true });
+});
+
+test("canonical output is written only by the promotion service", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "evidence-builder-promotion-"));
+  const config = { paths: { output: path.join(root, "output"), baseResume: "unused", evidence: path.join(root, "evidence.json") } };
+  const built = await buildEvidence({ resume, sourceReference: "fixture.json" }, { config });
+  await reviewEvidenceCandidate(built.candidate.claims.map((claim) => ({ claimId: claim.id, status: "approved" })), { config });
+  const promoted = await promoteEvidenceCandidate({ config });
+  const stored = JSON.parse(await fs.readFile(config.paths.evidence, "utf8"));
+  assert.deepEqual(stored, promoted.evidence);
   await fs.rm(root, { recursive: true, force: true });
 });
