@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { parseResumeText } from "../lib/resume-parser/parse.mjs";
+import { parseResumeDocument, parseResumeText } from "../lib/resume-parser/parse.mjs";
 import { readResumeSource } from "../lib/resume-parser/read-source.mjs";
 import { parseArguments, runResumeParser } from "../scripts/resume-parser.mjs";
 
@@ -47,6 +47,25 @@ test("reports ambiguous work text rather than assigning it to a role", () => {
   assert.equal(report.issues[0].code, "ambiguous_work_entry");
 });
 
+test("extracts separate company, role, date, and bullet lines without mixing blocks", () => {
+  const { resume, report } = parseResumeText(`Jane Doe
+## Experience
+Senior Software Engineer
+Example Corp
+Mar 2021 — Present
+• Built APIs using Node.js.
+Data Analyst
+Other Corp
+03/2019 - 2021
+• Built dashboards.`);
+  assert.equal(report.status, "ready");
+  assert.deepEqual(resume.work.map(({ name, position, startDate, endDate }) => ({ name, position, startDate, endDate })), [
+    { name: "Example Corp", position: "Senior Software Engineer", startDate: "2021-03", endDate: undefined },
+    { name: "Other Corp", position: "Data Analyst", startDate: "2019-03", endDate: "2021" },
+  ]);
+  assert.deepEqual(resume.work[0].highlights, ["Built APIs using Node.js."]);
+});
+
 test("reads Markdown locally and rejects scanned PDF text", async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "resume-parser-"));
   const input = path.join(directory, "resume.md");
@@ -56,6 +75,22 @@ test("reads Markdown locally and rejects scanned PDF text", async () => {
     readResumeSource("scanned.pdf", { extractPdf: async () => "" }),
     /no extractable text/u
   );
+});
+
+test("reconstructs a two-column PDF source and retains coordinate provenance", async () => {
+  const pdf = `<doc><page width="612" height="792">
+  <word xMin="50" yMin="50" xMax="80" yMax="60">Jane</word><word xMin="84" yMin="50" xMax="110" yMax="60">Doe</word>
+  <word xMin="50" yMin="100" xMax="120" yMax="110">Experience</word>
+  <word xMin="50" yMin="120" xMax="110" yMax="130">Example</word><word xMin="114" yMin="120" xMax="145" yMax="130">Corp</word><word xMin="150" yMin="120" xMax="151" yMax="130">|</word><word xMin="155" yMin="120" xMax="210" yMax="130">Engineer</word><word xMin="215" yMin="120" xMax="216" yMax="130">|</word><word xMin="220" yMin="120" xMax="250" yMax="130">2021</word>
+  <word xMin="350" yMin="100" xMax="390" yMax="110">Skills</word>
+  <word xMin="350" yMin="120" xMax="410" yMax="130">Backend:</word><word xMin="415" yMin="120" xMax="460" yMax="130">Node.js</word>
+  </page></doc>`;
+  const source = await readResumeSource("resume.pdf", { extractPdf: async () => pdf });
+  assert.deepEqual(source.lines.map((line) => line.text), ["Jane Doe", "Experience", "Example Corp | Engineer | 2021", "Skills", "Backend: Node.js"]);
+  const result = parseResumeDocument(source);
+  assert.equal(result.resume.work[0].name, "Example Corp");
+  assert.equal(result.report.provenance.find((entry) => entry.path === "/work/0/name").source.page, 1);
+  assert.equal(result.report.provenance.find((entry) => entry.path === "/work/0/name").source.items[0].xMin, 50);
 });
 
 test("writes a reviewable candidate without replacing base.json", async () => {

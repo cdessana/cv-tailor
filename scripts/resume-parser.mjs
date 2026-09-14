@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { readResumeSource } from "../lib/resume-parser/read-source.mjs";
-import { parseResumeText } from "../lib/resume-parser/parse.mjs";
+import { parseResumeDocument } from "../lib/resume-parser/parse.mjs";
 
 export function parseArguments(args) {
   const options = {};
@@ -17,7 +17,7 @@ export function parseArguments(args) {
 
 export async function runResumeParser(options) {
   const source = await readResumeSource(options.input);
-  const result = parseResumeText(source.text, { format: source.format });
+  const result = parseResumeDocument(source);
   if (result.report.status === "failed") throw new Error(`Resume parsing failed: ${result.report.issues.map((issue) => issue.message).join("; ")}`);
   const reportPath = options.report ?? `${options.output}.report.json`;
   await fs.mkdir(path.dirname(options.output), { recursive: true });
