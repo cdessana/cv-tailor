@@ -185,6 +185,15 @@ test("certificate extraction returns sourced entries without changing the resume
   assert.equal(entry.sources.issuer, source);
 });
 
+test("language extraction preserves language and fluency sources", async () => {
+  const { extractLanguageEntries } = await import("../lib/resume-parser/sections.mjs");
+  const source = { page: 1, lineStart: 6, text: "English — Fluent" };
+  const [entry] = extractLanguageEntries([{ text: source.text, source }]);
+  assert.deepEqual(entry.value, { language: "English", fluency: "Fluent" });
+  assert.equal(entry.sources.language, source);
+  assert.equal(entry.sources.fluency, source);
+});
+
 test("requires explicit parser input and output options", () => {
   assert.throws(() => parseArguments(["--input", "resume.txt"]));
   assert.deepEqual(parseArguments(["--input", "resume.txt", "--output", "candidate.json"]), {
