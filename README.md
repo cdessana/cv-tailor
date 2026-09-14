@@ -579,6 +579,8 @@ The backend Express server provides RESTful endpoints utilized by the web UI and
 | `/api/evidence/experiences` | `POST` | Disabled; submit new claims to the review workflow. |
 | `/api/evidence/experiences/:id` | `PUT/DELETE` | Disabled; canonical evidence is immutable outside builder promotion. |
 | `/api/evidence/builder` | `GET/POST` | Read or build a reviewable evidence candidate. |
+| `/api/evidence/builder/candidate` | `GET` | Download the current candidate artifact. |
+| `/api/evidence/builder/report` | `GET` | Download the current audit/report artifact. |
 | `/api/evidence/builder/questionnaire` | `POST` | Record questionnaire answers as pending claims/issues. |
 | `/api/evidence/builder/review` | `POST` | Apply structured claim or conflict decisions. |
 | `/api/evidence/builder/promote` | `POST` | Promote only fully reviewed evidence to canonical storage. |

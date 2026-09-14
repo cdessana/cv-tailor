@@ -23,6 +23,16 @@ router.get("/builder", async (req, res, next) => {
   try { res.json(await evidenceBuilderStatus()); } catch (err) { next(err); }
 });
 
+router.get("/builder/candidate", async (req, res, next) => {
+  try { const status = await evidenceBuilderStatus(); if (!status.candidate) return res.status(404).json({ error: "Evidence candidate not found." }); res.setHeader("Content-Disposition", 'attachment; filename="evidence-candidate.json"'); res.json(status.candidate); }
+  catch (err) { next(err); }
+});
+
+router.get("/builder/report", async (req, res, next) => {
+  try { const status = await evidenceBuilderStatus(); if (!status.report) return res.status(404).json({ error: "Evidence report not found." }); res.setHeader("Content-Disposition", 'attachment; filename="evidence-report.json"'); res.json(status.report); }
+  catch (err) { next(err); }
+});
+
 router.post("/builder", async (req, res) => {
   try { res.status(201).json(await buildEvidence(req.body || {})); }
   catch (err) { res.status(400).json({ error: err.message, code: err.code, details: err.details }); }
