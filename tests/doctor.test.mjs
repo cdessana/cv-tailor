@@ -158,6 +158,24 @@ test("doctor never exposes the Gemini credential", async () => {
   assert.equal(JSON.stringify(report).includes(secret), false);
 });
 
+test("doctor recognizes a Gemini key saved in application configuration", async () => {
+  const secret = "saved-gemini-key";
+  const report = await diagnoseEnvironment(
+    dependencies({
+      loadConfig: () => ({
+        llm: { gemini: { apiKey: secret } },
+        jobParser: { semanticProvider: "none", providers: { ollama: { model: "test-model", url: "http://127.0.0.1:11434" } } },
+        render: {},
+        paths: { baseResume: "/data/base.json", evidence: "/data/evidence.json", aliases: "/data/aliases.json", jobs: "/data/jobs", output: "/output" },
+      }),
+    })
+  );
+  const gemini = report.checks.find((check) => check.id === "gemini");
+  assert.equal(gemini.status, "pass");
+  assert.match(gemini.message, /cv-tailor\.config\.json/u);
+  assert.equal(JSON.stringify(report).includes(secret), false);
+});
+
 test("doctor reports configuration errors as blocking and actionable", async () => {
   const report = await diagnoseEnvironment(
     dependencies({
