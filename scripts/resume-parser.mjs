@@ -8,7 +8,7 @@ import { loadConfig } from "../config/load-config.mjs";
 
 async function writeJsonAtomic(targetPath, value) {
   await fs.mkdir(path.dirname(targetPath), { recursive: true });
-  const temporaryPath = `${targetPath}.${process.pid}.tmp`;
+  const temporaryPath = `${targetPath}.${process.pid}.${randomUUID()}.tmp`;
   try {
     await fs.writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`);
     await fs.rename(temporaryPath, targetPath);
