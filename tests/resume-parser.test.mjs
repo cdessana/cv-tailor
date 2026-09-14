@@ -8,6 +8,7 @@ import { readResumeSource } from "../lib/resume-parser/read-source.mjs";
 import { parseArguments, runResumeParser } from "../scripts/resume-parser.mjs";
 import { extractedEntry, provenanceForEntry } from "../lib/resume-parser/extracted-entry.mjs";
 import { extractEducationEntries } from "../lib/resume-parser/education.mjs";
+import { sectionLines } from "../lib/resume-parser/source-lines.mjs";
 
 const resumeText = `# Jane Doe
 Senior Software Engineer
@@ -208,4 +209,9 @@ test("requires explicit parser input and output options", () => {
   assert.deepEqual(parseArguments(["--input", "resume.txt", "--output", "candidate.json"]), {
     input: "resume.txt", output: "candidate.json", report: "candidate.json.report.json",
   });
+});
+
+test("preserves structured source lines while detecting sections", () => {
+  const document = { lines: [{ text: "Jane Doe", source: { lineStart: 1 } }, { text: "## Education", source: { lineStart: 2 } }, { text: "University", source: { lineStart: 3 } }], text: "Jane Doe\n## Education\nUniversity" };
+  assert.deepEqual(sectionLines(document, "education"), [document.lines[2]]);
 });
