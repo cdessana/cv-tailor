@@ -2117,7 +2117,7 @@
               </div>
               ${item.status === "pending" || item.status === "conflict" ? `
                 <div class="flex items-center gap-2 shrink-0">
-                  <button class="btn-approve-queue text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs" data-id="${item.id}">Approve & Merge</button>
+                  <span class="text-[11px] text-slate-500">Rebuild this item through Evidence Builder</span>
                   <button class="btn-reject-queue text-xs font-medium px-2.5 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-600" data-id="${item.id}">Reject</button>
                 </div>
               ` : ""}
@@ -2140,16 +2140,6 @@
           </div>
         `;
       }).join("");
-
-      container.querySelectorAll(".btn-approve-queue").forEach((btn) => {
-        btn.addEventListener("click", async (e) => {
-          const id = e.currentTarget.getAttribute("data-id");
-          await fetch(`/api/evidence/queue/${id}/approve`, { method: "POST" });
-          showToast("Item approved and merged into evidence base.");
-          await fetchEvidenceSummary();
-          loadReviewQueue();
-        });
-      });
 
       container.querySelectorAll(".btn-reject-queue").forEach((btn) => {
         btn.addEventListener("click", async (e) => {

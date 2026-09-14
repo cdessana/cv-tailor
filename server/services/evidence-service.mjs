@@ -64,9 +64,7 @@ export async function saveReviewQueue(queue) {
  */
 export async function saveEvidence(data) {
   validateEvidenceStructure(data);
-  const tempPath = `${EVIDENCE_PATH}.${Date.now()}.tmp`;
-  await fs.writeFile(tempPath, JSON.stringify(data, null, 2), "utf8");
-  await fs.rename(tempPath, EVIDENCE_PATH);
+  throw new Error("Canonical evidence can only be written through Evidence Builder promotion.");
 }
 
 /**

@@ -36,12 +36,8 @@ test("evidence builder stores reviewed claims before they become ground truth", 
   assert.equal(queued.status, "pending");
   assert.equal((await evidence.loadEvidence()).experiences.length, 0);
 
-  const approved = await evidence.approveQueueItem(queued.id);
-  assert.equal(approved.success, true);
-
-  const catalog = await evidence.getEvidenceCatalog({ skill: "node.js" });
-  assert.equal(catalog.filteredCount, 1);
-  assert.deepEqual(catalog.experiences[0].facts, ["Built a reliable API gateway."]);
+  await assert.rejects(() => evidence.approveQueueItem(queued.id), /only be written through Evidence Builder/);
+  assert.equal((await evidence.loadEvidence()).experiences.length, 0);
 });
 
 test("evidence import validation rejects duplicate IDs and malformed facts", () => {
