@@ -245,3 +245,33 @@ test("reports complete section counts while keeping internal metadata out of the
   assert.equal(JSON.stringify(resume).includes("sources"), false);
   assert.equal(JSON.stringify(resume).includes("requiresHumanReview"), false);
 });
+
+test("retains the originating line for each field in multi-line entries", () => {
+  const values = [
+    "Jane Doe", "jane@example.com", "Experience", "Senior Software Engineer",
+    "Example Corp", "2021 - 2023", "Education", "Master of Science",
+    "Example University", "2018 - 2020",
+  ];
+  const lines = values.map((text, index) => ({
+    text,
+    source: { page: 1, lineStart: index + 1, lineEnd: index + 1, text, format: "txt" },
+  }));
+  const result = parseResumeDocument({ format: "txt", pages: 1, text: values.join("\n"), lines });
+  const sources = Object.fromEntries(result.report.provenance.map(({ path, source }) => [path, source]));
+
+  assert.equal(sources["/basics/email"].lineStart, 2);
+  assert.equal(sources["/work/0/position"].lineStart, 4);
+  assert.equal(sources["/work/0/name"].lineStart, 5);
+  assert.equal(sources["/work/0/startDate"].lineStart, 6);
+  assert.equal(sources["/education/0/studyType"].lineStart, 8);
+  assert.equal(sources["/education/0/institution"].lineStart, 9);
+  assert.equal(sources["/education/0/startDate"].lineStart, 10);
+});
+
+test("reports each work conflict only once", () => {
+  const { report } = parseResumeText(`Jane Doe
+Experience
+Example Corp | Engineer | 2020 - 2021
+Example Corp | Engineer | 2021 - 2022`);
+  assert.equal(report.issues.filter(({ code }) => code === "conflicting_work_dates").length, 1);
+});
