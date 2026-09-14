@@ -16,7 +16,11 @@ const packageManifest = JSON.parse(
   fs.readFileSync(new URL("../package.json", import.meta.url), "utf8")
 );
 
-export function commandRunner(command, args, { timeout = 5_000 } = {}) {
+export function commandRunner(
+  command,
+  args,
+  { timeout = 5_000, killGracePeriod = 250 } = {}
+) {
   return new Promise((resolve) => {
     let stdout = "";
     let stderr = "";
@@ -30,7 +34,7 @@ export function commandRunner(command, args, { timeout = 5_000 } = {}) {
       resolve(result);
     };
 
-    let child;
+    let child = null;
     try {
       child = spawn(command, args, { shell: false, stdio: ["ignore", "pipe", "pipe"] });
     } catch {
@@ -39,13 +43,15 @@ export function commandRunner(command, args, { timeout = 5_000 } = {}) {
     }
 
     timer = setTimeout(() => {
-      child.kill("SIGTERM");
-      if (process.platform !== "win32") {
+      if (child) {
+        child.kill("SIGTERM");
+      }
+      if (child && process.platform !== "win32") {
         forceKillTimer = setTimeout(() => {
           if (child.exitCode === null && child.signalCode === null) {
             child.kill("SIGKILL");
           }
-        }, 250);
+        }, killGracePeriod);
       }
       complete({ ok: false, timedOut: true });
     }, timeout);
@@ -56,7 +62,10 @@ export function commandRunner(command, args, { timeout = 5_000 } = {}) {
     child.stderr?.on("data", (chunk) => {
       stderr += chunk;
     });
-    child.on("error", () => complete({ ok: false }));
+    child.on("error", () => {
+      clearTimeout(forceKillTimer);
+      complete({ ok: false });
+    });
     child.on("close", (code) => {
       clearTimeout(forceKillTimer);
       complete(
