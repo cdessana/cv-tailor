@@ -2,16 +2,17 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { parseResumeDocument, parseResumeText } from "../lib/resume-parser/parse.mjs";
 import { readResumeSource } from "../lib/resume-parser/read-source.mjs";
 import { parseArguments, runResumeParser, writeJsonPairTransactional } from "../scripts/resume-parser.mjs";
 import { extractedEntry, provenanceForEntry } from "../lib/resume-parser/extracted-entry.mjs";
 import { extractEducationEntries } from "../lib/resume-parser/education.mjs";
-import { sectionLines } from "../lib/resume-parser/source-lines.mjs";
 import { extractBasicsEntry } from "../lib/resume-parser/basics.mjs";
 import { findEntryConflicts } from "../lib/resume-parser/conflicts.mjs";
 import { inspectDateRange, parseDateRange } from "../lib/resume-parser/dates.mjs";
+import { validateResume } from "../lib/resume-parser/validate.mjs";
 
 const resumeText = `# Jane Doe
 Senior Software Engineer
@@ -34,6 +35,30 @@ React Nanodegree — Udacity
 
 ## Languages
 English — Fluent`;
+
+function minimalTextPdf(lines) {
+  const escaped = lines.map((line) => line.replace(/([\\()])/gu, "\\$1"));
+  const commands = escaped.map((line, index) => `${index ? "0 -18 Td " : ""}(${line}) Tj`).join("\n");
+  const stream = `BT\n/F1 11 Tf\n50 750 Td\n${commands}\nET\n`;
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
+    `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}endstream`,
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  objects.forEach((object, index) => {
+    offsets.push(Buffer.byteLength(pdf));
+    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+  const xref = Buffer.byteLength(pdf);
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  pdf += offsets.slice(1).map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`).join("");
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return pdf;
+}
 
 test("parses explicit TXT resume facts without strengthening claims", () => {
   const { resume, report } = parseResumeText(resumeText);
@@ -212,11 +237,6 @@ test("requires explicit parser input and output options", () => {
   assert.deepEqual(parseArguments(["--input", "resume.txt", "--output", "candidate.json"]), {
     input: "resume.txt", output: "candidate.json", report: "candidate.json.report.json",
   });
-});
-
-test("preserves structured source lines while detecting sections", () => {
-  const document = { lines: [{ text: "Jane Doe", source: { lineStart: 1 } }, { text: "## Education", source: { lineStart: 2 } }, { text: "University", source: { lineStart: 3 } }], text: "Jane Doe\n## Education\nUniversity" };
-  assert.deepEqual(sectionLines(document, "education"), [document.lines[2]]);
 });
 
 test("extracts basics with field-level sources", () => {
@@ -635,4 +655,42 @@ React Nanodegree — Udacity`);
   assert.deepEqual(resume.certificates, [{ name: "React Nanodegree", issuer: "Udacity" }]);
   assert.equal(resume.work, undefined);
   assert.equal(resume.skills, undefined);
+});
+
+test("parses a real text PDF through the installed pdftotext command", async (t) => {
+  const availability = spawnSync("pdftotext", ["-v"], { stdio: "ignore" });
+  if (availability.error?.code === "ENOENT") {
+    t.skip("Poppler pdftotext is not installed");
+    return;
+  }
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "resume-parser-pdf-"));
+  t.after(() => fs.rm(directory, { recursive: true, force: true }));
+  const input = path.join(directory, "resume.pdf");
+  await fs.writeFile(input, minimalTextPdf([
+    "Jane Doe",
+    "Experience",
+    "Example Corp | Software Engineer | 2021 - 2024",
+    "Developed services using Java.",
+  ]));
+
+  const document = await readResumeSource(input);
+  const { resume, report } = parseResumeDocument(document);
+  assert.equal(report.status, "ready");
+  assert.equal(resume.basics.name, "Jane Doe");
+  assert.deepEqual(resume.work[0], {
+    name: "Example Corp",
+    position: "Software Engineer",
+    startDate: "2021",
+    endDate: "2024",
+    highlights: ["Developed services using Java."],
+  });
+  assert.equal(report.provenance.some(({ source }) => source.format === "pdf" && source.page === 1), true);
+});
+
+test("keeps the existing base resume valid without migration", async () => {
+  const basePath = path.join(path.resolve("."), "data/resumes/base.json");
+  const before = await fs.readFile(basePath, "utf8");
+  const resume = JSON.parse(before);
+  assert.deepEqual(validateResume(resume), { valid: true, errors: [] });
+  assert.equal(await fs.readFile(basePath, "utf8"), before);
 });
