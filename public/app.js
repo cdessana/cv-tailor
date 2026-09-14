@@ -1459,38 +1459,6 @@
       loadEvidenceCatalog($("#input-evidence-search")?.value || "");
     });
 
-    // Import replaces the local evidence base only after server-side schema validation.
-    $("#btn-import-evidence")?.addEventListener("click", () => {
-      $("#input-import-evidence")?.click();
-    });
-
-    $("#input-import-evidence")?.addEventListener("change", async (event) => {
-      const file = event.target.files?.[0];
-      event.target.value = "";
-      if (!file) return;
-
-      try {
-        const text = await file.text();
-        const evidence = JSON.parse(text);
-        const res = await fetch("/api/evidence/import", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(evidence),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || "The evidence file could not be imported.");
-
-        showToast("Evidence base imported and validated.");
-        await fetchEvidenceSummary();
-        await loadEvidenceCatalog($("#input-evidence-search")?.value || "");
-      } catch (err) {
-        const message = err instanceof SyntaxError
-          ? "Choose a valid JSON evidence export."
-          : err.message;
-        alert(`Import error: ${message}`);
-      }
-    });
-
     // Clear skill filter
     $("#btn-clear-skill-filter")?.addEventListener("click", () => {
       state.activeEvidenceSkill = "";
@@ -1926,12 +1894,7 @@
               <p class="text-xs font-semibold text-slate-800 mt-0.5 break-words">${escapeHtml(exp.position)}</p>
               <p class="text-[11px] text-slate-500 font-mono mt-0.5">${escapeHtml(exp.period || "Present")}</p>
             </div>
-            <div class="flex items-center gap-2 shrink-0">
-              <button data-id="${escapeHtml(exp.id)}" class="btn-edit-evidence text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 flex items-center gap-1.5 shadow-2xs transition-colors shrink-0" title="Edit this career evidence card">
-                <i data-lucide="pencil" class="w-3.5 h-3.5 text-slate-600"></i>
-                <span>Edit</span>
-              </button>
-            </div>
+            <span class="text-[10px] font-semibold text-slate-400 shrink-0">Canonical · read-only</span>
           </div>
 
           <!-- Demonstrated Skills (Emphasized) -->
