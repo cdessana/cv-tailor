@@ -20,10 +20,23 @@ export async function runResumeParser(options) {
   const result = parseResumeDocument(source);
   if (result.report.status === "failed") throw new Error(`Resume parsing failed: ${result.report.issues.map((issue) => issue.message).join("; ")}`);
   const reportPath = options.report ?? `${options.output}.report.json`;
+  const baseResumePath = path.resolve("data/resumes/base.json");
+  if (path.resolve(options.output) === baseResumePath) {
+    throw new Error("Refusing to overwrite data/resumes/base.json. Review the candidate before promoting it manually.");
+  }
   await fs.mkdir(path.dirname(options.output), { recursive: true });
   await fs.mkdir(path.dirname(reportPath), { recursive: true });
-  await fs.writeFile(options.output, `${JSON.stringify(result.resume, null, 2)}\n`);
-  await fs.writeFile(reportPath, `${JSON.stringify(result.report, null, 2)}\n`);
+  const candidateTempPath = `${options.output}.${process.pid}.tmp`;
+  const reportTempPath = `${reportPath}.${process.pid}.tmp`;
+  try {
+    await fs.writeFile(candidateTempPath, `${JSON.stringify(result.resume, null, 2)}\n`);
+    await fs.writeFile(reportTempPath, `${JSON.stringify(result.report, null, 2)}\n`);
+    await fs.rename(candidateTempPath, options.output);
+    await fs.rename(reportTempPath, reportPath);
+  } catch (error) {
+    await Promise.all([fs.rm(candidateTempPath, { force: true }), fs.rm(reportTempPath, { force: true })]);
+    throw error;
+  }
   return { ...result, output: options.output, reportPath };
 }
 
