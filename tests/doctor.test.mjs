@@ -146,6 +146,11 @@ test("doctor command runner times out without blocking", async () => {
   assert.deepEqual(result, { ok: false, timedOut: true });
 });
 
+test("doctor command runner handles a missing executable", async () => {
+  const result = await commandRunner("cv-tailor-command-that-does-not-exist", []);
+  assert.deepEqual(result, { ok: false });
+});
+
 test("doctor never exposes the Gemini credential", async () => {
   const secret = "super-secret-key";
   const report = await diagnoseEnvironment(
