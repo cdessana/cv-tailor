@@ -134,6 +134,17 @@ test("refuses to overwrite the master resume and standardizes review issues", as
   assert.equal(report.issues[0].severity, "warning");
 });
 
+test("reports conflicting work dates without leaking parser metadata into the resume", () => {
+  const { resume, report } = parseResumeText(`Jane Doe
+## Experience
+Example Corp | Engineer | 2020 - 2021
+Example Corp | Engineer | 2021 - 2022`);
+  assert.equal(report.status, "review_required");
+  assert.equal(report.issues.some((issue) => issue.code === "conflicting_work_dates"), true);
+  assert.equal(JSON.stringify(resume).includes("provenance"), false);
+  assert.equal(JSON.stringify(resume).includes("requiresHumanReview"), false);
+});
+
 test("requires explicit parser input and output options", () => {
   assert.throws(() => parseArguments(["--input", "resume.txt"]));
   assert.deepEqual(parseArguments(["--input", "resume.txt", "--output", "candidate.json"]), {
