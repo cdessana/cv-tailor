@@ -801,3 +801,27 @@ test("writes a malformed-input report without publishing a candidate", async () 
   assert.equal(report.status, "failed");
   assert.equal(report.issues.some(({ code }) => code === "malformed_resume_content"), true);
 });
+
+test("does not publish a candidate when factual grounding fails", async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "resume-parser-grounding-"));
+  const output = path.join(directory, "candidate.json");
+  const reportPath = `${output}.report.json`;
+  const failedReport = {
+    status: "failed",
+    issues: [{ code: "ungrounded_value", kind: "grounding", severity: "error" }],
+  };
+
+  await assert.rejects(
+    runResumeParser(
+      { input: "resume.txt", output },
+      {
+        loadConfiguration: () => ({ paths: { baseResume: path.join(directory, "base.json") } }),
+        readSource: async () => ({ text: "Jane Doe\nEngineer", lines: [] }),
+        parseDocument: () => ({ resume: { basics: { name: "Jane Doe" } }, report: failedReport }),
+      }
+    ),
+    (error) => error.code === "RESUME_GROUNDING_FAILED"
+  );
+  await assert.rejects(fs.access(output));
+  assert.deepEqual(JSON.parse(await fs.readFile(reportPath, "utf8")), failedReport);
+});
