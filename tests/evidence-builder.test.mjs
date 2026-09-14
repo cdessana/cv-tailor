@@ -66,3 +66,14 @@ test("surfaces contradictory questionnaire answers as an unresolved conflict", (
   assert.equal(second.candidate.issues.some((issue) => issue.type === "answer_conflict"), true);
   assert.equal(second.report.promotionSafe, false);
 });
+
+test("requires an explicit conflicting value when resolving an issue", () => {
+  const { candidate } = createCandidate(resume);
+  const dates = candidate.questionnaire.questions.find((question) => question.key === "dates" && question.contextId === candidate.contexts[0].id);
+  const conflicted = applyQuestionnaireAnswers(candidate, [{ questionId: dates.id, answer: "2022 — 2023" }]).candidate;
+  const issue = conflicted.issues[0];
+  assert.throws(() => applyReviewDecisions(conflicted, [{ issueId: issue.id, status: "resolved", values: [] }]), /Choose exactly one value/);
+  const resolved = applyReviewDecisions(conflicted, [{ issueId: issue.id, status: "resolved", values: [issue.values[1]] }]);
+  assert.equal(resolved.candidate.issues[0].resolved, true);
+  assert.deepEqual(resolved.candidate.issues[0].resolution.values, [issue.values[1]]);
+});

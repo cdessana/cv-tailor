@@ -2039,14 +2039,16 @@
     container.classList.remove("hidden");
     const claims = data.candidate.claims || [];
     const issues = report.issues || [];
+    /* eslint-disable no-useless-escape -- generated nested HTML attributes use escaped quotes. */
     container.innerHTML = `
       <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
         <div><h3 class="text-sm font-bold text-slate-900">Evidence Builder Review</h3><p class="text-xs text-slate-500">${escapeHtml(report.status)} · ${report.summary.approved}/${report.summary.factsExtracted} approved</p></div>
         <button id="btn-promote-evidence" class="text-xs font-bold px-3 py-1.5 rounded-lg ${report.promotionSafe ? "bg-emerald-700 text-white hover:bg-emerald-800" : "bg-slate-100 text-slate-400 cursor-not-allowed"}" ${report.promotionSafe ? "" : "disabled"}>Promote approved evidence</button>
       </div>
-      ${issues.length ? `<div class="text-xs bg-rose-50 border border-rose-200 rounded-lg p-3 text-rose-900">${issues.map((issue) => `<div class="flex flex-wrap items-center justify-between gap-2"><span>${escapeHtml(issue.type)}: ${escapeHtml((issue.values || []).join(" ↔ "))}</span>${issue.resolved ? "<span class=\"font-bold\">Resolved</span>" : `<button data-issue="${escapeHtml(issue.id)}" class="btn-resolve-issue text-[11px] underline font-bold">Use first value</button>`}</div>`).join("")}</div>` : ""}
+      ${issues.length ? `<div class="text-xs bg-rose-50 border border-rose-200 rounded-lg p-3 text-rose-900">${issues.map((issue) => `<div class="flex flex-wrap items-center justify-between gap-2 py-1"><span>${escapeHtml(issue.type)}: ${escapeHtml((issue.values || []).join(" ↔ "))}</span>${issue.resolved ? "<span class=\"font-bold\">Resolved</span>" : `<span class=\"flex items-center gap-2\"><select data-issue-value=\"${escapeHtml(issue.id)}\" class=\"text-[11px] border border-rose-300 rounded px-1.5 py-1 bg-white\" aria-label=\"Choose value for ${escapeHtml(issue.type)}\"><option value=\"\">Choose value…</option>${(issue.values || []).map((value) => `<option value=\"${escapeHtml(value)}\">${escapeHtml(value)}</option>`).join("")}</select><button data-issue=\"${escapeHtml(issue.id)}\" class=\"btn-resolve-issue text-[11px] underline font-bold\">Resolve</button></span>`}</div>`).join("")}</div>` : ""}
       ${data.candidate.questionnaire?.questions?.length ? `<div class="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2"><h4 class="text-xs font-bold text-slate-800">Follow-up questions</h4><p class="text-[11px] text-slate-500">Answer only what you can confirm. “I don't remember” is valid.</p>${data.candidate.questionnaire.questions.slice(0, 8).map((question) => `<label class="block text-[11px] font-semibold text-slate-700">${escapeHtml(question.prompt)}<textarea data-question="${escapeHtml(question.id)}" rows="2" class="w-full mt-1 text-xs font-normal bg-white border border-slate-300 rounded p-2"></textarea></label>`).join("")}<button id="btn-submit-builder-answers" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-800 text-white hover:bg-slate-700">Save answers for review</button></div>` : ""}
       <div class="space-y-2 max-h-72 overflow-y-auto">${claims.map((claim) => `<div class="border border-slate-200 rounded-lg p-3 text-xs"><div class="flex justify-between gap-2"><span class="font-semibold text-slate-900">${escapeHtml(claim.claim)}</span><span class="text-[10px] uppercase font-bold">${escapeHtml(claim.reviewStatus)}</span></div><p class="text-slate-500 mt-1">${escapeHtml(claim.contextId)} · ${escapeHtml(claim.source.type)}:${escapeHtml(claim.source.reference)}</p>${claim.reviewStatus === "pending" ? `<div class="mt-2 flex gap-2"><button data-claim="${escapeHtml(claim.id)}" data-status="approved" class="btn-review-claim text-[11px] font-bold text-emerald-700">Approve</button><button data-claim="${escapeHtml(claim.id)}" data-status="rejected" class="btn-review-claim text-[11px] font-bold text-slate-600">Reject</button></div>` : ""}</div>`).join("")}</div>`;
+    /* eslint-enable no-useless-escape */
     container.querySelectorAll(".btn-review-claim").forEach((button) => button.addEventListener("click", async () => {
       const res = await fetch("/api/evidence/builder/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decisions: [{ claimId: button.dataset.claim, status: button.dataset.status }] }) });
       const updated = await res.json();
@@ -2062,7 +2064,9 @@
     });
     container.querySelectorAll(".btn-resolve-issue").forEach((button) => button.addEventListener("click", async () => {
       const issue = issues.find((item) => item.id === button.dataset.issue);
-      const res = await fetch("/api/evidence/builder/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decisions: [{ issueId: issue.id, status: "resolved", values: [issue.values[0]], note: "Confirmed through review." }] }) });
+      const selected = container.querySelector(`[data-issue-value="${CSS.escape(issue.id)}"]`)?.value;
+      if (!selected) return alert("Choose the value you confirm before resolving this conflict.");
+      const res = await fetch("/api/evidence/builder/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decisions: [{ issueId: issue.id, status: "resolved", values: [selected], note: "Confirmed through review." }] }) });
       const result = await res.json(); if (!res.ok) return alert(result.error || "Conflict could not be resolved."); renderEvidenceBuilder(result);
     }));
     container.querySelector("#btn-promote-evidence")?.addEventListener("click", async () => {
