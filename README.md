@@ -283,7 +283,9 @@ The report keeps JSON Pointer provenance and review issues separate from the
 clean JSON Resume candidate. Dates retain their source precision, metrics and
 wording are copied without enrichment, and unsupported or ambiguous facts are
 omitted for review. Candidate/report publication is transactional and the
-configured `paths.baseResume` is protected.
+configured `paths.baseResume` is protected. Arbitrary or near-empty input fails
+with `RESUME_MALFORMED_INPUT`; any candidate value that cannot be traced back to
+its source fails with `RESUME_GROUNDING_FAILED`.
 
 For architecture, supported extraction conventions, structured errors,
 limitations, and the review workflow, see

@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import test from "node:test";
 import { documentFromText } from "../lib/resume-parser/layout.mjs";
 import { parseResumeDocument } from "../lib/resume-parser/parse.mjs";
-import { validateResumeGrounding } from "../lib/resume-parser/validate-grounding.mjs";
+import { inspectResumeGrounding, validateResumeGrounding } from "../lib/resume-parser/validate-grounding.mjs";
 
 const fixtureUrl = new URL("./fixtures/resume-parser/factual-resume.txt", import.meta.url);
 
@@ -20,6 +20,11 @@ function codes(result) {
 test("accepts a deterministically extracted resume with complete provenance", async () => {
   const input = await groundedFixture();
   assert.deepEqual(validateResumeGrounding(input), []);
+  const inspection = inspectResumeGrounding(input);
+  assert.equal(inspection.summary.valuesChecked > 0, true);
+  assert.equal(inspection.summary.provenanceRecords, inspection.summary.valuesChecked);
+  assert.equal(inspection.summary.groundedValues, inspection.summary.valuesChecked);
+  assert.equal(inspection.summary.errors, 0);
 });
 
 test("rejects a modified numeric metric", async () => {

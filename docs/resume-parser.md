@@ -86,6 +86,8 @@ The candidate contains only JSON Resume fields. The separate report contains:
 
 - `status`: `ready`, `review_required`, or `failed`;
 - section counts;
+- factual-grounding counts (`valuesChecked`, `groundedValues`,
+  `provenanceRecords`, and `errors`);
 - structured review issues;
 - JSON Pointer-style provenance records.
 
@@ -136,6 +138,12 @@ an LLM and does not make network requests.
 - Duplicate and conflicting entries require review.
 - Invalid dates produce section-specific review issues.
 
+Every scalar value in the candidate must have a source record. Before a
+candidate is published, the grounding gate verifies that the source exists in
+the input document, supports the extracted text and numbers, preserves date
+precision, and remains inside the correct work entry. A grounding violation
+sets the report status to `failed` and prevents candidate publication.
+
 The tests include explicit negative assertions for invented technologies,
 strengthened attribution, changed metrics, cross-role mixing, inferred skills,
 network access, and partial artifacts after extraction failure.
@@ -153,6 +161,20 @@ network access, and partial artifacts after extraction failure.
 claim that every possible resume layout was understood, so visual comparison
 with the source remains recommended.
 
+## Minimum recognizable content and report status
+
+A source is recognizable as a resume only when the parser finds a candidate
+name and at least one independent resume signal, such as contact information,
+a professional profile, work, education, skills, certificates, or languages.
+This intentionally rejects arbitrary prose and near-empty documents.
+
+- `ready`: schema, content, and factual-grounding checks passed without a known
+  ambiguity.
+- `review_required`: the candidate is valid and grounded, but one or more
+  ambiguous or unsupported source blocks need human review.
+- `failed`: the input is malformed, the JSON Resume candidate is invalid, or a
+  factual-grounding error makes publication unsafe.
+
 ## Structured failures
 
 CLI failures are printed as JSON with a stable `code` and `message`. Important
@@ -164,6 +186,8 @@ codes include:
 - `RESUME_ARGUMENT_ERROR`;
 - `RESUME_CONFIG_ERROR`;
 - `RESUME_VALIDATION_FAILED`;
+- `RESUME_MALFORMED_INPUT`;
+- `RESUME_GROUNDING_FAILED`;
 - `RESUME_OUTPUT_PROTECTED`;
 - `RESUME_OUTPUT_PATH_CONFLICT`;
 - `RESUME_REPORT_WRITE_FAILED`;

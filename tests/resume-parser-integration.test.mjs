@@ -38,6 +38,9 @@ test("generated resume is consumed by validation, analysis, tailoring, and HTML 
     { loadConfiguration: () => ({ paths: { baseResume: path.join(directory, "base.json") } }) }
   );
   assert.equal(parsed.report.status, "ready");
+  assert.equal(parsed.report.grounding.errors, 0);
+  assert.equal(parsed.report.grounding.valuesChecked > 0, true);
+  assert.equal(parsed.report.grounding.groundedValues, parsed.report.grounding.valuesChecked);
   const candidate = JSON.parse(await fs.readFile(candidatePath, "utf8"));
   assert.deepEqual(validateResume(candidate), { valid: true, errors: [] });
 
