@@ -15,10 +15,35 @@ async function writeArtifacts(candidate, config) {
   const output = paths(config);
   await fs.mkdir(path.dirname(output.candidate), { recursive: true });
   const report = createReport(candidate);
-  await Promise.all([
-    fs.writeFile(output.candidate, `${JSON.stringify(candidate, null, 2)}\n`),
-    fs.writeFile(output.report, `${JSON.stringify(report, null, 2)}\n`),
-  ]);
+  const token = `${process.pid}-${Date.now()}`;
+  const candidateTmp = `${output.candidate}.${token}.tmp`;
+  const reportTmp = `${output.report}.${token}.tmp`;
+  const candidateBak = `${output.candidate}.${token}.bak`;
+  const reportBak = `${output.report}.${token}.bak`;
+  let candidateBackedUp = false;
+  let reportBackedUp = false;
+  let candidateInstalled = false;
+  let reportInstalled = false;
+  try {
+    await Promise.all([
+      fs.writeFile(candidateTmp, `${JSON.stringify(candidate, null, 2)}\n`),
+      fs.writeFile(reportTmp, `${JSON.stringify(report, null, 2)}\n`),
+    ]);
+    try { await fs.rename(output.candidate, candidateBak); candidateBackedUp = true; } catch (error) { if (error.code !== "ENOENT") throw error; }
+    try { await fs.rename(output.report, reportBak); reportBackedUp = true; } catch (error) { if (error.code !== "ENOENT") throw error; }
+    await fs.rename(candidateTmp, output.candidate); candidateInstalled = true;
+    await fs.rename(reportTmp, output.report); reportInstalled = true;
+    await Promise.allSettled([fs.rm(candidateBak, { force: true }), fs.rm(reportBak, { force: true })]);
+  } catch (error) {
+    await Promise.allSettled([
+      fs.rm(candidateTmp, { force: true }), fs.rm(reportTmp, { force: true }),
+      candidateInstalled ? fs.rm(output.candidate, { force: true }) : Promise.resolve(),
+      reportInstalled ? fs.rm(output.report, { force: true }) : Promise.resolve(),
+      candidateBackedUp ? fs.rename(candidateBak, output.candidate) : Promise.resolve(),
+      reportBackedUp ? fs.rename(reportBak, output.report) : Promise.resolve(),
+    ]);
+    throw error;
+  }
   return { candidate, report, paths: output };
 }
 
