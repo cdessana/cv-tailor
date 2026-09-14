@@ -144,6 +144,15 @@ test("reconstructs a two-column PDF source and retains coordinate provenance", a
   assert.equal(result.report.provenance.find((entry) => entry.path === "/work/0/name").source.items[0].xMin, 50);
 });
 
+test("scales PDF column separation with the document character width", async () => {
+  const pdf = `<doc><page width="306" height="396">
+  <word xMin="25" yMin="25" xMax="37" yMax="30">Jane</word><word xMin="39" yMin="25" xMax="48" yMax="30">Doe</word>
+  <word xMin="25" yMin="50" xMax="55" yMax="55">Experience</word><word xMin="95" yMin="50" xMax="113" yMax="55">Skills</word>
+  </page></doc>`;
+  const source = await readResumeSource("resume.pdf", { extractPdf: async () => pdf });
+  assert.deepEqual(source.lines.map((line) => line.text), ["Jane Doe", "Experience", "Skills"]);
+});
+
 test("writes a reviewable candidate without replacing base.json", async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), "resume-parser-"));
   const input = path.join(directory, "resume.txt");
@@ -277,6 +286,30 @@ test("extracts an explicit location and summary without treating them as name or
 test("only extracts location from an explicit location-shaped line", () => {
   const entry = extractBasicsEntry(["Jane Doe", "Senior Software Engineer", "Available for remote work"]);
   assert.deepEqual(entry.value, { name: "Jane Doe", label: "Senior Software Engineer" });
+});
+
+test("does not treat comma-separated technologies or dated text as a location", () => {
+  const entry = extractBasicsEntry([
+    "Jane Doe",
+    "Senior Software Engineer",
+    "Java, Python, Docker",
+    "Conference, 2024",
+  ]);
+  assert.equal(entry.value.location, undefined);
+  assert.equal(entry.value.name, "Jane Doe");
+});
+
+test("recognizes section headings with trailing colons", () => {
+  const { resume, report } = parseResumeText(`Jane Doe
+Experience:
+Example Corp | Software Engineer | 2021 - 2024
+Built reliable services.
+Skills ：
+Backend: Node.js`);
+
+  assert.equal(report.status, "ready");
+  assert.equal(resume.work[0].name, "Example Corp");
+  assert.deepEqual(resume.skills[0].keywords, ["Node.js"]);
 });
 
 test("reports structured conflict candidates with their sources", () => {
