@@ -86,7 +86,7 @@ English — Fluent
 ## Skills
 Backend: Node.js, PostgreSQL`);
   assert.equal(report.status, "ready");
-  assert.deepEqual(resume.education[0], { institution: "Example University", studyType: "Master of Science in Computer Science", startDate: "2020", endDate: "2022" });
+  assert.deepEqual(resume.education[0], { institution: "Example University", studyType: "Master of Science", area: "Computer Science", startDate: "2020", endDate: "2022" });
   assert.deepEqual(resume.certificates, [{ name: "React Nanodegree", issuer: "Udacity" }]);
   assert.deepEqual(resume.languages, [{ language: "Portuguese", fluency: "Native" }, { language: "English", fluency: "Fluent" }]);
   assert.deepEqual(resume.skills, [{ name: "Backend", keywords: ["Node.js", "PostgreSQL"] }]);
@@ -354,4 +354,87 @@ test("writes a failed validation report without writing a candidate", async () =
   );
   assert.deepEqual(JSON.parse(await fs.readFile(reportPath, "utf8")), failedReport);
   await assert.rejects(fs.access(output));
+});
+
+test("extracts explicit work locations and recognizes Portuguese role titles", () => {
+  const { resume, report } = parseResumeText(`Jane Doe
+Experiência
+Engenheira de Software
+Example Corp
+Manaus, AM
+2021 - Atual
+Construiu APIs sem alterar métricas.
+Other Corp | Analista de Dados | Remoto | 2019 - 2020`);
+
+  assert.equal(report.status, "ready");
+  assert.deepEqual(resume.work.map(({ name, position, location }) => ({ name, position, location })), [
+    { name: "Example Corp", position: "Engenheira de Software", location: "Manaus, AM" },
+    { name: "Other Corp", position: "Analista de Dados", location: "Remoto" },
+  ]);
+});
+
+test("extracts explicit education area from delimited and multi-line entries", () => {
+  const { resume, report } = parseResumeText(`Jane Doe
+Education
+Example University | Bachelor of Science | Computer Science | 2015 - 2019
+Especialização
+Other University
+Área: Sistemas Distribuídos
+2020 - 2021`);
+
+  assert.equal(report.status, "ready");
+  assert.deepEqual(resume.education, [
+    { institution: "Example University", studyType: "Bachelor of Science", area: "Computer Science", startDate: "2015", endDate: "2019" },
+    { institution: "Other University", studyType: "Especialização", area: "Sistemas Distribuídos", startDate: "2020", endDate: "2021" },
+  ]);
+});
+
+test("extracts certificate date and URL while reporting malformed dates", () => {
+  const { resume, report } = parseResumeText(`Jane Doe
+Certificates
+Cloud Certification | Example Institute | 2022-05 | https://example.com/certificate
+Invalid Certificate | Example Institute | 2022-02-30`);
+
+  assert.deepEqual(resume.certificates, [
+    { name: "Cloud Certification", issuer: "Example Institute", date: "2022-05", url: "https://example.com/certificate" },
+    { name: "Invalid Certificate", issuer: "Example Institute" },
+  ]);
+  assert.equal(report.issues.some(({ code }) => code === "invalid_certificate_date"), true);
+});
+
+test("preserves only explicitly stated skill levels", () => {
+  const { resume } = parseResumeText(`Jane Doe
+Skills
+Backend (Advanced): Node.js, PostgreSQL
+Cloud | Intermediate | AWS, GCP
+Runtime (Node.js): APIs
+Observability: Grafana`);
+
+  assert.deepEqual(resume.skills, [
+    { name: "Backend", level: "Advanced", keywords: ["Node.js", "PostgreSQL"] },
+    { name: "Cloud", level: "Intermediate", keywords: ["AWS", "GCP"] },
+    { name: "Runtime (Node.js)", keywords: ["APIs"] },
+    { name: "Observability", keywords: ["Grafana"] },
+  ]);
+});
+
+test("retains provenance for newly supported explicit fields", () => {
+  const values = [
+    "Jane Doe",
+    "Experience",
+    "Example Corp | Engenheira de Software | Manaus, AM | 2021 - 2023",
+    "Education",
+    "Example University | Bachelor of Science | Computer Science | 2015 - 2019",
+    "Certificates",
+    "Cloud Certification | Example Institute | 2022 | https://example.com/certificate",
+    "Skills",
+    "Backend (Avançado): Node.js",
+  ];
+  const lines = values.map((text, index) => ({ text, source: { page: 1, lineStart: index + 1, text, format: "txt" } }));
+  const { report } = parseResumeDocument({ format: "txt", pages: 1, text: values.join("\n"), lines });
+  const paths = new Set(report.provenance.map(({ path }) => path));
+
+  for (const path of ["/work/0/location", "/education/0/area", "/certificates/0/date", "/certificates/0/url", "/skills/0/level"]) {
+    assert.equal(paths.has(path), true, `missing provenance for ${path}`);
+  }
 });
