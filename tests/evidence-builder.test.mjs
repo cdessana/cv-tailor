@@ -48,3 +48,21 @@ test("only explicitly approved claims are promoted to canonical evidence", () =>
 test("rejects structured resumes that fail the existing validation contract", () => {
   assert.throws(() => createCandidate({ basics: { email: "not-an-email" } }), (error) => error.code === "EVIDENCE_RESUME_INVALID");
 });
+
+test("surfaces ambiguous technology wording without inventing a vendor", () => {
+  const ambiguous = structuredClone(resume);
+  ambiguous.work = [{ name: "Example", position: "Engineer", highlights: ["Worked with messaging systems."] }];
+  const { candidate, report } = createCandidate(ambiguous);
+  assert.equal(candidate.claims.some((claim) => claim.claim.includes("Kafka")), false);
+  assert.equal(report.issues[0].type, "ambiguous_technology");
+  assert.equal(report.promotionSafe, false);
+});
+
+test("surfaces contradictory questionnaire answers as an unresolved conflict", () => {
+  const { candidate } = createCandidate(resume);
+  const question = candidate.questionnaire.questions.find((item) => item.key === "projects");
+  const first = applyQuestionnaireAnswers(candidate, [{ questionId: question.id, answer: "Billing platform" }]);
+  const second = applyQuestionnaireAnswers(first.candidate, [{ questionId: question.id, answer: "Analytics platform" }]);
+  assert.equal(second.candidate.issues.some((issue) => issue.type === "answer_conflict"), true);
+  assert.equal(second.report.promotionSafe, false);
+});
