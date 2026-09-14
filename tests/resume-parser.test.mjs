@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { parseResumeDocument, parseResumeText } from "../lib/resume-parser/parse.mjs";
 import { readResumeSource } from "../lib/resume-parser/read-source.mjs";
-import { parseArguments, runResumeParser } from "../scripts/resume-parser.mjs";
+import { parseArguments, runResumeParser, writeJsonPairTransactional } from "../scripts/resume-parser.mjs";
 import { extractedEntry, provenanceForEntry } from "../lib/resume-parser/extracted-entry.mjs";
 import { extractEducationEntries } from "../lib/resume-parser/education.mjs";
 import { sectionLines } from "../lib/resume-parser/source-lines.mjs";
@@ -437,4 +437,59 @@ test("retains provenance for newly supported explicit fields", () => {
   for (const path of ["/work/0/location", "/education/0/area", "/certificates/0/date", "/certificates/0/url", "/skills/0/level"]) {
     assert.equal(paths.has(path), true, `missing provenance for ${path}`);
   }
+});
+
+test("protects the base resume path supplied by configuration", async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "resume-parser-"));
+  const configuredBase = path.join(directory, "master.json");
+  let sourceRead = false;
+
+  await assert.rejects(
+    runResumeParser(
+      { input: "resume.txt", output: configuredBase },
+      {
+        loadConfiguration: () => ({ paths: { baseResume: configuredBase } }),
+        readSource: async () => { sourceRead = true; },
+      }
+    ),
+    (error) => error.code === "RESUME_OUTPUT_PROTECTED" && error.details.baseResumePath === configuredBase
+  );
+  assert.equal(sourceRead, false);
+});
+
+test("rolls back both artifacts when publishing the report fails", async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "resume-parser-"));
+  const candidatePath = path.join(directory, "candidate.json");
+  const reportPath = path.join(directory, "report.json");
+  await fs.writeFile(candidatePath, "old candidate\n");
+  await fs.writeFile(reportPath, "old report\n");
+  let rejectedReportPublish = false;
+  const fileSystem = {
+    ...fs,
+    async rename(source, target) {
+      if (!rejectedReportPublish && source.endsWith(".tmp") && target === reportPath) {
+        rejectedReportPublish = true;
+        const error = new Error("simulated report publish failure");
+        error.code = "EIO";
+        throw error;
+      }
+      return fs.rename(source, target);
+    },
+  };
+
+  await assert.rejects(
+    writeJsonPairTransactional(candidatePath, { name: "new" }, reportPath, { status: "ready" }, { fileSystem }),
+    /simulated report publish failure/u
+  );
+  assert.equal(await fs.readFile(candidatePath, "utf8"), "old candidate\n");
+  assert.equal(await fs.readFile(reportPath, "utf8"), "old report\n");
+  assert.deepEqual((await fs.readdir(directory)).sort(), ["candidate.json", "report.json"]);
+});
+
+test("rejects a shared candidate and report output path", async () => {
+  const target = path.join(os.tmpdir(), "same-resume-output.json");
+  await assert.rejects(
+    writeJsonPairTransactional(target, {}, target, {}),
+    (error) => error.code === "RESUME_OUTPUT_PATH_CONFLICT"
+  );
 });
