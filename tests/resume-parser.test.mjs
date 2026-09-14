@@ -176,6 +176,15 @@ test("education extraction returns field-level sourced entries", () => {
   assert.equal(entries[0].sources.endDate.lineStart, 8);
 });
 
+test("certificate extraction returns sourced entries without changing the resume shape", async () => {
+  const { extractCertificateEntries } = await import("../lib/resume-parser/sections.mjs");
+  const source = { page: 1, lineStart: 5, text: "React Nanodegree — Udacity" };
+  const [entry] = extractCertificateEntries([{ text: source.text, source }]);
+  assert.deepEqual(entry.value, { name: "React Nanodegree", issuer: "Udacity" });
+  assert.equal(entry.sources.name, source);
+  assert.equal(entry.sources.issuer, source);
+});
+
 test("requires explicit parser input and output options", () => {
   assert.throws(() => parseArguments(["--input", "resume.txt"]));
   assert.deepEqual(parseArguments(["--input", "resume.txt", "--output", "candidate.json"]), {
