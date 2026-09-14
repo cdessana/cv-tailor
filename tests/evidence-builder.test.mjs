@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 import { applyQuestionnaireAnswers, applyReviewDecisions, createCandidate, EvidenceBuilderError, promoteCandidate } from "../lib/evidence/builder.mjs";
+import { buildEvidence, getEvidenceCandidate } from "../server/services/evidence-builder-service.mjs";
 
 const resume = {
   basics: { name: "Synthetic Candidate", email: "candidate@example.com" },
@@ -76,4 +80,16 @@ test("requires an explicit conflicting value when resolving an issue", () => {
   const resolved = applyReviewDecisions(conflicted, [{ issueId: issue.id, status: "resolved", values: [issue.values[1]] }]);
   assert.equal(resolved.candidate.issues[0].resolved, true);
   assert.deepEqual(resolved.candidate.issues[0].resolution.values, [issue.values[1]]);
+});
+
+test("persists candidate and report together and can reload them", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "evidence-builder-integration-"));
+  const config = { paths: { output: path.join(root, "output"), baseResume: "unused", evidence: path.join(root, "evidence.json") } };
+  const built = await buildEvidence({ resume, sourceReference: "fixture.json" }, { config });
+  assert.equal((await fs.stat(built.paths.candidate)).isFile(), true);
+  assert.equal((await fs.stat(built.paths.report)).isFile(), true);
+  const loaded = await getEvidenceCandidate({ config });
+  assert.equal(loaded.candidate.claims.length, built.candidate.claims.length);
+  assert.equal(loaded.report.promotionSafe, false);
+  await fs.rm(root, { recursive: true, force: true });
 });
