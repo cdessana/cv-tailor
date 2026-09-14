@@ -194,6 +194,15 @@ test("language extraction preserves language and fluency sources", async () => {
   assert.equal(entry.sources.fluency, source);
 });
 
+test("skill extraction preserves category and keyword sources", async () => {
+  const { extractSkillEntries } = await import("../lib/resume-parser/sections.mjs");
+  const source = { page: 1, lineStart: 7, text: "Backend: Node.js, PostgreSQL" };
+  const [entry] = extractSkillEntries([{ text: source.text, source }]);
+  assert.deepEqual(entry.value, { name: "Backend", keywords: ["Node.js", "PostgreSQL"] });
+  assert.equal(entry.sources.name, source);
+  assert.deepEqual(entry.sources.keywords, [source, source]);
+});
+
 test("requires explicit parser input and output options", () => {
   assert.throws(() => parseArguments(["--input", "resume.txt"]));
   assert.deepEqual(parseArguments(["--input", "resume.txt", "--output", "candidate.json"]), {
