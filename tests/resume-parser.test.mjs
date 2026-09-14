@@ -238,3 +238,10 @@ test("reports structured conflict candidates with their sources", () => {
   assert.equal(issue.candidates[0].source.startDate, sourceA);
   assert.equal(issue.candidates[1].source.startDate, sourceB);
 });
+
+test("reports complete section counts while keeping internal metadata out of the resume", () => {
+  const { resume, report } = parseResumeText(resumeText);
+  assert.deepEqual(report.summary, { workEntries: 2, educationEntries: 1, skills: 1, certificateEntries: 1, languageEntries: 1, issues: 0 });
+  assert.equal(JSON.stringify(resume).includes("sources"), false);
+  assert.equal(JSON.stringify(resume).includes("requiresHumanReview"), false);
+});
