@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { loadConfig } from "../../config/load-config.mjs";
-import { loadEvidence } from "./evidence-service.mjs";
+import { loadEvidence, loadReviewQueue, saveReviewQueue } from "./evidence-service.mjs";
 import { promoteApprovedEvidence } from "../../lib/evidence/promote.mjs";
 import { applyQuestionnaireAnswers, applyReviewDecisions, createCandidate, createReport, EvidenceBuilderError, promoteCandidate } from "../../lib/evidence/builder.mjs";
 
@@ -52,6 +52,25 @@ export async function buildEvidence({ resume, sourceReference, supportingSources
   const input = resume ?? await readJson(config.paths.baseResume);
   const result = createCandidate(input, { sourceReference: sourceReference ?? config.paths.baseResume, supportingSources });
   return writeArtifacts(result.candidate, config);
+}
+
+export async function migrateQueueItemToBuilder(itemId, { config = loadConfig() } = {}) {
+  const queue = await loadReviewQueue();
+  const item = queue.find((entry) => entry.id === itemId);
+  if (!item) throw new EvidenceBuilderError("EVIDENCE_QUEUE_ITEM_NOT_FOUND", `Queue item '${itemId}' does not exist.`);
+  const current = await evidenceBuilderStatus({ config });
+  let candidate = current.candidate;
+  if (!candidate) candidate = (await buildEvidence({}, { config })).candidate;
+  const contextId = `context_${item.company.toLowerCase().replace(/[^a-z0-9]+/g, "-")}_${item.position.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+  if (!candidate.contexts.some((context) => context.id === contextId)) candidate.contexts.push({ id: contextId, company: item.company, position: item.position, period: item.period || "Unknown", type: "professional", source: { type: "manual", reference: `queue:${item.id}` } });
+  for (const fact of item.facts || []) {
+    const claimId = `claim_${item.id}_${Buffer.from(fact).toString("hex").slice(0, 16)}`;
+    if (!candidate.claims.some((claim) => claim.id === claimId)) candidate.claims.push({ id: claimId, contextId, claim: fact, skills: item.skills || [], source: { type: item.source === "guided_interview" ? "questionnaire" : "manual", reference: `queue:${item.id}` }, reviewStatus: "pending" });
+  }
+  item.status = "migrated";
+  item.migratedAt = new Date().toISOString();
+  await saveReviewQueue(queue);
+  return writeArtifacts(candidate, config);
 }
 
 export async function getEvidenceCandidate({ config = loadConfig() } = {}) {
