@@ -13,6 +13,7 @@ import {
   evidenceBuilderStatus,
   promoteEvidenceCandidate,
   reviewEvidenceCandidate,
+  migrateQueueItemToBuilder,
 } from "../services/evidence-builder-service.mjs";
 
 const router = Router();
@@ -40,6 +41,11 @@ router.post("/builder", async (req, res) => {
 router.post("/builder/questionnaire", async (req, res) => {
   try { res.json(await answerEvidenceQuestionnaire(req.body?.answers)); }
   catch (err) { res.status(400).json({ error: err.message, code: err.code, details: err.details }); }
+});
+
+router.post("/builder/from-queue/:id", async (req, res) => {
+  try { res.status(201).json(await migrateQueueItemToBuilder(req.params.id)); }
+  catch (err) { res.status(400).json({ error: err.message, code: err.code }); }
 });
 
 router.post("/builder/review", async (req, res) => {

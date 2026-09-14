@@ -2117,7 +2117,7 @@
               </div>
               ${item.status === "pending" || item.status === "conflict" ? `
                 <div class="flex items-center gap-2 shrink-0">
-                  <span class="text-[11px] text-slate-500">Rebuild this item through Evidence Builder</span>
+                  <button class="btn-migrate-queue text-[11px] font-semibold text-slate-700 underline" data-id="${item.id}">Move to Evidence Builder</button>
                   <button class="btn-reject-queue text-xs font-medium px-2.5 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-600" data-id="${item.id}">Reject</button>
                 </div>
               ` : ""}
@@ -2150,6 +2150,13 @@
           loadReviewQueue();
         });
       });
+      container.querySelectorAll(".btn-migrate-queue").forEach((btn) => btn.addEventListener("click", async () => {
+        const res = await fetch(`/api/evidence/builder/from-queue/${encodeURIComponent(btn.dataset.id)}`, { method: "POST" });
+        const result = await res.json();
+        if (!res.ok) return alert(result.error || "Could not migrate queue item.");
+        showToast("Queue item moved to Evidence Builder for review.");
+        await loadReviewQueue(); await loadEvidenceBuilder();
+      }));
 
       if (window.lucide) lucide.createIcons();
     } catch (err) {
