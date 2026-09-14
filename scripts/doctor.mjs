@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import {
   diagnoseEnvironment,
@@ -16,14 +16,47 @@ const packageManifest = JSON.parse(
   fs.readFileSync(new URL("../package.json", import.meta.url), "utf8")
 );
 
-function commandRunner(command, args) {
-  const completed = spawnSync(command, args, { encoding: "utf8" });
-  return completed.status === 0
-    ? {
-        ok: true,
-        version: (completed.stdout || completed.stderr).trim().split("\n")[0],
-      }
-    : { ok: false };
+export function commandRunner(command, args, { timeout = 5_000 } = {}) {
+  return new Promise((resolve) => {
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    let timer;
+    const complete = (result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(result);
+    };
+
+    let child;
+    try {
+      child = spawn(command, args, { shell: false, stdio: ["ignore", "pipe", "pipe"] });
+    } catch {
+      complete({ ok: false });
+      return;
+    }
+
+    timer = setTimeout(() => {
+      child.kill("SIGTERM");
+      complete({ ok: false, timedOut: true });
+    }, timeout);
+
+    child.stdout?.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr?.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    child.on("error", () => complete({ ok: false }));
+    child.on("close", (code) => {
+      complete(
+        code === 0
+          ? { ok: true, version: (stdout || stderr).trim().split("\n")[0] }
+          : { ok: false }
+      );
+    });
+  });
 }
 
 async function nearestExistingDirectory(target) {
