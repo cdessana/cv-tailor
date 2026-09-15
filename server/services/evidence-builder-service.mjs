@@ -10,6 +10,7 @@ import { assertEvidenceCandidate, assertEvidenceReport } from "../../lib/evidenc
 const candidateMutationLocks = new Map();
 const LOCK_RETRY_MS = 25;
 const LOCK_TIMEOUT_MS = 15_000;
+const LOCK_STALE_MS = 30_000;
 
 function paths(config = loadConfig()) {
   const root = path.join(config.paths.output, "evidence");
@@ -23,7 +24,13 @@ async function acquireFileLock(lockPath) {
   const started = Date.now();
   while (true) {
     try { await fs.mkdir(lockPath); return () => fs.rm(lockPath, { recursive: true, force: true }); }
-    catch (error) { if (error.code !== "EEXIST" || Date.now() - started >= LOCK_TIMEOUT_MS) throw error; await new Promise((resolve) => setTimeout(resolve, LOCK_RETRY_MS)); }
+    catch (error) {
+      if (error.code !== "EEXIST") throw error;
+      const stats = await fs.stat(lockPath).catch(() => null);
+      if (stats && Date.now() - stats.ctimeMs > LOCK_STALE_MS) { await fs.rm(lockPath, { recursive: true, force: true }); continue; }
+      if (Date.now() - started >= LOCK_TIMEOUT_MS) throw error;
+      await new Promise((resolve) => setTimeout(resolve, LOCK_RETRY_MS));
+    }
   }
 }
 
@@ -91,6 +98,7 @@ async function writeArtifacts(candidate, config) {
   const reportTmp = `${output.report}.${token}.tmp`;
   const candidateBak = `${output.candidate}.${token}.bak`;
   const reportBak = `${output.report}.${token}.bak`;
+  const syncDirectory = async () => { const handle = await fs.open(path.dirname(output.candidate), "r"); try { await handle.sync(); } finally { await handle.close(); } };
   let candidateBackedUp = false;
   let reportBackedUp = false;
   let candidateInstalled = false;
@@ -102,6 +110,7 @@ async function writeArtifacts(candidate, config) {
     try { await fs.rename(output.report, reportBak); reportBackedUp = true; } catch (error) { if (error.code !== "ENOENT") throw error; }
     await fs.rename(candidateTmp, output.candidate); candidateInstalled = true;
     await fs.rename(reportTmp, output.report); reportInstalled = true;
+    await syncDirectory();
     await Promise.allSettled([fs.rm(candidateBak, { force: true }), fs.rm(reportBak, { force: true })]);
   } catch (error) {
     await Promise.allSettled([
