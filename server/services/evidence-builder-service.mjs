@@ -4,6 +4,7 @@ import { loadConfig } from "../../config/load-config.mjs";
 import { loadEvidence, loadReviewQueue, saveReviewQueue } from "./evidence-service.mjs";
 import { promoteApprovedEvidence } from "../../lib/evidence/promote.mjs";
 import { applyQuestionnaireAnswers, applyReviewDecisions, createCandidate, createReport, EvidenceBuilderError, promoteCandidate } from "../../lib/evidence/builder.mjs";
+import { assertEvidenceCandidate, assertEvidenceReport } from "../../lib/evidence/schema.mjs";
 
 function paths(config = loadConfig()) {
   const root = path.join(config.paths.output, "evidence");
@@ -15,7 +16,9 @@ async function readJson(filePath) { return JSON.parse(await fs.readFile(filePath
 async function writeArtifacts(candidate, config) {
   const output = paths(config);
   await fs.mkdir(path.dirname(output.candidate), { recursive: true });
+  assertEvidenceCandidate(candidate);
   const report = createReport(candidate);
+  assertEvidenceReport(report);
   const token = `${process.pid}-${Date.now()}`;
   const candidateTmp = `${output.candidate}.${token}.tmp`;
   const reportTmp = `${output.report}.${token}.tmp`;
@@ -62,11 +65,13 @@ export async function migrateQueueItemToBuilder(itemId, { config = loadConfig() 
   let candidate = current.candidate;
   if (!candidate) candidate = (await buildEvidence({}, { config })).candidate;
   const contextId = `context_${item.company.toLowerCase().replace(/[^a-z0-9]+/g, "-")}_${item.position.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
-  if (!candidate.contexts.some((context) => context.id === contextId)) candidate.contexts.push({ id: contextId, company: item.company, position: item.position, period: item.period || "Unknown", type: "professional", source: { type: "manual", reference: `queue:${item.id}` } });
+  const updatedAt = new Date().toISOString();
+  if (!candidate.contexts.some((context) => context.id === contextId)) candidate.contexts.push({ id: contextId, company: item.company, position: item.position, period: item.period || "Unknown", type: "professional", source: { type: "manual", reference: `queue:${item.id}` }, createdAt: updatedAt });
   for (const fact of item.facts || []) {
     const claimId = `claim_${item.id}_${Buffer.from(fact).toString("hex").slice(0, 16)}`;
-    if (!candidate.claims.some((claim) => claim.id === claimId)) candidate.claims.push({ id: claimId, contextId, claim: fact, skills: item.skills || [], source: { type: item.source === "guided_interview" ? "questionnaire" : "manual", reference: `queue:${item.id}` }, reviewStatus: "pending" });
+    if (!candidate.claims.some((claim) => claim.id === claimId)) candidate.claims.push({ id: claimId, contextId, claim: fact, originalClaim: fact, normalizedClaim: String(fact).replace(/\s+/g, " ").trim(), skills: item.skills || [], source: { type: item.source === "guided_interview" ? "questionnaire" : "manual", reference: `queue:${item.id}` }, reviewStatus: "pending", createdAt: updatedAt, updatedAt });
   }
+  candidate.updatedAt = updatedAt;
   item.status = "migrated";
   item.migratedAt = new Date().toISOString();
   await saveReviewQueue(queue);
@@ -77,7 +82,10 @@ export async function getEvidenceCandidate({ config = loadConfig() } = {}) {
   const output = paths(config);
   try {
     const candidate = await readJson(output.candidate);
-    return { candidate, report: createReport(candidate), paths: output };
+    assertEvidenceCandidate(candidate);
+    const report = createReport(candidate);
+    assertEvidenceReport(report);
+    return { candidate, report, paths: output };
   } catch (error) {
     if (error.code === "ENOENT") throw new EvidenceBuilderError("EVIDENCE_CANDIDATE_NOT_FOUND", "Build evidence before requesting review.");
     throw error;
@@ -98,7 +106,9 @@ export async function promoteEvidenceCandidate({ config = loadConfig() } = {}) {
   const { candidate } = await getEvidenceCandidate({ config });
   const evidence = promoteCandidate(candidate);
   await promoteApprovedEvidence(evidence, config.paths.evidence);
-  return { evidence, report: createReport(candidate), canonicalPath: config.paths.evidence };
+  const report = createReport(candidate);
+  assertEvidenceReport(report);
+  return { evidence, report, canonicalPath: config.paths.evidence };
 }
 
 export async function evidenceBuilderStatus({ config = loadConfig() } = {}) {

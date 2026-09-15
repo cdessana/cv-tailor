@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { applyQuestionnaireAnswers, applyReviewDecisions, createCandidate, EvidenceBuilderError, promoteCandidate } from "../lib/evidence/builder.mjs";
+import { assertEvidenceCandidate, assertEvidenceReport, EvidenceSchemaError } from "../lib/evidence/schema.mjs";
 import { buildEvidence, getEvidenceCandidate, promoteEvidenceCandidate, reviewEvidenceCandidate } from "../server/services/evidence-builder-service.mjs";
 
 const resume = {
@@ -24,6 +25,29 @@ test("builds pending, contextual claims from explicit resume wording only", () =
   assert.equal(candidate.claims.flatMap((claim) => claim.skills).includes("Kafka"), false);
   assert.equal(candidate.claims[0].contextId === candidate.claims[2].contextId, false);
   assert.equal(candidate.claims[0].source.reference, "work[0].highlights[0]");
+  assert.equal(candidate.version, 2);
+  assert.match(candidate.builderVersion, /^2\./);
+  assert.match(candidate.runId, /^[\da-f-]{36}$/i);
+  assert.equal(candidate.claims[0].originalClaim, candidate.claims[0].claim);
+  assert.equal(candidate.claims[0].normalizedClaim, candidate.claims[0].claim);
+  assert.doesNotThrow(() => assertEvidenceCandidate(candidate));
+  assert.doesNotThrow(() => assertEvidenceReport(report));
+});
+
+test("records an auditable review decision with actor, timestamp, and source", () => {
+  const { candidate } = createCandidate(resume);
+  const result = applyReviewDecisions(candidate, [{ claimId: candidate.claims[0].id, status: "approved", note: "Confirmed against resume", actor: "candidate" }]);
+  const decision = result.candidate.reviewDecisions[0];
+  assert.equal(decision.claimId, candidate.claims[0].id);
+  assert.equal(decision.actor, "candidate");
+  assert.equal(decision.sources[0].reference, candidate.claims[0].source.reference);
+  assert.ok(Date.parse(decision.decidedAt));
+});
+
+test("rejects candidates with dangling claim provenance", () => {
+  const { candidate } = createCandidate(resume);
+  candidate.claims[0].contextId = "context_missing";
+  assert.throws(() => assertEvidenceCandidate(candidate), (error) => error instanceof EvidenceSchemaError && error.code === "EVIDENCE_SCHEMA_INVALID");
 });
 
 test("questionnaire date conflicts block promotion and unknown answers add no claim", () => {
