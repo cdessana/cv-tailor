@@ -133,6 +133,21 @@ This prevents the master resume from becoming a giant archive of every project, 
 
 Run `node scripts/build-evidence.mjs data/resumes/base.json` to create a reviewable candidate under `output/evidence/`. The builder validates the structured resume, keeps each fact in its work context, records JSON Resume provenance, and creates `evidence-candidate.json` plus `evidence-report.json`. Both artifacts are versioned and identify the builder run; each claim preserves its original and whitespace-normalized wording, source reference, and timestamps.
 
+To include provenance references from the CLI, pass `--sources` with a JSON array or `{ "supportingSources": [...] }` wrapper:
+
+```bash
+node scripts/build-evidence.mjs data/resumes/base.json --sources data/evidence-sources.json
+```
+
+```json
+[
+  { "type": "linkedin", "reference": "https://linkedin.com/in/example" },
+  { "type": "github", "reference": "https://github.com/example" }
+]
+```
+
+The command does not open, scrape, crawl, or analyze these references.
+
 In the local Evidence view, **Build from Resume** opens the same workflow: use the configured base resume or upload a structured JSON Resume. You can add LinkedIn, GitHub, feedback, or manual references as provenance metadata. The UI does not scrape, crawl, or automatically analyze those sources.
 
 Candidate claims start pending. Review them through the structured API/UI or with `node scripts/review-evidence.mjs decisions.json`; then run `node scripts/promote-evidence.mjs`. Every claim or conflict decision records its actor, timestamp, note, and relevant source snapshot. Promotion is blocked while any claim, ambiguity, or conflict remains unresolved. Only approved claims can be written to canonical `data/evidence.json`, which remains the only evidence source consumed by tailoring.
