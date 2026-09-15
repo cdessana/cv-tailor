@@ -156,6 +156,8 @@ Candidate claims start pending. Review them through the structured API/UI or wit
 
 The report summary separately exposes `conflicts`, `ambiguities`, and `unresolvedIssues`. Every unresolved `*_conflict` issue is counted once, including questionnaire and source disagreements; claims already linked to a conflict issue are not double-counted.
 
+`evidence-report.json` also contains an audit projection for every claim (`id`, context, review status, provenance, and allowed actions) and each issue exposes its allowed next actions. Source files are checked against the supporting-source JSON Schema at runtime before candidate creation.
+
 The builder API also accepts `supportingSources` for `linkedin`, `github`, `feedback`, or `manual` evidence. A source may include explicit `claims`, each with an existing candidate `contextId`, `claim`, optional `skills`, and optional `conflictsWith` (a claim ID or exact existing claim wording). Equal wording adds corroborating provenance; an explicit disagreement becomes a blocking `source_claim_conflict`. The builder never guesses a role context or treats merely similar wording as a conflict.
 
 When the validated resume has JSON Resume `projects[]`, each project becomes its own evidence context. Its description and highlights retain `projects[...]` provenance and never share skills or facts with another project. A project is linked to a role only when its `entity` matches exactly one employer context; otherwise the project remains independently scoped instead of being guessed into a role.
