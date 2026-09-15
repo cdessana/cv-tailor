@@ -1440,14 +1440,48 @@
   }
 
   function setupEvidenceEvents() {
-    $("#btn-build-evidence")?.addEventListener("click", async () => {
+    const buildModal = $("#modal-build-evidence");
+    const closeBuildModal = () => {
+      buildModal?.classList.add("hidden");
+      $("#build-evidence-error")?.classList.add("hidden");
+    };
+    const showBuildError = (message) => {
+      const error = $("#build-evidence-error");
+      if (error) { error.textContent = message; error.classList.remove("hidden"); }
+    };
+    const addSourceInput = () => {
+      $("#evidence-source-inputs")?.insertAdjacentHTML("beforeend", `<div data-evidence-source class="grid grid-cols-[8rem_1fr_auto] gap-2"><select data-source-type class="border border-slate-300 rounded p-2 bg-white"><option value="linkedin">LinkedIn</option><option value="github">GitHub</option><option value="feedback">Feedback</option><option value="manual">Manual</option></select><input data-source-reference class="border border-slate-300 rounded p-2" placeholder="URL, document, or note reference"><button type="button" data-remove-evidence-source class="text-slate-500 hover:text-rose-600" aria-label="Remove source">×</button></div>`);
+    };
+    $("#btn-build-evidence")?.addEventListener("click", () => {
+      buildModal?.classList.remove("hidden");
+      if (window.lucide) lucide.createIcons();
+    });
+    $("#btn-close-build-evidence-modal")?.addEventListener("click", closeBuildModal);
+    $("#btn-cancel-build-evidence")?.addEventListener("click", closeBuildModal);
+    $("#btn-add-evidence-source")?.addEventListener("click", addSourceInput);
+    $("#evidence-source-inputs")?.addEventListener("click", (event) => event.target.closest("[data-remove-evidence-source]")?.closest("[data-evidence-source]")?.remove());
+    $$('input[name="evidence-resume-source"]').forEach((input) => input.addEventListener("change", () => {
+      $("#input-evidence-resume-file")?.classList.toggle("hidden", $("input[name=\"evidence-resume-source\"]:checked")?.value !== "file");
+    }));
+    $("#btn-submit-build-evidence")?.addEventListener("click", async () => {
       try {
-        const res = await fetch("/api/evidence/builder", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+        const supportingSources = [...$$('[data-evidence-source]')].map((row) => ({ type: row.querySelector("[data-source-type]")?.value, reference: row.querySelector("[data-source-reference]")?.value.trim() })).filter((item) => item.reference);
+        const incompleteSource = [...$$('[data-evidence-source]')].some((row) => !row.querySelector("[data-source-reference]")?.value.trim());
+        if (incompleteSource) throw new Error("Every supporting source needs a reference or should be removed.");
+        const payload = { supportingSources };
+        if ($("input[name=\"evidence-resume-source\"]:checked")?.value === "file") {
+          const file = $("#input-evidence-resume-file")?.files?.[0];
+          if (!file) throw new Error("Choose a structured resume JSON file.");
+          try { payload.resume = JSON.parse(await file.text()); } catch { throw new Error("The selected file is not valid JSON."); }
+          payload.sourceReference = file.name;
+        }
+        const res = await fetch("/api/evidence/builder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Could not build candidate evidence.");
+        closeBuildModal();
         showToast("Candidate evidence created. Review claims before promotion.");
         renderEvidenceBuilder(data);
-      } catch (err) { alert(`Evidence Builder error: ${err.message}`); }
+      } catch (err) { showBuildError(err.message); }
     });
     // Search filter
     $("#input-evidence-search")?.addEventListener("input", (e) => {
@@ -1585,6 +1619,7 @@
         if (!res.ok) throw new Error("Failed to add experience.");
 
         $("#modal-add-experience")?.classList.add("hidden");
+        $("#modal-build-evidence")?.classList.add("hidden");
         $("#direct-exp-company").value = "";
         $("#direct-exp-position").value = "";
         $("#direct-exp-period").value = "";
@@ -2402,6 +2437,7 @@
     [
       { modal: $("#modal-interview"), boxSelector: ".modal-content-box" },
       { modal: $("#modal-add-experience"), boxSelector: ".modal-content-box" },
+      { modal: $("#modal-build-evidence"), boxSelector: ".modal-content-box" },
       { modal: $("#modal-doctor-details"), boxSelector: ".modal-content-box" },
     ].forEach(({ modal, boxSelector }) => {
       if (!modal) return;
