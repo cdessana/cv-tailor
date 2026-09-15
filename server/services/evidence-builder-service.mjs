@@ -3,7 +3,7 @@ import path from "node:path";
 import { loadConfig } from "../../config/load-config.mjs";
 import { loadEvidence, loadReviewQueue, saveReviewQueue } from "./evidence-service.mjs";
 import { promoteApprovedEvidence } from "../../lib/evidence/promote.mjs";
-import { applyQuestionnaireAnswers, applyReviewDecisions, createCandidate, createReport, EvidenceBuilderError, promoteCandidate } from "../../lib/evidence/builder.mjs";
+import { applyQuestionnaireAnswers, applyReviewDecisions, createCandidate, createReport, EvidenceBuilderError, promoteCandidate, stableId } from "../../lib/evidence/builder.mjs";
 import { assertEvidenceCandidate, assertEvidenceReport } from "../../lib/evidence/schema.mjs";
 
 function paths(config = loadConfig()) {
@@ -12,6 +12,29 @@ function paths(config = loadConfig()) {
 }
 
 async function readJson(filePath) { return JSON.parse(await fs.readFile(filePath, "utf8")); }
+
+function comparable(value) { return String(value ?? "").replace(/\s+/g, " ").trim().toLocaleLowerCase(); }
+
+export function resolveQueueContext(candidate, item, createdAt = new Date().toISOString()) {
+  const company = String(item.company ?? "").trim();
+  const position = String(item.position ?? "").trim();
+  const period = String(item.period ?? "").trim();
+  const matches = candidate.contexts.filter((context) => context.type === "professional" && comparable(context.company) === comparable(company) && comparable(context.position) === comparable(position));
+  const periodMatches = period && comparable(period) !== "unknown" ? matches.filter((context) => comparable(context.period) === comparable(period)) : [];
+  if (periodMatches.length === 1) return periodMatches[0];
+  if (periodMatches.length > 1 || (!periodMatches.length && matches.length > 1)) {
+    throw new EvidenceBuilderError("EVIDENCE_QUEUE_CONTEXT_AMBIGUOUS", "The review-queue item matches more than one role context. Provide the exact period before migrating it.", {
+      itemId: item.id, company, position, period: period || null, contextIds: matches.map((context) => context.id),
+    });
+  }
+  if (matches.length === 1) return matches[0];
+  const source = { type: "manual", reference: `queue:${item.id}` };
+  const context = {
+    id: stableId("context", "manual-queue", company, position, period || "Unknown"), company, position, period: period || "Unknown", type: "professional", source, createdAt,
+  };
+  candidate.contexts.push(context);
+  return context;
+}
 
 async function writeArtifacts(candidate, config) {
   const output = paths(config);
@@ -64,9 +87,9 @@ export async function migrateQueueItemToBuilder(itemId, { config = loadConfig() 
   const current = await evidenceBuilderStatus({ config });
   let candidate = current.candidate;
   if (!candidate) candidate = (await buildEvidence({}, { config })).candidate;
-  const contextId = `context_${item.company.toLowerCase().replace(/[^a-z0-9]+/g, "-")}_${item.position.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   const updatedAt = new Date().toISOString();
-  if (!candidate.contexts.some((context) => context.id === contextId)) candidate.contexts.push({ id: contextId, company: item.company, position: item.position, period: item.period || "Unknown", type: "professional", source: { type: "manual", reference: `queue:${item.id}` }, createdAt: updatedAt });
+  const context = resolveQueueContext(candidate, item, updatedAt);
+  const contextId = context.id;
   for (const fact of item.facts || []) {
     const claimId = `claim_${item.id}_${Buffer.from(fact).toString("hex").slice(0, 16)}`;
     if (!candidate.claims.some((claim) => claim.id === claimId)) {

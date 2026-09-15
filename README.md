@@ -143,6 +143,8 @@ When the validated resume has JSON Resume `projects[]`, each project becomes its
 
 For a guided `projects` question, submit structured project data (`projects: [{ name, facts?, skills? }]`) rather than free text. Each named project becomes a child context of that role, and its questionnaire facts remain pending until reviewed. An unknown answer creates neither a project nor a claim.
 
+When a legacy review-queue item enters the builder, its company, role, and (when supplied) period are matched against existing professional contexts. A unique match is reused; an ambiguous match is rejected for clarification rather than creating a duplicate role context.
+
 Safe lexical normalization is limited to explicit aliases such as `NodeJS` → `Node.js`, `Postgres` → `PostgreSQL`, and `CI CD` → `CI/CD`. Candidate evidence always preserves the original wording separately. The builder does not turn related terminology into a stronger claim — for example, it never changes “multiple backend services” into “microservices”.
 
 ### 3. Evidence is contextual
