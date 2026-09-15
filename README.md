@@ -148,6 +148,8 @@ node scripts/build-evidence.mjs data/resumes/base.json --sources data/evidence-s
 
 The command does not open, scrape, crawl, or analyze these references.
 
+See [the supporting-source contract and context-selection guide](docs/evidence-sources.md) for the JSON Schema, an executable LinkedIn/GitHub/feedback example, and the safe process for copying a `contextId` from a generated candidate.
+
 In the local Evidence view, **Build from Resume** opens the same workflow: use the configured base resume or upload a structured JSON Resume. You can add LinkedIn, GitHub, feedback, or manual references as provenance metadata. The UI does not scrape, crawl, or automatically analyze those sources.
 
 Candidate claims start pending. Review them through the structured API/UI or with `node scripts/review-evidence.mjs decisions.json`; then run `node scripts/promote-evidence.mjs`. Every claim or conflict decision records its actor, timestamp, note, and relevant source snapshot. Promotion is blocked while any claim, ambiguity, or conflict remains unresolved. Only approved claims can be written to canonical `data/evidence.json`, which remains the only evidence source consumed by tailoring.
