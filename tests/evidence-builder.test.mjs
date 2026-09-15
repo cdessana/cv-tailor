@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { applyQuestionnaireAnswers, applyReviewDecisions, createCandidate, EvidenceBuilderError, promoteCandidate } from "../lib/evidence/builder.mjs";
 import { assertEvidenceCandidate, assertEvidenceReport, EvidenceSchemaError } from "../lib/evidence/schema.mjs";
+import { normalizeSafeTerminology } from "../lib/evidence/normalize.mjs";
 import { buildEvidence, getEvidenceCandidate, promoteEvidenceCandidate, reviewEvidenceCandidate } from "../server/services/evidence-builder-service.mjs";
 
 const resume = {
@@ -32,6 +33,16 @@ test("builds pending, contextual claims from explicit resume wording only", () =
   assert.equal(candidate.claims[0].normalizedClaim, candidate.claims[0].claim);
   assert.doesNotThrow(() => assertEvidenceCandidate(candidate));
   assert.doesNotThrow(() => assertEvidenceReport(report));
+});
+
+test("normalizes only safe technology aliases while preserving the original claim", () => {
+  const aliases = structuredClone(resume);
+  aliases.work = [{ name: "Example", position: "Engineer", highlights: ["Built APIs with NodeJS, Postgres, and CI CD pipelines."] }];
+  const { candidate } = createCandidate(aliases);
+  assert.equal(candidate.claims[0].originalClaim, "Built APIs with NodeJS, Postgres, and CI CD pipelines.");
+  assert.equal(candidate.claims[0].normalizedClaim, "Built APIs with Node.js, PostgreSQL, and CI/CD pipelines.");
+  assert.deepEqual(candidate.claims[0].skills, ["Node.js", "PostgreSQL"]);
+  assert.equal(normalizeSafeTerminology("multiple backend services"), "multiple backend services");
 });
 
 test("records an auditable review decision with actor, timestamp, and source", () => {
