@@ -859,6 +859,11 @@ npm start
 
 Open `http://localhost:3000` in your browser. You can paste any job description, curate parsed requirements, inspect matching evidence, execute the 6-stage pipeline with real-time streaming logs, and inspect live HTML previews alongside side-by-side diffs against your master resume. Each web run has a stable run ID and records structured stage start, completion, failure, duration, artifact, and child-process-output events in addition to the readable terminal log.
 
+Security note: the Evidence Builder promotion endpoint changes the canonical
+`evidence.json` file and is intended for local use. Do not expose this server to
+an untrusted network until application-wide authentication, authorization, and
+CSRF protection are configured.
+
 ### Option B: Using the CLI
 
 Run the complete tailoring pipeline for a job file directly in your terminal:

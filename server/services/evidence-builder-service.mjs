@@ -19,6 +19,35 @@ function paths(config = loadConfig()) {
 
 async function readJson(filePath) { return JSON.parse(await fs.readFile(filePath, "utf8")); }
 
+async function recoverArtifactTransaction(output) {
+  let transaction;
+  try { transaction = await readJson(`${output.candidate}.transaction.json`); }
+  catch (error) { if (error.code === "ENOENT") return; throw error; }
+  const transactionPath = `${output.candidate}.transaction.json`;
+  if (transaction.state === "committed") {
+    await Promise.allSettled([
+      fs.rm(transaction.candidateBak, { force: true }),
+      fs.rm(transaction.reportBak, { force: true }),
+      fs.rm(transaction.candidateTmp, { force: true }),
+      fs.rm(transaction.reportTmp, { force: true }),
+      fs.rm(transactionPath, { force: true }),
+    ]);
+    return;
+  }
+  // A crash before commit must leave the previous pair visible, or no pair if
+  // these artifacts did not exist before the transaction began.
+  const installed = ["backed-up", "candidate-installed"].includes(transaction.state);
+  await Promise.allSettled([
+    installed ? fs.rm(transaction.candidate, { force: true }) : Promise.resolve(),
+    installed ? fs.rm(transaction.report, { force: true }) : Promise.resolve(),
+    installed ? fs.rename(transaction.candidateBak, transaction.candidate) : Promise.resolve(),
+    installed ? fs.rename(transaction.reportBak, transaction.report) : Promise.resolve(),
+    fs.rm(transaction.candidateTmp, { force: true }),
+    fs.rm(transaction.reportTmp, { force: true }),
+    fs.rm(transactionPath, { force: true }),
+  ]);
+}
+
 async function acquireFileLock(lockPath) {
   await fs.mkdir(path.dirname(lockPath), { recursive: true });
   const started = Date.now();
@@ -90,6 +119,7 @@ export function resolveQueueContext(candidate, item, createdAt = new Date().toIS
 async function writeArtifacts(candidate, config) {
   const output = paths(config);
   await fs.mkdir(path.dirname(output.candidate), { recursive: true });
+  await recoverArtifactTransaction(output);
   assertEvidenceCandidate(candidate);
   const report = createReport(candidate);
   assertEvidenceReport(report);
@@ -98,20 +128,31 @@ async function writeArtifacts(candidate, config) {
   const reportTmp = `${output.report}.${token}.tmp`;
   const candidateBak = `${output.candidate}.${token}.bak`;
   const reportBak = `${output.report}.${token}.bak`;
+  const transactionPath = `${output.candidate}.transaction.json`;
   const syncDirectory = async () => { const handle = await fs.open(path.dirname(output.candidate), "r"); try { await handle.sync(); } finally { await handle.close(); } };
   let candidateBackedUp = false;
   let reportBackedUp = false;
   let candidateInstalled = false;
   let reportInstalled = false;
   try {
+    const writeTransaction = async (state) => {
+      const handle = await fs.open(transactionPath, "w");
+      try { await handle.writeFile(`${JSON.stringify({ version: 1, state, candidate: output.candidate, report: output.report, candidateBak, reportBak, candidateTmp, reportTmp }, null, 2)}\n`); await handle.sync(); }
+      finally { await handle.close(); }
+    };
+    await writeTransaction("prepared");
     const writeDurably = async (filePath, value) => { const handle = await fs.open(filePath, "w"); try { await handle.writeFile(value); await handle.sync(); } finally { await handle.close(); } };
     await Promise.all([writeDurably(candidateTmp, `${JSON.stringify(candidate, null, 2)}\n`), writeDurably(reportTmp, `${JSON.stringify(report, null, 2)}\n`)]);
     try { await fs.rename(output.candidate, candidateBak); candidateBackedUp = true; } catch (error) { if (error.code !== "ENOENT") throw error; }
     try { await fs.rename(output.report, reportBak); reportBackedUp = true; } catch (error) { if (error.code !== "ENOENT") throw error; }
+    await writeTransaction("backed-up");
     await fs.rename(candidateTmp, output.candidate); candidateInstalled = true;
+    await writeTransaction("candidate-installed");
     await fs.rename(reportTmp, output.report); reportInstalled = true;
+    await writeTransaction("committed");
     await syncDirectory();
     await Promise.allSettled([fs.rm(candidateBak, { force: true }), fs.rm(reportBak, { force: true })]);
+    await fs.rm(transactionPath, { force: true });
   } catch (error) {
     await Promise.allSettled([
       fs.rm(candidateTmp, { force: true }), fs.rm(reportTmp, { force: true }),
@@ -119,6 +160,7 @@ async function writeArtifacts(candidate, config) {
       reportInstalled ? fs.rm(output.report, { force: true }) : Promise.resolve(),
       candidateBackedUp ? fs.rename(candidateBak, output.candidate) : Promise.resolve(),
       reportBackedUp ? fs.rename(reportBak, output.report) : Promise.resolve(),
+      fs.rm(transactionPath, { force: true }),
     ]);
     throw error;
   }
@@ -163,7 +205,14 @@ export async function migrateQueueItemToBuilder(itemId, { config = loadConfig() 
     try {
       return await writeArtifacts(candidate, config);
     } catch (error) {
-      await saveReviewQueue(originalQueue);
+      try {
+        await saveReviewQueue(originalQueue);
+      } catch (rollbackError) {
+        throw new EvidenceBuilderError("EVIDENCE_MIGRATION_ROLLBACK_FAILED", "Evidence migration failed and its queue rollback could not be completed.", {
+          cause: error.message,
+          rollbackCause: rollbackError.message,
+        });
+      }
       throw error;
     }
   });
