@@ -8,6 +8,8 @@ import { applyQuestionnaireAnswers, applyReviewDecisions, createCandidate, creat
 import { assertEvidenceCandidate, assertEvidenceReport } from "../../lib/evidence/schema.mjs";
 
 const candidateMutationLocks = new Map();
+const LOCK_RETRY_MS = 25;
+const LOCK_TIMEOUT_MS = 15_000;
 
 function paths(config = loadConfig()) {
   const root = path.join(config.paths.output, "evidence");
@@ -16,10 +18,19 @@ function paths(config = loadConfig()) {
 
 async function readJson(filePath) { return JSON.parse(await fs.readFile(filePath, "utf8")); }
 
+async function acquireFileLock(lockPath) {
+  await fs.mkdir(path.dirname(lockPath), { recursive: true });
+  const started = Date.now();
+  while (true) {
+    try { await fs.mkdir(lockPath); return () => fs.rm(lockPath, { recursive: true, force: true }); }
+    catch (error) { if (error.code !== "EEXIST" || Date.now() - started >= LOCK_TIMEOUT_MS) throw error; await new Promise((resolve) => setTimeout(resolve, LOCK_RETRY_MS)); }
+  }
+}
+
 function withCandidateMutationLock(config, operation) {
   const key = paths(config).candidate;
   const previous = candidateMutationLocks.get(key) ?? Promise.resolve();
-  const current = previous.catch(() => undefined).then(operation);
+  const current = previous.catch(() => undefined).then(async () => { const release = await acquireFileLock(`${key}.lock`); try { return await operation(); } finally { await release(); } });
   const tail = current.catch(() => undefined);
   candidateMutationLocks.set(key, tail);
   return current.finally(() => {
@@ -85,10 +96,8 @@ async function writeArtifacts(candidate, config) {
   let candidateInstalled = false;
   let reportInstalled = false;
   try {
-    await Promise.all([
-      fs.writeFile(candidateTmp, `${JSON.stringify(candidate, null, 2)}\n`),
-      fs.writeFile(reportTmp, `${JSON.stringify(report, null, 2)}\n`),
-    ]);
+    const writeDurably = async (filePath, value) => { const handle = await fs.open(filePath, "w"); try { await handle.writeFile(value); await handle.sync(); } finally { await handle.close(); } };
+    await Promise.all([writeDurably(candidateTmp, `${JSON.stringify(candidate, null, 2)}\n`), writeDurably(reportTmp, `${JSON.stringify(report, null, 2)}\n`)]);
     try { await fs.rename(output.candidate, candidateBak); candidateBackedUp = true; } catch (error) { if (error.code !== "ENOENT") throw error; }
     try { await fs.rename(output.report, reportBak); reportBackedUp = true; } catch (error) { if (error.code !== "ENOENT") throw error; }
     await fs.rename(candidateTmp, output.candidate); candidateInstalled = true;
