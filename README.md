@@ -158,7 +158,7 @@ The report summary separately exposes `conflicts`, `ambiguities`, and `unresolve
 
 `evidence-report.json` also contains an audit projection for every claim (`id`, context, review status, provenance, and allowed actions) and each issue exposes its allowed next actions. Source files are checked against the supporting-source JSON Schema at runtime before candidate creation. Every candidate also has a monotonic `revision`: questionnaire, review, and promotion requests must include the revision that was loaded. A stale request receives `409 EVIDENCE_REVISION_CONFLICT` and must reload instead of overwriting newer review work.
 
-Run `npm run test:unit` for deterministic unit/contract coverage and `npm run test:integration` for the local Evidence Builder HTTP and browser workflow. CI runs both independently; the browser job installs Puppeteer's managed Chrome before starting the integration suite.
+Run `npm run test:unit` for deterministic unit/contract coverage and `npm run test:integration` for the local Evidence Builder HTTP and browser workflow. CI runs both independently; the browser job installs Puppeteer's managed Chrome and enables its CI-only no-sandbox launch flags for GitHub-hosted Ubuntu runners.
 
 The builder API also accepts `supportingSources` for `linkedin`, `github`, `feedback`, or `manual` evidence. A source may include explicit `claims`, each with an existing candidate `contextId`, `claim`, optional `skills`, and optional `conflictsWith` (a claim ID or exact existing claim wording). Equal wording adds corroborating provenance; an explicit disagreement becomes a blocking `source_claim_conflict`. The builder never guesses a role context or treats merely similar wording as a conflict.
 

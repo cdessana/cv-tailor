@@ -12,6 +12,13 @@ const resume = {
   work: [{ name: "Example", position: "Engineer", startDate: "2021", endDate: "2023", highlights: ["Built REST APIs using Node.js and PostgreSQL."] }],
 };
 
+function launchBrowser() {
+  return puppeteer.launch({
+    headless: true,
+    ...(process.env.CI === "true" ? { args: ["--no-sandbox", "--disable-setuid-sandbox"] } : {}),
+  });
+}
+
 async function startTestServer(testResume = resume) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "evidence-builder-http-"));
   const configPath = path.join(root, "config.json");
@@ -115,7 +122,7 @@ test("web UI can review and promote a candidate evidence claim", async () => {
   try {
     const built = await request(server.url, "/api/evidence/builder", { method: "POST", body: JSON.stringify({ resume, sourceReference: "fixture.json" }) });
     assert.equal(built.response.status, 201);
-    browser = await puppeteer.launch({ headless: true });
+    browser = await launchBrowser();
     const page = await browser.newPage();
     await page.goto(server.url, { waitUntil: "domcontentloaded", timeout: 10_000 });
     await page.click("#nav-evidence");
@@ -149,7 +156,7 @@ test("web UI resolves a source conflict and reviews every affected claim", async
     });
     assert.equal(built.response.status, 201);
 
-    browser = await puppeteer.launch({ headless: true });
+    browser = await launchBrowser();
     const page = await browser.newPage();
     await page.goto(server.url, { waitUntil: "domcontentloaded", timeout: 10_000 });
     await page.click("#nav-evidence");
@@ -177,7 +184,7 @@ test("web UI does not submit questionnaire questions that are outside the visibl
     const built = await request(server.url, "/api/evidence/builder", { method: "POST", body: JSON.stringify({ resume: sparseResume, sourceReference: "fixture.json" }) });
     assert.equal(built.body.candidate.questionnaire.questions.length, 9);
 
-    browser = await puppeteer.launch({ headless: true });
+    browser = await launchBrowser();
     const page = await browser.newPage();
     await page.goto(server.url, { waitUntil: "domcontentloaded", timeout: 10_000 });
     await page.click("#nav-evidence");
@@ -201,7 +208,7 @@ test("web UI builds from the configured resume and preserves source references",
   const server = await startTestServer();
   let browser;
   try {
-    browser = await puppeteer.launch({ headless: true });
+    browser = await launchBrowser();
     const page = await browser.newPage();
     await page.goto(server.url, { waitUntil: "domcontentloaded", timeout: 10_000 });
     await page.click("#nav-evidence");
@@ -224,7 +231,7 @@ test("web UI uploads a structured resume JSON for validation", async () => {
   const server = await startTestServer();
   let browser;
   try {
-    browser = await puppeteer.launch({ headless: true });
+    browser = await launchBrowser();
     const page = await browser.newPage();
     await page.goto(server.url, { waitUntil: "domcontentloaded", timeout: 10_000 });
     await page.click("#nav-evidence");
