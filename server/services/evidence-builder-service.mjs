@@ -136,11 +136,18 @@ export async function migrateQueueItemToBuilder(itemId, { config = loadConfig() 
     }
     candidate.updatedAt = updatedAt;
     candidate.revision = (current.candidate?.revision ?? 0) + 1;
-    const persisted = await writeArtifacts(candidate, config);
     item.status = "migrated";
     item.migratedAt = new Date().toISOString();
+    // Persist queue and candidate as one logical operation. If artifact
+    // installation fails, restore the queue snapshot so migration is retryable.
+    const originalQueue = await loadReviewQueue();
     await saveReviewQueue(queue);
-    return persisted;
+    try {
+      return await writeArtifacts(candidate, config);
+    } catch (error) {
+      await saveReviewQueue(originalQueue);
+      throw error;
+    }
   });
 }
 
