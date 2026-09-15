@@ -1,7 +1,8 @@
-import { promoteEvidenceCandidate } from "../server/services/evidence-builder-service.mjs";
+import { getEvidenceCandidate, promoteEvidenceCandidate } from "../server/services/evidence-builder-service.mjs";
 
 export async function runEvidencePromotion() {
-  const result = await promoteEvidenceCandidate();
+  const { candidate } = await getEvidenceCandidate();
+  const result = await promoteEvidenceCandidate({ expectedRevision: candidate.revision });
   console.log(`Promoted approved evidence to ${result.canonicalPath}`);
   return result;
 }

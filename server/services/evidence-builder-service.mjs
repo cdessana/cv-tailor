@@ -1,10 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { loadConfig } from "../../config/load-config.mjs";
 import { loadEvidence, loadReviewQueue, saveReviewQueue } from "./evidence-service.mjs";
 import { promoteApprovedEvidence } from "../../lib/evidence/promote.mjs";
-import { applyQuestionnaireAnswers, applyReviewDecisions, createCandidate, createReport, EvidenceBuilderError, promoteCandidate, stableId } from "../../lib/evidence/builder.mjs";
+import { applyQuestionnaireAnswers, applyReviewDecisions, createCandidate, createEvidenceClaim, createReport, EvidenceBuilderError, promoteCandidate, stableId } from "../../lib/evidence/builder.mjs";
 import { assertEvidenceCandidate, assertEvidenceReport } from "../../lib/evidence/schema.mjs";
+
+const candidateMutationLocks = new Map();
 
 function paths(config = loadConfig()) {
   const root = path.join(config.paths.output, "evidence");
@@ -12,6 +15,36 @@ function paths(config = loadConfig()) {
 }
 
 async function readJson(filePath) { return JSON.parse(await fs.readFile(filePath, "utf8")); }
+
+function withCandidateMutationLock(config, operation) {
+  const key = paths(config).candidate;
+  const previous = candidateMutationLocks.get(key) ?? Promise.resolve();
+  const current = previous.catch(() => undefined).then(operation);
+  const tail = current.catch(() => undefined);
+  candidateMutationLocks.set(key, tail);
+  return current.finally(() => {
+    if (candidateMutationLocks.get(key) === tail) candidateMutationLocks.delete(key);
+  });
+}
+
+function ensureCandidateRevision(candidate) {
+  // Candidates persisted before optimistic concurrency was introduced are
+  // upgraded in memory and receive their first revision on the next write.
+  if (candidate.revision === undefined) candidate.revision = 0;
+  return candidate;
+}
+
+function assertExpectedRevision(candidate, expectedRevision) {
+  if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0) {
+    throw new EvidenceBuilderError("EVIDENCE_REVISION_REQUIRED", "Provide the non-negative candidate revision you reviewed.");
+  }
+  if (candidate.revision !== expectedRevision) {
+    throw new EvidenceBuilderError("EVIDENCE_REVISION_CONFLICT", "Evidence changed since this review was loaded. Reload the candidate and try again.", {
+      expectedRevision,
+      currentRevision: candidate.revision,
+    });
+  }
+}
 
 function comparable(value) { return String(value ?? "").replace(/\s+/g, " ").trim().toLocaleLowerCase(); }
 
@@ -42,7 +75,7 @@ async function writeArtifacts(candidate, config) {
   assertEvidenceCandidate(candidate);
   const report = createReport(candidate);
   assertEvidenceReport(report);
-  const token = `${process.pid}-${Date.now()}`;
+  const token = randomUUID();
   const candidateTmp = `${output.candidate}.${token}.tmp`;
   const reportTmp = `${output.report}.${token}.tmp`;
   const candidateBak = `${output.candidate}.${token}.bak`;
@@ -77,37 +110,44 @@ async function writeArtifacts(candidate, config) {
 export async function buildEvidence({ resume, sourceReference, supportingSources } = {}, { config = loadConfig() } = {}) {
   const input = resume ?? await readJson(config.paths.baseResume);
   const result = createCandidate(input, { sourceReference: sourceReference ?? config.paths.baseResume, supportingSources });
-  return writeArtifacts(result.candidate, config);
+  return withCandidateMutationLock(config, () => writeArtifacts(result.candidate, config));
 }
 
 export async function migrateQueueItemToBuilder(itemId, { config = loadConfig() } = {}) {
-  const queue = await loadReviewQueue();
-  const item = queue.find((entry) => entry.id === itemId);
-  if (!item) throw new EvidenceBuilderError("EVIDENCE_QUEUE_ITEM_NOT_FOUND", `Queue item '${itemId}' does not exist.`);
-  const current = await evidenceBuilderStatus({ config });
-  let candidate = current.candidate;
-  if (!candidate) candidate = (await buildEvidence({}, { config })).candidate;
-  const updatedAt = new Date().toISOString();
-  const context = resolveQueueContext(candidate, item, updatedAt);
-  const contextId = context.id;
-  for (const fact of item.facts || []) {
-    const claimId = `claim_${item.id}_${Buffer.from(fact).toString("hex").slice(0, 16)}`;
-    if (!candidate.claims.some((claim) => claim.id === claimId)) {
-      const source = { type: item.source === "guided_interview" ? "questionnaire" : "manual", reference: `queue:${item.id}` };
-      candidate.claims.push({ id: claimId, contextId, claim: fact, originalClaim: fact, normalizedClaim: String(fact).replace(/\s+/g, " ").trim(), skills: item.skills || [], source, sources: [source], reviewStatus: "pending", createdAt: updatedAt, updatedAt });
+  return withCandidateMutationLock(config, async () => {
+    const queue = await loadReviewQueue();
+    const item = queue.find((entry) => entry.id === itemId);
+    if (!item) throw new EvidenceBuilderError("EVIDENCE_QUEUE_ITEM_NOT_FOUND", `Queue item '${itemId}' does not exist.`);
+    const current = await evidenceBuilderStatus({ config });
+    let candidate = current.candidate;
+    if (!candidate) {
+      const input = await readJson(config.paths.baseResume);
+      candidate = createCandidate(input, { sourceReference: config.paths.baseResume }).candidate;
     }
-  }
-  candidate.updatedAt = updatedAt;
-  item.status = "migrated";
-  item.migratedAt = new Date().toISOString();
-  await saveReviewQueue(queue);
-  return writeArtifacts(candidate, config);
+    const updatedAt = new Date().toISOString();
+    const context = resolveQueueContext(candidate, item, updatedAt);
+    const contextId = context.id;
+    for (const fact of item.facts || []) {
+      const claimId = `claim_${item.id}_${Buffer.from(fact).toString("hex").slice(0, 16)}`;
+      if (!candidate.claims.some((claim) => claim.id === claimId)) {
+        const source = { type: item.source === "guided_interview" ? "questionnaire" : "manual", reference: `queue:${item.id}` };
+        candidate.claims.push(createEvidenceClaim({ id: claimId, contextId, claim: fact, claimSource: source, skills: item.skills || [], createdAt: updatedAt }));
+      }
+    }
+    candidate.updatedAt = updatedAt;
+    candidate.revision = (current.candidate?.revision ?? 0) + 1;
+    const persisted = await writeArtifacts(candidate, config);
+    item.status = "migrated";
+    item.migratedAt = new Date().toISOString();
+    await saveReviewQueue(queue);
+    return persisted;
+  });
 }
 
 export async function getEvidenceCandidate({ config = loadConfig() } = {}) {
   const output = paths(config);
   try {
-    const candidate = await readJson(output.candidate);
+    const candidate = ensureCandidateRevision(await readJson(output.candidate));
     assertEvidenceCandidate(candidate);
     const report = createReport(candidate);
     assertEvidenceReport(report);
@@ -118,23 +158,36 @@ export async function getEvidenceCandidate({ config = loadConfig() } = {}) {
   }
 }
 
-export async function answerEvidenceQuestionnaire(answers, { config = loadConfig() } = {}) {
-  const { candidate } = await getEvidenceCandidate({ config });
-  return writeArtifacts(applyQuestionnaireAnswers(candidate, answers).candidate, config);
+export async function answerEvidenceQuestionnaire(answers, { config = loadConfig(), expectedRevision } = {}) {
+  return withCandidateMutationLock(config, async () => {
+    const { candidate } = await getEvidenceCandidate({ config });
+    assertExpectedRevision(candidate, expectedRevision);
+    const next = applyQuestionnaireAnswers(candidate, answers).candidate;
+    next.revision = candidate.revision + 1;
+    return writeArtifacts(next, config);
+  });
 }
 
-export async function reviewEvidenceCandidate(decisions, { config = loadConfig() } = {}) {
-  const { candidate } = await getEvidenceCandidate({ config });
-  return writeArtifacts(applyReviewDecisions(candidate, decisions).candidate, config);
+export async function reviewEvidenceCandidate(decisions, { config = loadConfig(), expectedRevision } = {}) {
+  return withCandidateMutationLock(config, async () => {
+    const { candidate } = await getEvidenceCandidate({ config });
+    assertExpectedRevision(candidate, expectedRevision);
+    const next = applyReviewDecisions(candidate, decisions).candidate;
+    next.revision = candidate.revision + 1;
+    return writeArtifacts(next, config);
+  });
 }
 
-export async function promoteEvidenceCandidate({ config = loadConfig() } = {}) {
-  const { candidate } = await getEvidenceCandidate({ config });
-  const evidence = promoteCandidate(candidate);
-  await promoteApprovedEvidence(evidence, config.paths.evidence);
-  const report = createReport(candidate);
-  assertEvidenceReport(report);
-  return { evidence, report, canonicalPath: config.paths.evidence };
+export async function promoteEvidenceCandidate({ config = loadConfig(), expectedRevision } = {}) {
+  return withCandidateMutationLock(config, async () => {
+    const { candidate } = await getEvidenceCandidate({ config });
+    assertExpectedRevision(candidate, expectedRevision);
+    const evidence = promoteCandidate(candidate);
+    await promoteApprovedEvidence(evidence, config.paths.evidence);
+    const report = createReport(candidate);
+    assertEvidenceReport(report);
+    return { evidence, report, canonicalPath: config.paths.evidence };
+  });
 }
 
 export async function evidenceBuilderStatus({ config = loadConfig() } = {}) {

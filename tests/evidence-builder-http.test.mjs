@@ -12,10 +12,10 @@ const resume = {
   work: [{ name: "Example", position: "Engineer", startDate: "2021", endDate: "2023", highlights: ["Built REST APIs using Node.js and PostgreSQL."] }],
 };
 
-async function startTestServer() {
+async function startTestServer(testResume = resume) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "evidence-builder-http-"));
   const configPath = path.join(root, "config.json");
-  await fs.writeFile(path.join(root, "base.json"), JSON.stringify(resume));
+  await fs.writeFile(path.join(root, "base.json"), JSON.stringify(testResume));
   await fs.writeFile(configPath, JSON.stringify({ paths: {
     baseResume: path.join(root, "base.json"), evidence: path.join(root, "evidence.json"), aliases: path.join(root, "aliases.json"), jobs: path.join(root, "jobs"), output: path.join(root, "output"),
   } }));
@@ -57,23 +57,27 @@ test("Evidence Builder HTTP workflow validates, reviews, and promotes through th
     assert.ok(built.body.candidate.claims[0].id);
 
     const question = built.body.candidate.questionnaire.questions.find((item) => item.key === "quality");
-    const answered = await request(server.url, "/api/evidence/builder/questionnaire", { method: "POST", body: JSON.stringify({ answers: [{ questionId: question.id, answer: "Wrote unit tests." }] }) });
+    const answered = await request(server.url, "/api/evidence/builder/questionnaire", { method: "POST", body: JSON.stringify({ expectedRevision: built.body.candidate.revision, answers: [{ questionId: question.id, answer: "Wrote unit tests." }] }) });
     assert.equal(answered.response.status, 200);
     assert.equal(answered.body.candidate.claims.some((claim) => claim.source.type === "questionnaire"), true);
 
-    const blocked = await request(server.url, "/api/evidence/builder/promote", { method: "POST" });
+    const blocked = await request(server.url, "/api/evidence/builder/promote", { method: "POST", body: JSON.stringify({ expectedRevision: answered.body.candidate.revision }) });
     assert.equal(blocked.response.status, 409);
     assert.equal(blocked.body.code, "EVIDENCE_PROMOTION_BLOCKED");
 
-    const rejectedDecision = await request(server.url, "/api/evidence/builder/review", { method: "POST", body: JSON.stringify({ decisions: [{ claimId: "claim_unknown", status: "approved" }] }) });
+    const staleReview = await request(server.url, "/api/evidence/builder/review", { method: "POST", body: JSON.stringify({ expectedRevision: built.body.candidate.revision, decisions: [{ claimId: built.body.candidate.claims[0].id, status: "approved" }] }) });
+    assert.equal(staleReview.response.status, 409);
+    assert.equal(staleReview.body.code, "EVIDENCE_REVISION_CONFLICT");
+
+    const rejectedDecision = await request(server.url, "/api/evidence/builder/review", { method: "POST", body: JSON.stringify({ expectedRevision: answered.body.candidate.revision, decisions: [{ claimId: "claim_unknown", status: "approved" }] }) });
     assert.equal(rejectedDecision.response.status, 400);
     assert.equal(rejectedDecision.body.code, "EVIDENCE_CLAIM_UNKNOWN");
 
-    const reviewed = await request(server.url, "/api/evidence/builder/review", { method: "POST", body: JSON.stringify({ decisions: answered.body.candidate.claims.map((claim) => ({ claimId: claim.id, status: "approved" })) }) });
+    const reviewed = await request(server.url, "/api/evidence/builder/review", { method: "POST", body: JSON.stringify({ expectedRevision: answered.body.candidate.revision, decisions: answered.body.candidate.claims.map((claim) => ({ claimId: claim.id, status: "approved" })) }) });
     assert.equal(reviewed.response.status, 200);
     assert.equal(reviewed.body.report.promotionSafe, true);
 
-    const promoted = await request(server.url, "/api/evidence/builder/promote", { method: "POST" });
+    const promoted = await request(server.url, "/api/evidence/builder/promote", { method: "POST", body: JSON.stringify({ expectedRevision: reviewed.body.candidate.revision }) });
     assert.equal(promoted.response.status, 200);
     assert.equal(promoted.body.evidence.experiences.length, 1);
     const canonical = JSON.parse(await fs.readFile(path.join(server.root, "evidence.json"), "utf8"));
@@ -86,14 +90,20 @@ test("Evidence Builder HTTP workflow validates, reviews, and promotes through th
 test("web client assets expose the Evidence Builder review contract", async () => {
   const server = await startTestServer();
   try {
-    const response = await fetch(`${server.url}/app.js`);
-    assert.equal(response.status, 200);
-    const script = await response.text();
+    const [appResponse, apiResponse] = await Promise.all([
+      fetch(`${server.url}/app.js`),
+      fetch(`${server.url}/evidence-builder-api.js`),
+    ]);
+    assert.equal(appResponse.status, 200);
+    assert.equal(apiResponse.status, 200);
+    const [appScript, apiScript] = await Promise.all([appResponse.text(), apiResponse.text()]);
     for (const endpoint of ["/api/evidence/builder", "/api/evidence/builder/questionnaire", "/api/evidence/builder/review", "/api/evidence/builder/promote"]) {
-      assert.equal(script.includes(endpoint), true, `missing client endpoint ${endpoint}`);
+      assert.equal(apiScript.includes(endpoint), true, `missing client endpoint ${endpoint}`);
     }
-    assert.equal(script.includes("data-project-question"), true);
-    assert.equal(script.includes("btn-promote-evidence"), true);
+    assert.equal(appScript.includes('import { evidenceBuilderApi }'), true);
+    assert.equal(appScript.includes("/api/evidence/experiences/"), false);
+    assert.equal(appScript.includes("data-project-question"), true);
+    assert.equal(appScript.includes("btn-promote-evidence"), true);
   } finally {
     await server.close();
   }
@@ -117,6 +127,70 @@ test("web UI can review and promote a candidate evidence claim", async () => {
     await page.waitForFunction("document.body.textContent.includes('Approved evidence promoted to the canonical base.')", { timeout: 10_000 });
     const canonical = JSON.parse(await fs.readFile(path.join(server.root, "evidence.json"), "utf8"));
     assert.equal(canonical.experiences[0].facts[0], resume.work[0].highlights[0]);
+  } finally {
+    await browser?.close();
+    await server.close();
+  }
+});
+
+test("web UI resolves a source conflict and reviews every affected claim", async () => {
+  const server = await startTestServer();
+  let browser;
+  try {
+    const initial = await request(server.url, "/api/evidence/builder", { method: "POST", body: JSON.stringify({ resume, sourceReference: "fixture.json" }) });
+    const originalClaim = initial.body.candidate.claims[0];
+    const built = await request(server.url, "/api/evidence/builder", {
+      method: "POST",
+      body: JSON.stringify({
+        resume,
+        sourceReference: "fixture.json",
+        supportingSources: [{ type: "feedback", reference: "feedback:manager", claims: [{ contextId: originalClaim.contextId, claim: "Built only GraphQL APIs.", conflictsWith: [originalClaim.id] }] }],
+      }),
+    });
+    assert.equal(built.response.status, 201);
+
+    browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+    await page.goto(server.url, { waitUntil: "domcontentloaded", timeout: 10_000 });
+    await page.click("#nav-evidence");
+    await page.waitForSelector(".btn-resolve-issue", { timeout: 10_000 });
+    await page.select("select[data-issue-value]", "Built only GraphQL APIs.");
+    await page.click(".btn-resolve-issue");
+    await page.waitForSelector("#btn-promote-evidence:not([disabled])", { timeout: 10_000 });
+    const candidate = await (await fetch(`${server.url}/api/evidence/builder/candidate`)).json();
+    assert.equal(candidate.claims.find((claim) => claim.claim === "Built only GraphQL APIs.").reviewStatus, "approved");
+    assert.equal(candidate.claims.find((claim) => claim.id === originalClaim.id).reviewStatus, "rejected");
+  } finally {
+    await browser?.close();
+    await server.close();
+  }
+});
+
+test("web UI does not submit questionnaire questions that are outside the visible page", async () => {
+  const sparseResume = {
+    basics: { name: "Sparse Candidate", email: "sparse@example.com" },
+    work: [{ name: "Example", position: "Engineer" }],
+  };
+  const server = await startTestServer(sparseResume);
+  let browser;
+  try {
+    const built = await request(server.url, "/api/evidence/builder", { method: "POST", body: JSON.stringify({ resume: sparseResume, sourceReference: "fixture.json" }) });
+    assert.equal(built.body.candidate.questionnaire.questions.length, 9);
+
+    browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+    await page.goto(server.url, { waitUntil: "domcontentloaded", timeout: 10_000 });
+    await page.click("#nav-evidence");
+    await page.waitForSelector("#btn-submit-builder-answers", { timeout: 10_000 });
+    await page.click("#btn-submit-builder-answers");
+    await page.waitForFunction(async () => {
+      const result = await (await fetch("/api/evidence/builder/candidate")).json();
+      return result.questionnaire.questions.some((question) => question.answered);
+    }, { timeout: 10_000 });
+
+    const candidate = await (await fetch(`${server.url}/api/evidence/builder/candidate`)).json();
+    const responsibilities = candidate.questionnaire.questions.find((question) => question.key === "responsibilities");
+    assert.equal(responsibilities.answered, false);
   } finally {
     await browser?.close();
     await server.close();

@@ -39,8 +39,8 @@ router.post("/builder", async (req, res) => {
 });
 
 router.post("/builder/questionnaire", async (req, res) => {
-  try { res.json(await answerEvidenceQuestionnaire(req.body?.answers)); }
-  catch (err) { res.status(400).json({ error: err.message, code: err.code, details: err.details }); }
+  try { res.json(await answerEvidenceQuestionnaire(req.body?.answers, { expectedRevision: req.body?.expectedRevision })); }
+  catch (err) { res.status(err.code === "EVIDENCE_REVISION_CONFLICT" ? 409 : 400).json({ error: err.message, code: err.code, details: err.details }); }
 });
 
 router.post("/builder/from-queue/:id", async (req, res) => {
@@ -49,13 +49,13 @@ router.post("/builder/from-queue/:id", async (req, res) => {
 });
 
 router.post("/builder/review", async (req, res) => {
-  try { res.json(await reviewEvidenceCandidate(req.body?.decisions)); }
-  catch (err) { res.status(400).json({ error: err.message, code: err.code, details: err.details }); }
+  try { res.json(await reviewEvidenceCandidate(req.body?.decisions, { expectedRevision: req.body?.expectedRevision })); }
+  catch (err) { res.status(err.code === "EVIDENCE_REVISION_CONFLICT" ? 409 : 400).json({ error: err.message, code: err.code, details: err.details }); }
 });
 
 router.post("/builder/promote", async (req, res) => {
-  try { res.json(await promoteEvidenceCandidate()); }
-  catch (err) { res.status(409).json({ error: err.message, code: err.code, details: err.details }); }
+  try { res.json(await promoteEvidenceCandidate({ expectedRevision: req.body?.expectedRevision })); }
+  catch (err) { res.status(["EVIDENCE_PROMOTION_BLOCKED", "EVIDENCE_REVISION_CONFLICT"].includes(err.code) ? 409 : 400).json({ error: err.message, code: err.code, details: err.details }); }
 });
 
 // Evidence base overview metrics
