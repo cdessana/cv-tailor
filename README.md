@@ -131,9 +131,9 @@ This prevents the master resume from becoming a giant archive of every project, 
 
 ### Evidence Builder
 
-Run `node scripts/build-evidence.mjs data/resumes/base.json` to create a reviewable candidate under `output/evidence/`. The builder validates the structured resume, keeps each fact in its work context, records JSON Resume provenance, and creates `evidence-candidate.json` plus `evidence-report.json`.
+Run `node scripts/build-evidence.mjs data/resumes/base.json` to create a reviewable candidate under `output/evidence/`. The builder validates the structured resume, keeps each fact in its work context, records JSON Resume provenance, and creates `evidence-candidate.json` plus `evidence-report.json`. Both artifacts are versioned and identify the builder run; each claim preserves its original and whitespace-normalized wording, source reference, and timestamps.
 
-Candidate claims start pending. Review them through the structured API/UI or with `node scripts/review-evidence.mjs decisions.json`; then run `node scripts/promote-evidence.mjs`. Promotion is blocked while any claim, ambiguity, or conflict remains unresolved. Only approved claims can be written to canonical `data/evidence.json`, which remains the only evidence source consumed by tailoring.
+Candidate claims start pending. Review them through the structured API/UI or with `node scripts/review-evidence.mjs decisions.json`; then run `node scripts/promote-evidence.mjs`. Every claim or conflict decision records its actor, timestamp, note, and relevant source snapshot. Promotion is blocked while any claim, ambiguity, or conflict remains unresolved. Only approved claims can be written to canonical `data/evidence.json`, which remains the only evidence source consumed by tailoring.
 
 ### 3. Evidence is contextual
 
