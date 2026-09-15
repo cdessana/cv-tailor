@@ -55,6 +55,14 @@ test("records an auditable review decision with actor, timestamp, and source", (
   assert.ok(Date.parse(decision.decidedAt));
 });
 
+test("report contains per-claim provenance and allowed review actions", () => {
+  const { candidate, report } = createCandidate(resume);
+  const review = report.claims.find((claim) => claim.id === candidate.claims[0].id);
+  assert.deepEqual(review.allowedActions, ["approve", "reject"]);
+  assert.equal(review.source.reference, candidate.claims[0].source.reference);
+  assert.equal(report.allowedActions.includes("approve"), true);
+});
+
 test("rejects candidates with dangling claim provenance", () => {
   const { candidate } = createCandidate(resume);
   candidate.claims[0].contextId = "context_missing";
@@ -128,6 +136,17 @@ test("surfaces contradictory questionnaire answers as an unresolved conflict", (
   assert.equal(second.report.summary.conflicts, 1);
   assert.equal(second.report.summary.unresolvedIssues, 1);
   assert.equal(second.report.promotionSafe, false);
+});
+
+test("questionnaire and supporting-source ambiguity generate clarification work", () => {
+  const { candidate } = createCandidate(resume);
+  const quality = candidate.questionnaire.questions.find((item) => item.key === "quality");
+  const answered = applyQuestionnaireAnswers(candidate, [{ questionId: quality.id, answer: "Worked with messaging systems." }]);
+  assert.equal(answered.candidate.issues.some((issue) => issue.type === "ambiguous_technology" && issue.sources[0].type === "questionnaire"), true);
+  assert.equal(answered.candidate.questionnaire.questions.some((question) => question.key === "clarification"), true);
+  const contextId = candidate.contexts[0].id;
+  const external = createCandidate(resume, { supportingSources: [{ type: "feedback", reference: "feedback:ambiguous", claims: [{ contextId, claim: "Worked with cloud platforms." }] }] });
+  assert.equal(external.candidate.issues.some((issue) => issue.type === "ambiguous_technology" && issue.sources[0].type === "feedback"), true);
 });
 
 test("creates isolated child contexts from structured project questionnaire answers", () => {

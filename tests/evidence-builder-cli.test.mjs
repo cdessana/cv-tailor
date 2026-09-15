@@ -61,7 +61,7 @@ test("CLI rejects malformed source arguments and payloads before building", asyn
 test("CLI keeps source-type and context checks inside the evidence builder", async () => {
   const files = await fixture({ "resume.json": resume, "sources.json": [{ type: "unsupported", reference: "source:bad" }] });
   try {
-    await assert.rejects(() => runEvidenceBuilder([files.path("resume.json"), "--sources", files.path("sources.json")], { build: captureBuild([]) }), (error) => error.code === "EVIDENCE_SOURCE_INVALID");
+    await assert.rejects(() => runEvidenceBuilder([files.path("resume.json"), "--sources", files.path("sources.json")], { build: captureBuild([]) }), (error) => error.code === "EVIDENCE_SOURCE_CONTRACT_INVALID");
   } finally { await files.close(); }
 });
 
