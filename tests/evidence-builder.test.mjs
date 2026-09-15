@@ -6,7 +6,7 @@ import test from "node:test";
 import { applyQuestionnaireAnswers, applyReviewDecisions, createCandidate, EvidenceBuilderError, promoteCandidate } from "../lib/evidence/builder.mjs";
 import { assertEvidenceCandidate, assertEvidenceReport, EvidenceSchemaError } from "../lib/evidence/schema.mjs";
 import { normalizeSafeTerminology } from "../lib/evidence/normalize.mjs";
-import { buildEvidence, getEvidenceCandidate, promoteEvidenceCandidate, reviewEvidenceCandidate } from "../server/services/evidence-builder-service.mjs";
+import { buildEvidence, getEvidenceCandidate, promoteEvidenceCandidate, resolveQueueContext, reviewEvidenceCandidate } from "../server/services/evidence-builder-service.mjs";
 
 const resume = {
   basics: { name: "Synthetic Candidate", email: "candidate@example.com" },
@@ -154,6 +154,23 @@ test("rejects a free-text project answer instead of adding it to the role", () =
   const { candidate } = createCandidate(resume);
   const question = candidate.questionnaire.questions.find((item) => item.key === "projects");
   assert.throws(() => applyQuestionnaireAnswers(candidate, [{ questionId: question.id, answer: "Billing platform" }]), (error) => error.code === "EVIDENCE_PROJECT_STRUCTURED_REQUIRED");
+});
+
+test("migrates queue facts into the existing matching role context", () => {
+  const { candidate } = createCandidate(resume);
+  const existing = candidate.contexts[0];
+  const resolved = resolveQueueContext(candidate, { id: "queue_1", company: existing.company, position: existing.position, period: existing.period });
+  assert.equal(resolved.id, existing.id);
+  assert.equal(candidate.contexts.filter((context) => context.company === existing.company && context.position === existing.position && context.period === existing.period).length, 1);
+});
+
+test("refuses ambiguous queue context matches instead of duplicating a role", () => {
+  const { candidate } = createCandidate(resume);
+  const duplicate = structuredClone(candidate.contexts[0]);
+  duplicate.id = "context_second_example";
+  duplicate.period = "2022 — 2023";
+  candidate.contexts.push(duplicate);
+  assert.throws(() => resolveQueueContext(candidate, { id: "queue_ambiguous", company: duplicate.company, position: duplicate.position }), (error) => error.code === "EVIDENCE_QUEUE_CONTEXT_AMBIGUOUS");
 });
 
 test("keeps corroborating external provenance and blocks explicit source conflicts", () => {
