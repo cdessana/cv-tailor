@@ -27,6 +27,7 @@ test("builds pending, contextual claims from explicit resume wording only", () =
   assert.equal(candidate.claims[0].contextId === candidate.claims[2].contextId, false);
   assert.equal(candidate.claims[0].source.reference, "work[0].highlights[0]");
   assert.equal(candidate.version, 2);
+  assert.equal(candidate.revision, 1);
   assert.match(candidate.builderVersion, /^2\./);
   assert.match(candidate.runId, /^[\da-f-]{36}$/i);
   assert.equal(candidate.claims[0].originalClaim, candidate.claims[0].claim);
@@ -149,6 +150,19 @@ test("questionnaire and supporting-source ambiguity generate clarification work"
   assert.equal(external.candidate.issues.some((issue) => issue.type === "ambiguous_technology" && issue.sources[0].type === "feedback"), true);
 });
 
+test("project questionnaire facts use the shared claim flow, including ambiguity checks", () => {
+  const { candidate } = createCandidate(resume);
+  const question = candidate.questionnaire.questions.find((item) => item.key === "projects" && item.contextId === candidate.contexts[0].id);
+  const result = applyQuestionnaireAnswers(candidate, [{
+    questionId: question.id,
+    projects: [{ name: "Billing platform", facts: ["Worked with cloud platforms."] }],
+  }]);
+  const project = result.candidate.contexts.find((context) => context.project?.name === "Billing platform");
+  const claim = result.candidate.claims.find((item) => item.contextId === project.id);
+  assert.equal(claim.reviewStatus, "pending");
+  assert.equal(result.candidate.issues.some((issue) => issue.type === "ambiguous_technology" && issue.contextId === project.id), true);
+});
+
 test("creates isolated child contexts from structured project questionnaire answers", () => {
   const { candidate } = createCandidate(resume);
   const question = candidate.questionnaire.questions.find((item) => item.key === "projects" && item.contextId === candidate.contexts[0].id);
@@ -210,10 +224,35 @@ test("keeps corroborating external provenance and blocks explicit source conflic
   assert.equal(conflicted.report.promotionSafe, false);
 });
 
+test("resolves a source conflict by deciding its issue and every affected claim", () => {
+  const initial = createCandidate(resume).candidate;
+  const contextId = initial.contexts[0].id;
+  const original = initial.claims[0];
+  const { candidate, report } = createCandidate(resume, {
+    supportingSources: [{ type: "feedback", reference: "feedback:manager", claims: [{ contextId, claim: "Built only GraphQL APIs.", conflictsWith: [original.id] }] }],
+  });
+  const issue = candidate.issues.find((item) => item.type === "source_claim_conflict");
+  const conflictingClaim = candidate.claims.find((claim) => claim.id !== original.id && issue.claimIds.includes(claim.id));
+  assert.deepEqual(report.claims.find((claim) => claim.id === conflictingClaim.id).allowedActions, ["approve", "reject"]);
+
+  const resolved = applyReviewDecisions(candidate, [
+    { issueId: issue.id, status: "resolved", values: [conflictingClaim.originalClaim] },
+    ...candidate.claims.map((claim) => ({ claimId: claim.id, status: claim.id === conflictingClaim.id ? "approved" : "rejected" })),
+  ]);
+  assert.equal(resolved.report.promotionSafe, true);
+  assert.equal(promoteCandidate(resolved.candidate).experiences[0].facts.includes("Built only GraphQL APIs."), true);
+});
+
 test("rejects external claims that cannot be tied to a resume context", () => {
   assert.throws(() => createCandidate(resume, {
     supportingSources: [{ type: "github", reference: "github:synthetic", claims: [{ contextId: "context_missing", claim: "Built a service." }] }],
   }), (error) => error.code === "EVIDENCE_SOURCE_CONTEXT_UNKNOWN");
+});
+
+test("keeps internal provenance types out of the external supporting-source contract", () => {
+  assert.throws(() => createCandidate(resume, {
+    supportingSources: [{ type: "questionnaire", reference: "questionnaire:manual" }],
+  }), (error) => error.code === "EVIDENCE_SOURCE_CONTRACT_INVALID");
 });
 
 test("requires an explicit conflicting value when resolving an issue", () => {
@@ -243,9 +282,25 @@ test("canonical output is written only by the promotion service", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "evidence-builder-promotion-"));
   const config = { paths: { output: path.join(root, "output"), baseResume: "unused", evidence: path.join(root, "evidence.json") } };
   const built = await buildEvidence({ resume, sourceReference: "fixture.json" }, { config });
-  await reviewEvidenceCandidate(built.candidate.claims.map((claim) => ({ claimId: claim.id, status: "approved" })), { config });
-  const promoted = await promoteEvidenceCandidate({ config });
+  const reviewed = await reviewEvidenceCandidate(built.candidate.claims.map((claim) => ({ claimId: claim.id, status: "approved" })), { config, expectedRevision: built.candidate.revision });
+  const promoted = await promoteEvidenceCandidate({ config, expectedRevision: reviewed.candidate.revision });
   const stored = JSON.parse(await fs.readFile(config.paths.evidence, "utf8"));
   assert.deepEqual(stored, promoted.evidence);
+  await fs.rm(root, { recursive: true, force: true });
+});
+
+test("serializes concurrent reviews and rejects the stale revision", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "evidence-builder-concurrency-"));
+  const config = { paths: { output: path.join(root, "output"), baseResume: "unused", evidence: path.join(root, "evidence.json") } };
+  const built = await buildEvidence({ resume, sourceReference: "fixture.json" }, { config });
+  const decision = [{ claimId: built.candidate.claims[0].id, status: "approved" }];
+  const results = await Promise.allSettled([
+    reviewEvidenceCandidate(decision, { config, expectedRevision: built.candidate.revision }),
+    reviewEvidenceCandidate(decision, { config, expectedRevision: built.candidate.revision }),
+  ]);
+  assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
+  const rejected = results.find((result) => result.status === "rejected");
+  assert.equal(rejected.reason.code, "EVIDENCE_REVISION_CONFLICT");
+  assert.equal((await getEvidenceCandidate({ config })).candidate.revision, built.candidate.revision + 1);
   await fs.rm(root, { recursive: true, force: true });
 });

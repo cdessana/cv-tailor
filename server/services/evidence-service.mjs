@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+export { validateEvidenceStructure } from "../../lib/evidence/canonical-schema.mjs";
 
 const EVIDENCE_PATH = path.resolve(process.cwd(), "data", "evidence.json");
 const REVIEW_QUEUE_PATH = path.resolve(process.cwd(), "data", ".evidence-review-queue.json");
@@ -57,58 +58,6 @@ export async function saveReviewQueue(queue) {
   const tempPath = `${REVIEW_QUEUE_PATH}.${Date.now()}.tmp`;
   await fs.writeFile(tempPath, JSON.stringify(queue, null, 2), "utf8");
   await fs.rename(tempPath, REVIEW_QUEUE_PATH);
-}
-
-/**
- * Save evidence.json atomically
- */
-export async function saveEvidence(data) {
-  validateEvidenceStructure(data);
-  throw new Error("Canonical evidence can only be written through Evidence Builder promotion.");
-}
-
-/**
- * Validates evidence.json schema
- */
-export function validateEvidenceStructure(data) {
-  if (!data || typeof data !== "object") {
-    throw new Error("Evidence data must be an object.");
-  }
-  if (!data.version || typeof data.version !== "number") {
-    throw new Error("Evidence data must have a numeric version (e.g. 2).");
-  }
-  if (!data.skills || typeof data.skills !== "object" || Array.isArray(data.skills)) {
-    throw new Error("Evidence data must have a skills object dictionary.");
-  }
-  if (!Array.isArray(data.experiences)) {
-    throw new Error("Evidence data must have an experiences array.");
-  }
-  const experienceIds = new Set();
-  for (const exp of data.experiences) {
-    if (!exp || typeof exp !== "object" || Array.isArray(exp)) {
-      throw new Error("Each experience entry must be an object.");
-    }
-    if (!exp.id || typeof exp.id !== "string") {
-      throw new Error(`Experience entry missing valid string 'id'.`);
-    }
-    if (experienceIds.has(exp.id)) {
-      throw new Error(`Experience ID '${exp.id}' is duplicated.`);
-    }
-    experienceIds.add(exp.id);
-    if (!exp.company || typeof exp.company !== "string") {
-      throw new Error(`Experience '${exp.id}' missing valid string 'company'.`);
-    }
-    if (!Array.isArray(exp.facts)) {
-      throw new Error(`Experience '${exp.id}' facts must be an array of strings.`);
-    }
-    if (exp.facts.some((fact) => typeof fact !== "string" || !fact.trim())) {
-      throw new Error(`Experience '${exp.id}' facts must contain non-empty strings.`);
-    }
-    if (exp.skills !== undefined && (!Array.isArray(exp.skills) || exp.skills.some((skill) => typeof skill !== "string" || !skill.trim()))) {
-      throw new Error(`Experience '${exp.id}' skills must contain non-empty strings.`);
-    }
-  }
-  return true;
 }
 
 /**
@@ -211,115 +160,6 @@ export async function getEvidenceCatalog({ query = "", skill = "", company = "",
 }
 
 /**
- * Update an existing experience in evidence.json
- */
-export async function updateExperience(expId, expData) {
-  const evidence = await loadEvidence();
-  const experiences = evidence.experiences || [];
-  const index = experiences.findIndex((e) => e.id === expId);
-
-  if (index === -1) {
-    throw new Error(`Experience with ID "${expId}" not found.`);
-  }
-
-  if (!expData.company?.trim()) throw new Error("Company name is required.");
-  if (!expData.position?.trim()) throw new Error("Position/role is required.");
-
-  const current = experiences[index];
-  const updatedExp = {
-    ...current,
-    id: current.id,
-    company: expData.company.trim(),
-    position: expData.position.trim(),
-    period: expData.period !== undefined ? expData.period.trim() : current.period,
-    type: expData.type !== undefined ? expData.type.trim() : current.type || "professional",
-    facts: Array.isArray(expData.facts)
-      ? expData.facts.map((f) => String(f).trim()).filter(Boolean)
-      : current.facts || [],
-    skills: Array.isArray(expData.skills)
-      ? expData.skills.map((s) => String(s).trim()).filter(Boolean)
-      : current.skills || [],
-  };
-
-  // Add any new skills to the skills registry in evidence.json
-  evidence.skills = evidence.skills || {};
-  for (const s of updatedExp.skills) {
-    if (!evidence.skills[s]) {
-      evidence.skills[s] = { level: "experienced" };
-    }
-  }
-
-  experiences[index] = updatedExp;
-  evidence.experiences = experiences;
-
-  await saveEvidence(evidence);
-  return updatedExp;
-}
-
-/**
- * Delete an existing experience from evidence.json
- */
-export async function deleteExperience(expId) {
-  const evidence = await loadEvidence();
-  const experiences = evidence.experiences || [];
-  const index = experiences.findIndex((e) => e.id === expId);
-
-  if (index === -1) {
-    throw new Error(`Experience with ID "${expId}" not found.`);
-  }
-
-  const [removed] = experiences.splice(index, 1);
-  evidence.experiences = experiences;
-
-  await saveEvidence(evidence);
-  return { success: true, removed };
-}
-
-/**
- * Add a new experience directly to evidence.json (approved)
- */
-export async function addExperience(expData) {
-  const evidence = await loadEvidence();
-
-  if (!expData.company?.trim()) throw new Error("Company name is required.");
-  if (!expData.position?.trim()) throw new Error("Position/role is required.");
-
-  const slugId = (expData.id || `${expData.company}-${expData.position}`)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-
-  const newExp = {
-    id: slugId,
-    company: expData.company.trim(),
-    position: expData.position.trim(),
-    period: expData.period?.trim() || "Present",
-    type: expData.type?.trim() || "professional",
-    facts: Array.isArray(expData.facts) ? expData.facts.filter(Boolean) : [],
-    skills: Array.isArray(expData.skills) ? expData.skills.filter(Boolean) : [],
-  };
-
-  // Add any new skills to the skills registry
-  evidence.skills = evidence.skills || {};
-  for (const s of newExp.skills) {
-    if (!evidence.skills[s]) {
-      evidence.skills[s] = { level: "experienced" };
-    }
-  }
-
-  evidence.experiences = evidence.experiences || [];
-  const existingIndex = evidence.experiences.findIndex((e) => e.id === newExp.id);
-  if (existingIndex >= 0) {
-    evidence.experiences[existingIndex] = newExp;
-  } else {
-    evidence.experiences.push(newExp);
-  }
-
-  await saveEvidence(evidence);
-  return newExp;
-}
-
-/**
  * Submit newly collected career facts into the Review Queue.
  * Prevents unvetted claims from directly corrupting evidence.json.
  */
@@ -377,78 +217,6 @@ export async function submitToReviewQueue({
   queue.unshift(item);
   await saveReviewQueue(queue);
   return item;
-}
-
-/**
- * Approve a review queue item and merge into evidence.json
- */
-export async function approveQueueItem(itemId, options = {}) {
-  const queue = await loadReviewQueue();
-  const index = queue.findIndex((i) => i.id === itemId);
-  if (index === -1) throw new Error(`Queue item ${itemId} not found`);
-
-  const item = queue[index];
-  const evidence = await loadEvidence();
-
-  // Selected period if resolved conflict
-  const effectivePeriod = options.resolvedPeriod || item.period;
-  const effectiveFacts = options.facts || item.facts;
-  const effectiveSkills = options.skills || item.skills;
-
-  // Find or create experience
-  let exp = (evidence.experiences || []).find(
-    (e) => e.company?.toLowerCase() === item.company.toLowerCase() &&
-           e.position?.toLowerCase() === item.position.toLowerCase()
-  );
-
-  if (exp) {
-    exp.period = effectivePeriod;
-    // Add non-duplicate facts
-    for (const f of effectiveFacts) {
-      if (!exp.facts.includes(f)) {
-        exp.facts.push(f);
-      }
-    }
-    // Add non-duplicate skills
-    for (const s of effectiveSkills) {
-      if (!exp.skills.includes(s)) {
-        exp.skills.push(s);
-      }
-    }
-  } else {
-    const slugId = `${item.company}-${item.position}`
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
-
-    exp = {
-      id: slugId,
-      company: item.company,
-      position: item.position,
-      period: effectivePeriod,
-      type: "professional",
-      facts: [...effectiveFacts],
-      skills: [...effectiveSkills],
-    };
-    evidence.experiences.push(exp);
-  }
-
-  // Register skills
-  evidence.skills = evidence.skills || {};
-  for (const s of effectiveSkills) {
-    if (!evidence.skills[s]) {
-      evidence.skills[s] = { level: "experienced" };
-    }
-  }
-
-  await saveEvidence(evidence);
-
-  // Update item status
-  item.status = "approved";
-  item.approvedAt = new Date().toISOString();
-  await saveReviewQueue(queue);
-
-  return { success: true, item, updatedExperience: exp };
 }
 
 /**

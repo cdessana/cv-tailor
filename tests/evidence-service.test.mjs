@@ -18,13 +18,14 @@ await fs.writeFile(
 process.chdir(workspace);
 
 const evidence = await import("../server/services/evidence-service.mjs");
+const canonicalSchema = await import("../lib/evidence/canonical-schema.mjs");
 
 test.after(async () => {
   process.chdir(originalCwd);
   await fs.rm(workspace, { recursive: true, force: true });
 });
 
-test("evidence builder stores reviewed claims before they become ground truth", async () => {
+test("legacy canonical writers are not exposed by the evidence service", async () => {
   const queued = await evidence.submitToReviewQueue({
     company: "Acme",
     position: "Backend Engineer",
@@ -36,11 +37,16 @@ test("evidence builder stores reviewed claims before they become ground truth", 
   assert.equal(queued.status, "pending");
   assert.equal((await evidence.loadEvidence()).experiences.length, 0);
 
-  await assert.rejects(() => evidence.approveQueueItem(queued.id), /only be written through Evidence Builder/);
+  assert.equal(evidence.approveQueueItem, undefined);
+  assert.equal(evidence.addExperience, undefined);
+  assert.equal(evidence.updateExperience, undefined);
+  assert.equal(evidence.deleteExperience, undefined);
+  assert.equal(evidence.saveEvidence, undefined);
   assert.equal((await evidence.loadEvidence()).experiences.length, 0);
 });
 
 test("evidence import validation rejects duplicate IDs and malformed facts", () => {
+  assert.equal(canonicalSchema.validateEvidenceStructure({ version: 2, skills: {}, experiences: [] }), true);
   assert.throws(() => evidence.validateEvidenceStructure({
     version: 2,
     skills: {},

@@ -1,3 +1,5 @@
+import { evidenceBuilderApi } from "./evidence-builder-api.js";
+
 // CV Tailor — Application Client (Senior Design Upgrade)
 
 (function () {
@@ -1475,9 +1477,7 @@
           try { payload.resume = JSON.parse(await file.text()); } catch { throw new Error("The selected file is not valid JSON."); }
           payload.sourceReference = file.name;
         }
-        const res = await fetch("/api/evidence/builder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Could not build candidate evidence.");
+        const data = await evidenceBuilderApi.build(payload);
         closeBuildModal();
         showToast("Candidate evidence created. Review claims before promotion.");
         renderEvidenceBuilder(data);
@@ -1634,112 +1634,6 @@
       }
     });
 
-    // Edit Experience Modal Triggers & Handlers
-    $("#btn-close-edit-exp")?.addEventListener("click", () => {
-      $("#modal-edit-experience")?.classList.add("hidden");
-    });
-    $("#btn-cancel-edit-exp")?.addEventListener("click", () => {
-      $("#modal-edit-experience")?.classList.add("hidden");
-    });
-
-    $("#edit-exp-facts")?.addEventListener("input", (e) => {
-      const count = e.target.value.split("\n").filter((f) => f.trim()).length;
-      const countEl = $("#edit-exp-facts-count");
-      if (countEl) countEl.textContent = `${count} ${count === 1 ? "fact" : "facts"}`;
-    });
-
-    // Save Edited Experience
-    $("#btn-save-edit-exp")?.addEventListener("click", async () => {
-      const id = $("#edit-exp-id")?.value;
-      const company = $("#edit-exp-company")?.value.trim();
-      const position = $("#edit-exp-position")?.value.trim();
-      const period = $("#edit-exp-period")?.value.trim();
-      const type = $("#edit-exp-type")?.value || "professional";
-      const rawSkills = $("#edit-exp-skills")?.value.trim() || "";
-      const rawFacts = $("#edit-exp-facts")?.value.trim() || "";
-
-      if (!id) {
-        alert("Missing experience identifier.");
-        return;
-      }
-      if (!company || !position) {
-        alert("Company and Role/Position are required.");
-        return;
-      }
-
-      const skills = rawSkills.split(",").map((s) => s.trim()).filter(Boolean);
-      const facts = rawFacts.split("\n").map((f) => f.trim()).filter(Boolean);
-
-      const saveBtn = $("#btn-save-edit-exp");
-      const originalText = saveBtn?.innerHTML;
-      if (saveBtn) {
-        saveBtn.disabled = true;
-        saveBtn.innerHTML = `<span>Saving...</span>`;
-      }
-
-      try {
-        const res = await fetch(`/api/evidence/experiences/${encodeURIComponent(id)}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            company,
-            position,
-            period,
-            type,
-            skills,
-            facts,
-          }),
-        });
-
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || "Failed to update experience card.");
-        }
-
-        $("#modal-edit-experience")?.classList.add("hidden");
-        showToast(`Evidence card for "${company}" updated.`);
-        await fetchEvidenceSummary();
-        await loadEvidenceCatalog($("#input-evidence-search")?.value || "");
-      } catch (err) {
-        alert(`Update error: ${err.message}`);
-      } finally {
-        if (saveBtn) {
-          saveBtn.disabled = false;
-          saveBtn.innerHTML = originalText;
-          if (window.lucide) lucide.createIcons();
-        }
-      }
-    });
-
-    // Delete Experience Card
-    $("#btn-delete-edit-exp")?.addEventListener("click", async () => {
-      const id = $("#edit-exp-id")?.value;
-      const company = $("#edit-exp-company")?.value.trim();
-
-      if (!id) return;
-      const confirmed = confirm(
-        `Are you sure you want to remove the evidence card for "${company}" from your career record?\n\nThis will remove its facts and associations from data/evidence.json.`
-      );
-      if (!confirmed) return;
-
-      try {
-        const res = await fetch(`/api/evidence/experiences/${encodeURIComponent(id)}`, {
-          method: "DELETE",
-        });
-
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || "Failed to delete experience card.");
-        }
-
-        $("#modal-edit-experience")?.classList.add("hidden");
-        showToast(`Evidence card for "${company}" removed.`);
-        await fetchEvidenceSummary();
-        await loadEvidenceCatalog($("#input-evidence-search")?.value || "");
-      } catch (err) {
-        alert(`Delete error: ${err.message}`);
-      }
-    });
   }
 
   function renderEvidenceSkills() {
@@ -1991,32 +1885,6 @@
       })
       .join("");
 
-    // Attach Edit button click events
-    container.querySelectorAll(".btn-edit-evidence").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const id = btn.getAttribute("data-id");
-        const exp = state.catalogExperiences.find((e) => e.id === id);
-        if (!exp) return;
-
-        $("#edit-exp-id").value = exp.id;
-        $("#edit-exp-company").value = exp.company || "";
-        $("#edit-exp-position").value = exp.position || "";
-        $("#edit-exp-period").value = exp.period || "";
-        $("#edit-exp-type").value = exp.type || "professional";
-        $("#edit-exp-skills").value = (exp.skills || []).join(", ");
-        $("#edit-exp-facts").value = (exp.facts || []).join("\n");
-
-        const countEl = $("#edit-exp-facts-count");
-        if (countEl) {
-          const count = (exp.facts || []).length;
-          countEl.textContent = `${count} ${count === 1 ? "fact" : "facts"}`;
-        }
-
-        $("#modal-edit-experience")?.classList.remove("hidden");
-        if (window.lucide) lucide.createIcons();
-      });
-    });
-
     // Attach Skill Badge filter clicks inside cards
     container.querySelectorAll(".btn-evidence-skill").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -2060,9 +1928,7 @@
 
   async function loadEvidenceBuilder() {
     try {
-      const res = await fetch("/api/evidence/builder");
-      if (!res.ok) throw new Error("Could not load Evidence Builder.");
-      renderEvidenceBuilder(await res.json());
+      renderEvidenceBuilder(await evidenceBuilderApi.status());
     } catch (err) { console.error("Evidence Builder error:", err); }
   }
 
@@ -2077,6 +1943,7 @@
     if (!data.candidate || !report) { container.classList.add("hidden"); return; }
     container.classList.remove("hidden");
     const claims = data.candidate.claims || [];
+    const claimReviews = new Map((report.claims || []).map((claim) => [claim.id, claim]));
     const issues = report.issues || [];
     /* eslint-disable no-useless-escape -- generated nested HTML attributes use escaped quotes. */
     container.innerHTML = `
@@ -2085,17 +1952,15 @@
         <button id="btn-promote-evidence" class="text-xs font-bold px-3 py-1.5 rounded-lg ${report.promotionSafe ? "bg-emerald-700 text-white hover:bg-emerald-800" : "bg-slate-100 text-slate-400 cursor-not-allowed"}" ${report.promotionSafe ? "" : "disabled"}>Promote approved evidence</button>
       </div>
       ${issues.length ? `<div class="text-xs bg-rose-50 border border-rose-200 rounded-lg p-3 text-rose-900">${issues.map((issue) => `<div class="flex flex-wrap items-center justify-between gap-2 py-1"><span>${escapeHtml(issue.type)}: ${escapeHtml((issue.values || []).join(" ↔ "))}</span>${issue.resolved ? "<span class=\"font-bold\">Resolved</span>" : `<span class=\"flex items-center gap-2\"><select data-issue-value=\"${escapeHtml(issue.id)}\" class=\"text-[11px] border border-rose-300 rounded px-1.5 py-1 bg-white\" aria-label=\"Choose value for ${escapeHtml(issue.type)}\"><option value=\"\">Choose value…</option>${(issue.values || []).map((value) => `<option value=\"${escapeHtml(value)}\">${escapeHtml(value)}</option>`).join("")}</select><button data-issue=\"${escapeHtml(issue.id)}\" class=\"btn-resolve-issue text-[11px] underline font-bold\">Resolve</button></span>`}</div>`).join("")}</div>` : ""}
-      ${data.candidate.questionnaire?.questions?.filter((question) => !question.answered).length ? `<div class="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2"><h4 class="text-xs font-bold text-slate-800">Follow-up questions</h4><p class="text-[11px] text-slate-500">Questions are selected from gaps in this resume. Answer only what you can confirm; “I don't remember” is valid.</p>${data.candidate.questionnaire.questions.filter((question) => !question.answered).slice(0, 8).map((question) => question.key === "projects" ? `<div data-project-question="${escapeHtml(question.id)}" class="text-[11px] font-semibold text-slate-700">${escapeHtml(question.prompt)}<p class="font-normal text-slate-500 mt-1">Add each project separately. Facts remain attached to that project.</p>${projectAnswerFields()}<button type="button" class="btn-add-project-answer mt-2 text-[11px] underline" data-question="${escapeHtml(question.id)}">Add another project</button></div>` : `<label class="block text-[11px] font-semibold text-slate-700">${escapeHtml(question.prompt)}<textarea data-question="${escapeHtml(question.id)}" rows="2" class="w-full mt-1 text-xs font-normal bg-white border border-slate-300 rounded p-2"></textarea></label>`).join("")}<button id="btn-submit-builder-answers" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-800 text-white hover:bg-slate-700">Save answers for review</button></div>` : ""}
-      <div class="space-y-2 max-h-72 overflow-y-auto">${claims.map((claim) => { const context = (data.candidate.contexts || []).find((item) => item.id === claim.contextId); const sources = claim.sources || [claim.source]; const contextLabel = context ? `${context.company} · ${context.position} · ${context.period}${context.project?.name ? ` · Project: ${context.project.name}` : ""}` : claim.contextId; return `<div class="border border-slate-200 rounded-lg p-3 text-xs"><div class="flex justify-between gap-2"><span class="font-semibold text-slate-900">${escapeHtml(claim.claim)}</span><span class="text-[10px] uppercase font-bold">${escapeHtml(claim.reviewStatus)}</span></div><p class="text-slate-600 mt-1">${escapeHtml(contextLabel)}</p><p class="text-slate-500 mt-1">Sources: ${sources.map((source) => `${escapeHtml(source.type)}:${escapeHtml(source.reference)}`).join(" · ")}</p>${claim.reviewStatus === "pending" ? `<div class="mt-2 flex gap-2"><button data-claim="${escapeHtml(claim.id)}" data-status="approved" class="btn-review-claim text-[11px] font-bold text-emerald-700">Approve</button><button data-claim="${escapeHtml(claim.id)}" data-status="rejected" class="btn-review-claim text-[11px] font-bold text-slate-600">Reject</button></div>` : ""}</div>`; }).join("")}</div>`;
+      ${data.candidate.questionnaire?.questions?.filter((question) => !question.answered).length ? `<div class="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2"><h4 class="text-xs font-bold text-slate-800">Follow-up questions</h4><p class="text-[11px] text-slate-500">Questions are selected from gaps in this resume. Answer only what you can confirm; “I don't remember” is valid.</p>${data.candidate.questionnaire.questions.filter((question) => !question.answered).slice(0, 8).map((question) => question.key === "projects" ? `<div data-project-question="${escapeHtml(question.id)}" class="text-[11px] font-semibold text-slate-700">${escapeHtml(question.prompt)}<p class="font-normal text-slate-500 mt-1">Add each project separately. Facts remain attached to that project.</p>${projectAnswerFields()}<button type="button" class="btn-add-project-answer mt-2 text-[11px] underline" data-question="${escapeHtml(question.id)}">Add another project</button><label class="mt-2 flex items-center gap-1 font-normal text-slate-600"><input type="checkbox" data-project-unknown="${escapeHtml(question.id)}"> I don't remember a project for this role</label></div>` : `<label class="block text-[11px] font-semibold text-slate-700">${escapeHtml(question.prompt)}<textarea data-question="${escapeHtml(question.id)}" rows="2" class="w-full mt-1 text-xs font-normal bg-white border border-slate-300 rounded p-2"></textarea></label>`).join("")}<button id="btn-submit-builder-answers" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-800 text-white hover:bg-slate-700">Save answers for review</button></div>` : ""}
+      <div class="space-y-2 max-h-72 overflow-y-auto">${claims.map((claim) => { const context = (data.candidate.contexts || []).find((item) => item.id === claim.contextId); const sources = claim.sources || [claim.source]; const contextLabel = context ? `${context.company} · ${context.position} · ${context.period}${context.project?.name ? ` · Project: ${context.project.name}` : ""}` : claim.contextId; const actions = claimReviews.get(claim.id)?.allowedActions || []; return `<div class="border border-slate-200 rounded-lg p-3 text-xs"><div class="flex justify-between gap-2"><span class="font-semibold text-slate-900">${escapeHtml(claim.claim)}</span><span class="text-[10px] uppercase font-bold">${escapeHtml(claim.reviewStatus)}</span></div><p class="text-slate-600 mt-1">${escapeHtml(contextLabel)}</p><p class="text-slate-500 mt-1">Sources: ${sources.map((source) => `${escapeHtml(source.type)}:${escapeHtml(source.reference)}`).join(" · ")}</p>${actions.length ? `<div class="mt-2 flex gap-2">${actions.includes("approve") ? `<button data-claim="${escapeHtml(claim.id)}" data-status="approved" class="btn-review-claim text-[11px] font-bold text-emerald-700">Approve</button>` : ""}${actions.includes("reject") ? `<button data-claim="${escapeHtml(claim.id)}" data-status="rejected" class="btn-review-claim text-[11px] font-bold text-slate-600">Reject</button>` : ""}</div>` : ""}</div>`; }).join("")}</div>`;
     /* eslint-enable no-useless-escape */
     container.querySelectorAll(".btn-review-claim").forEach((button) => button.addEventListener("click", async () => {
-      const res = await fetch("/api/evidence/builder/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decisions: [{ claimId: button.dataset.claim, status: button.dataset.status }] }) });
-      const updated = await res.json();
-      if (!res.ok) return alert(updated.error || "Review could not be saved.");
-      renderEvidenceBuilder(updated);
+      try { renderEvidenceBuilder(await evidenceBuilderApi.review({ expectedRevision: data.candidate.revision, decisions: [{ claimId: button.dataset.claim, status: button.dataset.status }] })); }
+      catch (error) { alert(error.message || "Review could not be saved."); }
     }));
     container.querySelector("#btn-submit-builder-answers")?.addEventListener("click", async () => {
-      const unanswered = data.candidate.questionnaire.questions.filter((question) => !question.answered);
+      const unanswered = data.candidate.questionnaire.questions.filter((question) => !question.answered && container.querySelector(question.key === "projects" ? `[data-project-question="${CSS.escape(question.id)}"]` : `textarea[data-question="${CSS.escape(question.id)}"]`));
       const answers = unanswered.map((question) => {
         if (question.key !== "projects") {
           const field = container.querySelector(`textarea[data-question="${CSS.escape(question.id)}"]`);
@@ -2107,11 +1972,13 @@
           facts: (group.querySelector("[data-project-facts]")?.value || "").split("\n").map((fact) => fact.trim()).filter(Boolean),
           skills: (group.querySelector("[data-project-skills]")?.value || "").split(",").map((skill) => skill.trim()).filter(Boolean),
         })).filter((project) => project.name);
-        return projects.length ? { questionId: question.id, projects } : { questionId: question.id, answer: "unknown" };
-      });
-      const res = await fetch("/api/evidence/builder/questionnaire", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answers }) });
-      const result = await res.json();
-      if (!res.ok) return alert(result.error || "Answers could not be saved.");
+        const unknown = holder?.querySelector(`[data-project-unknown="${CSS.escape(question.id)}"]`)?.checked;
+        return projects.length ? { questionId: question.id, projects } : unknown ? { questionId: question.id, answer: "unknown" } : null;
+      }).filter(Boolean);
+      if (!answers.length) return alert("Enter an answer or explicitly mark a project question as unknown before saving.");
+      let result;
+      try { result = await evidenceBuilderApi.answerQuestionnaire({ expectedRevision: data.candidate.revision, answers }); }
+      catch (error) { return alert(error.message || "Answers could not be saved."); }
       showToast("Answers added as pending claims."); renderEvidenceBuilder(result);
     });
     container.querySelectorAll(".btn-add-project-answer").forEach((button) => button.addEventListener("click", () => {
@@ -2123,13 +1990,19 @@
       const issue = issues.find((item) => item.id === button.dataset.issue);
       const selected = container.querySelector(`[data-issue-value="${CSS.escape(issue.id)}"]`)?.value;
       if (!selected) return alert("Choose the value you confirm before resolving this conflict.");
-      const res = await fetch("/api/evidence/builder/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decisions: [{ issueId: issue.id, status: "resolved", values: [selected], note: "Confirmed through review." }] }) });
-      const result = await res.json(); if (!res.ok) return alert(result.error || "Conflict could not be resolved."); renderEvidenceBuilder(result);
+      const decisions = [{ issueId: issue.id, status: "resolved", values: [selected], note: "Confirmed through review." }];
+      if (issue.type === "source_claim_conflict") {
+        const relatedClaims = claims.filter((claim) => issue.claimIds?.includes(claim.id));
+        const selectedClaim = relatedClaims.find((claim) => claim.originalClaim === selected);
+        if (!selectedClaim) return alert("The selected statement no longer maps to a claim in this candidate.");
+        decisions.push(...relatedClaims.map((claim) => ({ claimId: claim.id, status: claim.id === selectedClaim.id ? "approved" : "rejected", note: "Resolved with the selected source statement." })));
+      }
+      try { renderEvidenceBuilder(await evidenceBuilderApi.review({ expectedRevision: data.candidate.revision, decisions })); }
+      catch (error) { alert(error.message || "Conflict could not be resolved."); }
     }));
     container.querySelector("#btn-promote-evidence")?.addEventListener("click", async () => {
-      const res = await fetch("/api/evidence/builder/promote", { method: "POST" });
-      const result = await res.json();
-      if (!res.ok) return alert(result.error || "Promotion blocked.");
+      try { await evidenceBuilderApi.promote({ expectedRevision: data.candidate.revision }); }
+      catch (error) { return alert(error.message || "Promotion blocked."); }
       showToast("Approved evidence promoted to the canonical base.");
       await fetchEvidenceSummary(); await loadEvidenceCatalog(); await loadEvidenceBuilder();
     });
