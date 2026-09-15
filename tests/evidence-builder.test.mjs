@@ -86,6 +86,26 @@ test("surfaces ambiguous technology wording without inventing a vendor", () => {
   assert.equal(report.promotionSafe, false);
 });
 
+test("preserves JSON Resume project facts in their own context", () => {
+  const withProjects = structuredClone(resume);
+  withProjects.work = [{ name: "Example", position: "Engineer", startDate: "2021", highlights: ["Maintained the company API."] }];
+  withProjects.projects = [
+    { name: "Project A", entity: "Example", description: "Built a Node.js service backed by MongoDB." },
+    { name: "Project B", entity: "Example", description: "Built .NET gRPC services backed by PostgreSQL." },
+  ];
+  const { candidate } = createCandidate(withProjects);
+  const projects = candidate.contexts.filter((context) => context.type === "project");
+  assert.equal(projects.length, 2);
+  assert.equal(projects.every((context) => context.parentContextId === candidate.contexts.find((item) => item.type === "professional").id), true);
+  const firstFacts = candidate.claims.filter((claim) => claim.contextId === projects[0].id);
+  const secondFacts = candidate.claims.filter((claim) => claim.contextId === projects[1].id);
+  assert.equal(firstFacts[0].source.reference, "projects[0].description");
+  assert.deepEqual(firstFacts[0].skills, ["Node.js", "MongoDB"]);
+  assert.deepEqual(secondFacts[0].skills, ["PostgreSQL", "gRPC"]);
+  assert.equal(firstFacts[0].skills.includes("gRPC"), false);
+  assert.equal(secondFacts[0].skills.includes("MongoDB"), false);
+});
+
 test("surfaces contradictory questionnaire answers as an unresolved conflict", () => {
   const { candidate } = createCandidate(resume);
   const question = candidate.questionnaire.questions.find((item) => item.key === "projects");
