@@ -139,6 +139,8 @@ The builder API also accepts `supportingSources` for `linkedin`, `github`, `feed
 
 When the validated resume has JSON Resume `projects[]`, each project becomes its own evidence context. Its description and highlights retain `projects[...]` provenance and never share skills or facts with another project. A project is linked to a role only when its `entity` matches exactly one employer context; otherwise the project remains independently scoped instead of being guessed into a role.
 
+Safe lexical normalization is limited to explicit aliases such as `NodeJS` → `Node.js`, `Postgres` → `PostgreSQL`, and `CI CD` → `CI/CD`. Candidate evidence always preserves the original wording separately. The builder does not turn related terminology into a stronger claim — for example, it never changes “multiple backend services” into “microservices”.
+
 ### 3. Evidence is contextual
 
 Evidence is stored at the project or role level whenever possible.
