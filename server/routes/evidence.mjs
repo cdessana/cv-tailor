@@ -44,7 +44,7 @@ router.post("/builder/questionnaire", async (req, res) => {
 });
 
 router.post("/builder/from-queue/:id", async (req, res) => {
-  try { res.status(201).json(await migrateQueueItemToBuilder(req.params.id)); }
+  try { const id = String(req.params.id ?? ""); if (!/^[a-zA-Z0-9_-]{1,160}$/.test(id)) return res.status(400).json({ error: "Invalid queue item id.", code: "EVIDENCE_QUEUE_ITEM_ID_INVALID" }); res.status(201).json(await migrateQueueItemToBuilder(id)); }
   catch (err) { res.status(400).json({ error: err.message, code: err.code }); }
 });
 
