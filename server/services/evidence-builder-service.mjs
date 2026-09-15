@@ -69,7 +69,10 @@ export async function migrateQueueItemToBuilder(itemId, { config = loadConfig() 
   if (!candidate.contexts.some((context) => context.id === contextId)) candidate.contexts.push({ id: contextId, company: item.company, position: item.position, period: item.period || "Unknown", type: "professional", source: { type: "manual", reference: `queue:${item.id}` }, createdAt: updatedAt });
   for (const fact of item.facts || []) {
     const claimId = `claim_${item.id}_${Buffer.from(fact).toString("hex").slice(0, 16)}`;
-    if (!candidate.claims.some((claim) => claim.id === claimId)) candidate.claims.push({ id: claimId, contextId, claim: fact, originalClaim: fact, normalizedClaim: String(fact).replace(/\s+/g, " ").trim(), skills: item.skills || [], source: { type: item.source === "guided_interview" ? "questionnaire" : "manual", reference: `queue:${item.id}` }, reviewStatus: "pending", createdAt: updatedAt, updatedAt });
+    if (!candidate.claims.some((claim) => claim.id === claimId)) {
+      const source = { type: item.source === "guided_interview" ? "questionnaire" : "manual", reference: `queue:${item.id}` };
+      candidate.claims.push({ id: claimId, contextId, claim: fact, originalClaim: fact, normalizedClaim: String(fact).replace(/\s+/g, " ").trim(), skills: item.skills || [], source, sources: [source], reviewStatus: "pending", createdAt: updatedAt, updatedAt });
+    }
   }
   candidate.updatedAt = updatedAt;
   item.status = "migrated";

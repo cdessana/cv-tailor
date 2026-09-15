@@ -95,6 +95,29 @@ test("surfaces contradictory questionnaire answers as an unresolved conflict", (
   assert.equal(second.report.promotionSafe, false);
 });
 
+test("keeps corroborating external provenance and blocks explicit source conflicts", () => {
+  const base = createCandidate(resume).candidate;
+  const contextId = base.contexts[0].id;
+  const corroborated = createCandidate(resume, {
+    supportingSources: [{ type: "linkedin", reference: "linkedin:synthetic", claims: [{ contextId, claim: "Built REST APIs using Node.js and PostgreSQL." }] }],
+  }).candidate;
+  const claim = corroborated.claims.find((item) => item.originalClaim === "Built REST APIs using Node.js and PostgreSQL.");
+  assert.equal(claim.sources.length, 2);
+  assert.equal(claim.sources[1].type, "linkedin");
+
+  const conflicted = createCandidate(resume, {
+    supportingSources: [{ type: "feedback", reference: "feedback:manager", claims: [{ contextId, claim: "Built only GraphQL APIs.", conflictsWith: [claim.id] }] }],
+  });
+  assert.equal(conflicted.report.issues.some((issue) => issue.type === "source_claim_conflict"), true);
+  assert.equal(conflicted.report.promotionSafe, false);
+});
+
+test("rejects external claims that cannot be tied to a resume context", () => {
+  assert.throws(() => createCandidate(resume, {
+    supportingSources: [{ type: "github", reference: "github:synthetic", claims: [{ contextId: "context_missing", claim: "Built a service." }] }],
+  }), (error) => error.code === "EVIDENCE_SOURCE_CONTEXT_UNKNOWN");
+});
+
 test("requires an explicit conflicting value when resolving an issue", () => {
   const { candidate } = createCandidate(resume);
   const dates = candidate.questionnaire.questions.find((question) => question.key === "dates" && question.contextId === candidate.contexts[0].id);
