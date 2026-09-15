@@ -135,6 +135,8 @@ Run `node scripts/build-evidence.mjs data/resumes/base.json` to create a reviewa
 
 Candidate claims start pending. Review them through the structured API/UI or with `node scripts/review-evidence.mjs decisions.json`; then run `node scripts/promote-evidence.mjs`. Every claim or conflict decision records its actor, timestamp, note, and relevant source snapshot. Promotion is blocked while any claim, ambiguity, or conflict remains unresolved. Only approved claims can be written to canonical `data/evidence.json`, which remains the only evidence source consumed by tailoring.
 
+The report summary separately exposes `conflicts`, `ambiguities`, and `unresolvedIssues`. Every unresolved `*_conflict` issue is counted once, including questionnaire and source disagreements; claims already linked to a conflict issue are not double-counted.
+
 The builder API also accepts `supportingSources` for `linkedin`, `github`, `feedback`, or `manual` evidence. A source may include explicit `claims`, each with an existing candidate `contextId`, `claim`, optional `skills`, and optional `conflictsWith` (a claim ID or exact existing claim wording). Equal wording adds corroborating provenance; an explicit disagreement becomes a blocking `source_claim_conflict`. The builder never guesses a role context or treats merely similar wording as a conflict.
 
 When the validated resume has JSON Resume `projects[]`, each project becomes its own evidence context. Its description and highlights retain `projects[...]` provenance and never share skills or facts with another project. A project is linked to a role only when its `entity` matches exactly one employer context; otherwise the project remains independently scoped instead of being guessed into a role.

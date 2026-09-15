@@ -94,6 +94,8 @@ test("surfaces ambiguous technology wording without inventing a vendor", () => {
   const { candidate, report } = createCandidate(ambiguous);
   assert.equal(candidate.claims.some((claim) => claim.claim.includes("Kafka")), false);
   assert.equal(report.issues[0].type, "ambiguous_technology");
+  assert.equal(report.summary.ambiguities, 1);
+  assert.equal(report.summary.conflicts, 0);
   assert.equal(report.promotionSafe, false);
 });
 
@@ -123,6 +125,8 @@ test("surfaces contradictory questionnaire answers as an unresolved conflict", (
   const first = applyQuestionnaireAnswers(candidate, [{ questionId: question.id, answer: "Billing platform" }]);
   const second = applyQuestionnaireAnswers(first.candidate, [{ questionId: question.id, answer: "Analytics platform" }]);
   assert.equal(second.candidate.issues.some((issue) => issue.type === "answer_conflict"), true);
+  assert.equal(second.report.summary.conflicts, 1);
+  assert.equal(second.report.summary.unresolvedIssues, 1);
   assert.equal(second.report.promotionSafe, false);
 });
 
@@ -140,6 +144,7 @@ test("keeps corroborating external provenance and blocks explicit source conflic
     supportingSources: [{ type: "feedback", reference: "feedback:manager", claims: [{ contextId, claim: "Built only GraphQL APIs.", conflictsWith: [claim.id] }] }],
   });
   assert.equal(conflicted.report.issues.some((issue) => issue.type === "source_claim_conflict"), true);
+  assert.equal(conflicted.report.summary.conflicts, 1);
   assert.equal(conflicted.report.promotionSafe, false);
 });
 
