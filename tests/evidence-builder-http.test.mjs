@@ -15,6 +15,7 @@ const resume = {
 async function startTestServer() {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "evidence-builder-http-"));
   const configPath = path.join(root, "config.json");
+  await fs.writeFile(path.join(root, "base.json"), JSON.stringify(resume));
   await fs.writeFile(configPath, JSON.stringify({ paths: {
     baseResume: path.join(root, "base.json"), evidence: path.join(root, "evidence.json"), aliases: path.join(root, "aliases.json"), jobs: path.join(root, "jobs"), output: path.join(root, "output"),
   } }));
@@ -116,6 +117,51 @@ test("web UI can review and promote a candidate evidence claim", async () => {
     await page.waitForFunction("document.body.textContent.includes('Approved evidence promoted to the canonical base.')", { timeout: 10_000 });
     const canonical = JSON.parse(await fs.readFile(path.join(server.root, "evidence.json"), "utf8"));
     assert.equal(canonical.experiences[0].facts[0], resume.work[0].highlights[0]);
+  } finally {
+    await browser?.close();
+    await server.close();
+  }
+});
+
+test("web UI builds from the configured resume and preserves source references", async () => {
+  const server = await startTestServer();
+  let browser;
+  try {
+    browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+    await page.goto(server.url, { waitUntil: "domcontentloaded", timeout: 10_000 });
+    await page.click("#nav-evidence");
+    await page.click("#btn-build-evidence");
+    await page.waitForSelector("#modal-build-evidence:not(.hidden)");
+    await page.click("#btn-add-evidence-source");
+    await page.$eval("[data-source-type]", (element) => { element.value = "github"; });
+    await page.type("[data-source-reference]", "github:example/project");
+    await page.click("#btn-submit-build-evidence");
+    await page.waitForSelector("#evidence-builder-container:not(.hidden)", { timeout: 10_000 });
+    const candidate = await (await fetch(`${server.url}/api/evidence/builder/candidate`)).json();
+    assert.deepEqual(candidate.supportingSources, [{ type: "github", reference: "github:example/project" }]);
+  } finally {
+    await browser?.close();
+    await server.close();
+  }
+});
+
+test("web UI uploads a structured resume JSON for validation", async () => {
+  const server = await startTestServer();
+  let browser;
+  try {
+    browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+    await page.goto(server.url, { waitUntil: "domcontentloaded", timeout: 10_000 });
+    await page.click("#nav-evidence");
+    await page.click("#btn-build-evidence");
+    await page.click('input[name="evidence-resume-source"][value="file"]');
+    const input = await page.$("#input-evidence-resume-file");
+    await input.uploadFile(path.join(server.root, "base.json"));
+    await page.click("#btn-submit-build-evidence");
+    await page.waitForSelector("#evidence-builder-container:not(.hidden)", { timeout: 10_000 });
+    const candidate = await (await fetch(`${server.url}/api/evidence/builder/candidate`)).json();
+    assert.equal(candidate.source.reference, "base.json");
   } finally {
     await browser?.close();
     await server.close();

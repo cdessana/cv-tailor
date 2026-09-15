@@ -1137,6 +1137,36 @@
   </div>
 
   <!-- MODAL: Doctor Environment Diagnostics Details -->
+  <div id="modal-build-evidence" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-build-evidence-title">
+    <div class="bg-white rounded-xl max-w-xl w-full border border-slate-200 shadow-xl p-4 sm:p-6 space-y-4 modal-content-box">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div>
+          <h3 id="modal-build-evidence-title" class="text-base font-bold text-slate-900">Build candidate evidence</h3>
+          <p class="text-xs text-slate-500 mt-1">Sources are provenance references only; they are not scraped or analyzed automatically.</p>
+        </div>
+        <button id="btn-close-build-evidence-modal" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg" aria-label="Close dialog"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <fieldset class="space-y-2">
+          <legend class="font-semibold text-slate-700">Resume input</legend>
+          <label class="flex items-center gap-2"><input type="radio" name="evidence-resume-source" value="configured" checked> Use configured base resume</label>
+          <label class="flex items-center gap-2"><input type="radio" name="evidence-resume-source" value="file"> Upload validated structured resume JSON</label>
+          <input id="input-evidence-resume-file" type="file" accept="application/json,.json" class="hidden w-full border border-slate-300 rounded p-2" aria-label="Structured resume JSON file">
+        </fieldset>
+        <div class="border-t border-slate-200 pt-3">
+          <div class="flex items-center justify-between gap-2"><label class="font-semibold text-slate-700">Supporting source references</label><button id="btn-add-evidence-source" type="button" class="text-xs underline text-slate-700">Add source</button></div>
+          <div id="evidence-source-inputs" class="space-y-2 mt-2"></div>
+        </div>
+        <p id="build-evidence-error" class="hidden text-rose-700 bg-rose-50 border border-rose-200 rounded p-2" role="alert"></p>
+      </div>
+      <div class="flex justify-end gap-2 pt-3 border-t border-slate-200">
+        <button id="btn-cancel-build-evidence" type="button" class="text-xs px-3.5 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold">Cancel</button>
+        <button id="btn-submit-build-evidence" type="button" class="text-xs px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold">Build candidate</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Doctor Environment Diagnostics Details -->
   <div id="modal-doctor-details" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-doctor-title">
     <div class="bg-white rounded-xl max-w-2xl w-full border border-slate-200 shadow-xl p-4 sm:p-6 space-y-4 modal-content-box">
       <div class="flex items-center justify-between border-b border-slate-200 pb-3">
