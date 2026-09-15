@@ -137,6 +137,8 @@ Candidate claims start pending. Review them through the structured API/UI or wit
 
 The builder API also accepts `supportingSources` for `linkedin`, `github`, `feedback`, or `manual` evidence. A source may include explicit `claims`, each with an existing candidate `contextId`, `claim`, optional `skills`, and optional `conflictsWith` (a claim ID or exact existing claim wording). Equal wording adds corroborating provenance; an explicit disagreement becomes a blocking `source_claim_conflict`. The builder never guesses a role context or treats merely similar wording as a conflict.
 
+When the validated resume has JSON Resume `projects[]`, each project becomes its own evidence context. Its description and highlights retain `projects[...]` provenance and never share skills or facts with another project. A project is linked to a role only when its `entity` matches exactly one employer context; otherwise the project remains independently scoped instead of being guessed into a role.
+
 ### 3. Evidence is contextual
 
 Evidence is stored at the project or role level whenever possible.
