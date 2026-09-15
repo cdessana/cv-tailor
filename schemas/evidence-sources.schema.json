@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cv-tailor.local/schemas/evidence-sources.schema.json",
+  "title": "Evidence Builder supporting sources",
+  "description": "Manual provenance references only. This schema does not authorize scraping, crawling, or automatic source analysis.",
+  "oneOf": [
+    { "$ref": "#/definitions/sources" },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["supportingSources"],
+      "properties": { "supportingSources": { "$ref": "#/definitions/sources" } }
+    }
+  ],
+  "definitions": {
+    "sources": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/source" }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "reference"],
+      "properties": {
+        "type": { "enum": ["linkedin", "github", "feedback", "manual"] },
+        "reference": { "type": "string", "minLength": 1 },
+        "claims": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/claim" }
+        }
+      }
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contextId", "claim"],
+      "properties": {
+        "contextId": { "type": "string", "minLength": 1 },
+        "claim": { "type": "string", "minLength": 1 },
+        "skills": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "conflictsWith": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "reference": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

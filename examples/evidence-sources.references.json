@@ -1,0 +1,14 @@
+[
+  {
+    "type": "linkedin",
+    "reference": "https://www.linkedin.com/in/example-candidate/"
+  },
+  {
+    "type": "github",
+    "reference": "https://github.com/example-candidate/example-project"
+  },
+  {
+    "type": "feedback",
+    "reference": "feedback/manager-q3-2026.md"
+  }
+]

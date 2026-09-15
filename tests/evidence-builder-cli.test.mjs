@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import Ajv from "ajv";
 import { createCandidate } from "../lib/evidence/builder.mjs";
 import { runEvidenceBuilder } from "../scripts/build-evidence.mjs";
 
@@ -62,4 +63,12 @@ test("CLI keeps source-type and context checks inside the evidence builder", asy
   try {
     await assert.rejects(() => runEvidenceBuilder([files.path("resume.json"), "--sources", files.path("sources.json")], { build: captureBuild([]) }), (error) => error.code === "EVIDENCE_SOURCE_INVALID");
   } finally { await files.close(); }
+});
+
+test("supporting-source schema accepts the runnable references example and rejects undeclared fields", async () => {
+  const schema = JSON.parse(await fs.readFile(new URL("../schemas/evidence-sources.schema.json", import.meta.url), "utf8"));
+  const example = JSON.parse(await fs.readFile(new URL("../examples/evidence-sources.references.json", import.meta.url), "utf8"));
+  const validate = new Ajv().compile(schema);
+  assert.equal(validate(example), true, JSON.stringify(validate.errors));
+  assert.equal(validate([{ type: "github", reference: "github:example", unexpected: true }]), false);
 });
