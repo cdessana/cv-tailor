@@ -2031,6 +2031,10 @@
     } catch (err) { console.error("Evidence Builder error:", err); }
   }
 
+  function projectAnswerFields() {
+    return `<div data-project-answer class="border border-slate-200 rounded p-2 mt-2 space-y-1"><input data-project-name class="w-full text-xs font-normal bg-white border border-slate-300 rounded p-2" placeholder="Project name"><textarea data-project-facts rows="2" class="w-full text-xs font-normal bg-white border border-slate-300 rounded p-2" placeholder="Confirmed facts (one per line)"></textarea><input data-project-skills class="w-full text-xs font-normal bg-white border border-slate-300 rounded p-2" placeholder="Directly used skills (comma-separated)"></div>`;
+  }
+
   function renderEvidenceBuilder(data) {
     const container = $("#evidence-builder-container");
     if (!container) return;
@@ -2046,7 +2050,7 @@
         <button id="btn-promote-evidence" class="text-xs font-bold px-3 py-1.5 rounded-lg ${report.promotionSafe ? "bg-emerald-700 text-white hover:bg-emerald-800" : "bg-slate-100 text-slate-400 cursor-not-allowed"}" ${report.promotionSafe ? "" : "disabled"}>Promote approved evidence</button>
       </div>
       ${issues.length ? `<div class="text-xs bg-rose-50 border border-rose-200 rounded-lg p-3 text-rose-900">${issues.map((issue) => `<div class="flex flex-wrap items-center justify-between gap-2 py-1"><span>${escapeHtml(issue.type)}: ${escapeHtml((issue.values || []).join(" ↔ "))}</span>${issue.resolved ? "<span class=\"font-bold\">Resolved</span>" : `<span class=\"flex items-center gap-2\"><select data-issue-value=\"${escapeHtml(issue.id)}\" class=\"text-[11px] border border-rose-300 rounded px-1.5 py-1 bg-white\" aria-label=\"Choose value for ${escapeHtml(issue.type)}\"><option value=\"\">Choose value…</option>${(issue.values || []).map((value) => `<option value=\"${escapeHtml(value)}\">${escapeHtml(value)}</option>`).join("")}</select><button data-issue=\"${escapeHtml(issue.id)}\" class=\"btn-resolve-issue text-[11px] underline font-bold\">Resolve</button></span>`}</div>`).join("")}</div>` : ""}
-      ${data.candidate.questionnaire?.questions?.filter((question) => !question.answered).length ? `<div class="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2"><h4 class="text-xs font-bold text-slate-800">Follow-up questions</h4><p class="text-[11px] text-slate-500">Questions are selected from gaps in this resume. Answer only what you can confirm; “I don't remember” is valid.</p>${data.candidate.questionnaire.questions.filter((question) => !question.answered).slice(0, 8).map((question) => `<label class="block text-[11px] font-semibold text-slate-700">${escapeHtml(question.prompt)}<textarea data-question="${escapeHtml(question.id)}" rows="2" class="w-full mt-1 text-xs font-normal bg-white border border-slate-300 rounded p-2"></textarea></label>`).join("")}<button id="btn-submit-builder-answers" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-800 text-white hover:bg-slate-700">Save answers for review</button></div>` : ""}
+      ${data.candidate.questionnaire?.questions?.filter((question) => !question.answered).length ? `<div class="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2"><h4 class="text-xs font-bold text-slate-800">Follow-up questions</h4><p class="text-[11px] text-slate-500">Questions are selected from gaps in this resume. Answer only what you can confirm; “I don't remember” is valid.</p>${data.candidate.questionnaire.questions.filter((question) => !question.answered).slice(0, 8).map((question) => question.key === "projects" ? `<div data-project-question="${escapeHtml(question.id)}" class="text-[11px] font-semibold text-slate-700">${escapeHtml(question.prompt)}<p class="font-normal text-slate-500 mt-1">Add each project separately. Facts remain attached to that project.</p>${projectAnswerFields()}<button type="button" class="btn-add-project-answer mt-2 text-[11px] underline" data-question="${escapeHtml(question.id)}">Add another project</button></div>` : `<label class="block text-[11px] font-semibold text-slate-700">${escapeHtml(question.prompt)}<textarea data-question="${escapeHtml(question.id)}" rows="2" class="w-full mt-1 text-xs font-normal bg-white border border-slate-300 rounded p-2"></textarea></label>`).join("")}<button id="btn-submit-builder-answers" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-800 text-white hover:bg-slate-700">Save answers for review</button></div>` : ""}
       <div class="space-y-2 max-h-72 overflow-y-auto">${claims.map((claim) => { const context = (data.candidate.contexts || []).find((item) => item.id === claim.contextId); const sources = claim.sources || [claim.source]; const contextLabel = context ? `${context.company} · ${context.position} · ${context.period}${context.project?.name ? ` · Project: ${context.project.name}` : ""}` : claim.contextId; return `<div class="border border-slate-200 rounded-lg p-3 text-xs"><div class="flex justify-between gap-2"><span class="font-semibold text-slate-900">${escapeHtml(claim.claim)}</span><span class="text-[10px] uppercase font-bold">${escapeHtml(claim.reviewStatus)}</span></div><p class="text-slate-600 mt-1">${escapeHtml(contextLabel)}</p><p class="text-slate-500 mt-1">Sources: ${sources.map((source) => `${escapeHtml(source.type)}:${escapeHtml(source.reference)}`).join(" · ")}</p>${claim.reviewStatus === "pending" ? `<div class="mt-2 flex gap-2"><button data-claim="${escapeHtml(claim.id)}" data-status="approved" class="btn-review-claim text-[11px] font-bold text-emerald-700">Approve</button><button data-claim="${escapeHtml(claim.id)}" data-status="rejected" class="btn-review-claim text-[11px] font-bold text-slate-600">Reject</button></div>` : ""}</div>`; }).join("")}</div>`;
     /* eslint-enable no-useless-escape */
     container.querySelectorAll(".btn-review-claim").forEach((button) => button.addEventListener("click", async () => {
@@ -2056,12 +2060,30 @@
       renderEvidenceBuilder(updated);
     }));
     container.querySelector("#btn-submit-builder-answers")?.addEventListener("click", async () => {
-      const answers = [...container.querySelectorAll("textarea[data-question]")].map((field) => ({ questionId: field.dataset.question, answer: field.value }));
+      const unanswered = data.candidate.questionnaire.questions.filter((question) => !question.answered);
+      const answers = unanswered.map((question) => {
+        if (question.key !== "projects") {
+          const field = container.querySelector(`textarea[data-question="${CSS.escape(question.id)}"]`);
+          return { questionId: question.id, answer: field?.value || "" };
+        }
+        const holder = container.querySelector(`[data-project-question="${CSS.escape(question.id)}"]`);
+        const projects = [...(holder?.querySelectorAll("[data-project-answer]") || [])].map((group) => ({
+          name: group.querySelector("[data-project-name]")?.value.trim() || "",
+          facts: (group.querySelector("[data-project-facts]")?.value || "").split("\n").map((fact) => fact.trim()).filter(Boolean),
+          skills: (group.querySelector("[data-project-skills]")?.value || "").split(",").map((skill) => skill.trim()).filter(Boolean),
+        })).filter((project) => project.name);
+        return projects.length ? { questionId: question.id, projects } : { questionId: question.id, answer: "unknown" };
+      });
       const res = await fetch("/api/evidence/builder/questionnaire", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answers }) });
       const result = await res.json();
       if (!res.ok) return alert(result.error || "Answers could not be saved.");
       showToast("Answers added as pending claims."); renderEvidenceBuilder(result);
     });
+    container.querySelectorAll(".btn-add-project-answer").forEach((button) => button.addEventListener("click", () => {
+      const holder = container.querySelector(`[data-project-question="${CSS.escape(button.dataset.question)}"]`);
+      button.insertAdjacentHTML("beforebegin", projectAnswerFields());
+      holder?.querySelector("[data-project-answer]:last-of-type [data-project-name]")?.focus();
+    }));
     container.querySelectorAll(".btn-resolve-issue").forEach((button) => button.addEventListener("click", async () => {
       const issue = issues.find((item) => item.id === button.dataset.issue);
       const selected = container.querySelector(`[data-issue-value="${CSS.escape(issue.id)}"]`)?.value;

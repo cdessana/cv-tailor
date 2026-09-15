@@ -121,13 +121,39 @@ test("preserves JSON Resume project facts in their own context", () => {
 
 test("surfaces contradictory questionnaire answers as an unresolved conflict", () => {
   const { candidate } = createCandidate(resume);
-  const question = candidate.questionnaire.questions.find((item) => item.key === "projects");
+  const question = candidate.questionnaire.questions.find((item) => item.key === "quality");
   const first = applyQuestionnaireAnswers(candidate, [{ questionId: question.id, answer: "Billing platform" }]);
   const second = applyQuestionnaireAnswers(first.candidate, [{ questionId: question.id, answer: "Analytics platform" }]);
   assert.equal(second.candidate.issues.some((issue) => issue.type === "answer_conflict"), true);
   assert.equal(second.report.summary.conflicts, 1);
   assert.equal(second.report.summary.unresolvedIssues, 1);
   assert.equal(second.report.promotionSafe, false);
+});
+
+test("creates isolated child contexts from structured project questionnaire answers", () => {
+  const { candidate } = createCandidate(resume);
+  const question = candidate.questionnaire.questions.find((item) => item.key === "projects" && item.contextId === candidate.contexts[0].id);
+  const result = applyQuestionnaireAnswers(candidate, [{
+    questionId: question.id,
+    projects: [
+      { name: "Billing platform", facts: ["Maintained payment APIs."], skills: ["NodeJS", "Postgres"] },
+      { name: "Reporting portal", facts: ["Built reporting APIs."], skills: ["gRPC"] },
+    ],
+  }]);
+  const projects = result.candidate.contexts.filter((context) => context.parentContextId === candidate.contexts[0].id);
+  assert.equal(projects.length, 2);
+  assert.equal(projects.every((context) => context.type === "project"), true);
+  const billing = projects.find((context) => context.project.name === "Billing platform");
+  const reporting = projects.find((context) => context.project.name === "Reporting portal");
+  assert.deepEqual(result.candidate.claims.filter((claim) => claim.contextId === billing.id)[0].skills, ["Node.js", "PostgreSQL"]);
+  assert.deepEqual(result.candidate.claims.filter((claim) => claim.contextId === reporting.id)[0].skills, ["gRPC"]);
+  assert.equal(result.candidate.claims.some((claim) => claim.contextId === candidate.contexts[0].id && claim.claim === "Maintained payment APIs."), false);
+});
+
+test("rejects a free-text project answer instead of adding it to the role", () => {
+  const { candidate } = createCandidate(resume);
+  const question = candidate.questionnaire.questions.find((item) => item.key === "projects");
+  assert.throws(() => applyQuestionnaireAnswers(candidate, [{ questionId: question.id, answer: "Billing platform" }]), (error) => error.code === "EVIDENCE_PROJECT_STRUCTURED_REQUIRED");
 });
 
 test("keeps corroborating external provenance and blocks explicit source conflicts", () => {
