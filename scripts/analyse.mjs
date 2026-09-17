@@ -167,6 +167,110 @@ function findResumeWorkEvidence(term) {
 
 /*
  * ----------------------------------------
+ * Languages
+ * ----------------------------------------
+ */
+
+function findLanguageEvidence(term) {
+  const candidates = aliasesFor(term);
+  const results = [];
+
+  for (const language of resume.languages ?? []) {
+    const matchedAs = candidates.find(
+      (candidate) => normalize(candidate) === normalize(language.language)
+    );
+
+    if (!matchedAs) {
+      continue;
+    }
+
+    results.push({
+      type: "language",
+      language: language.language,
+      fluency: language.fluency ?? null,
+      matchedAs,
+    });
+  }
+
+  return results;
+}
+
+/*
+ * ----------------------------------------
+ * Basics (Summary & Label)
+ * ----------------------------------------
+ */
+
+function findBasicsEvidence(term) {
+  const candidates = aliasesFor(term);
+  const results = [];
+
+  const fields = [
+    { name: "summary", text: resume.basics?.summary },
+    { name: "label", text: resume.basics?.label },
+  ];
+
+  for (const field of fields) {
+    if (!field.text) continue;
+
+    const matchedAs = candidates.find((candidate) =>
+      phraseExists(candidate, field.text)
+    );
+
+    if (matchedAs) {
+      results.push({
+        type: "basics",
+        field: field.name,
+        matchedAs,
+        text: field.text,
+      });
+    }
+  }
+
+  return results;
+}
+
+/*
+ * ----------------------------------------
+ * Education
+ * ----------------------------------------
+ */
+
+function findEducationEvidence(term) {
+  const candidates = aliasesFor(term);
+  const results = [];
+
+  for (const education of resume.education ?? []) {
+    const educationText = [
+      education.institution,
+      education.area,
+      education.studyType,
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const matchedAs = candidates.find((candidate) =>
+      phraseExists(candidate, educationText)
+    );
+
+    if (!matchedAs) {
+      continue;
+    }
+
+    results.push({
+      type: "education",
+      institution: education.institution,
+      area: education.area ?? null,
+      studyType: education.studyType ?? null,
+      matchedAs,
+    });
+  }
+
+  return results;
+}
+
+/*
+ * ----------------------------------------
  * Certificates
  * ----------------------------------------
  */
@@ -299,6 +403,12 @@ function analyzeRequirement(requirement) {
 
   const resumeWork = findResumeWorkEvidence(term);
 
+  const languageEvidence = findLanguageEvidence(term);
+
+  const basicsEvidence = findBasicsEvidence(term);
+
+  const educationEvidence = findEducationEvidence(term);
+
   const certificateEvidence = findCertificateEvidence(term);
 
   const evidenceSkill = findEvidenceSkillIndex(term);
@@ -309,6 +419,12 @@ function analyzeRequirement(requirement) {
     ...(resumeSkill ? [resumeSkill] : []),
 
     ...resumeWork,
+
+    ...languageEvidence,
+
+    ...basicsEvidence,
+
+    ...educationEvidence,
 
     ...certificateEvidence,
 
@@ -331,6 +447,20 @@ function analyzeRequirement(requirement) {
       category,
       status: "related",
       confidence: "familiar",
+      evidenceTypes: unique(allEvidence.map((item) => item.type)),
+      evidence: allEvidence,
+    };
+  }
+
+  /*
+   * Languages (declared fluency).
+   */
+  if (languageEvidence.length > 0) {
+    return {
+      term,
+      category,
+      status: "exact",
+      confidence: "declared",
       evidenceTypes: unique(allEvidence.map((item) => item.type)),
       evidence: allEvidence,
     };
@@ -387,6 +517,34 @@ function analyzeRequirement(requirement) {
 
       evidenceTypes: unique(allEvidence.map((item) => item.type)),
 
+      evidence: allEvidence,
+    };
+  }
+
+  /*
+   * Basics (summary/label) evidence is related.
+   */
+  if (basicsEvidence.length > 0) {
+    return {
+      term,
+      category,
+      status: "related",
+      confidence: "professional",
+      evidenceTypes: unique(allEvidence.map((item) => item.type)),
+      evidence: allEvidence,
+    };
+  }
+
+  /*
+   * Education proves academic background.
+   */
+  if (educationEvidence.length > 0) {
+    return {
+      term,
+      category,
+      status: "related",
+      confidence: "education",
+      evidenceTypes: unique(allEvidence.map((item) => item.type)),
       evidence: allEvidence,
     };
   }
