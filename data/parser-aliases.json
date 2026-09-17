@@ -1,0 +1,19 @@
+{
+  "REST APIs": ["RESTful APIs", "REST API"],
+  "GCP": ["Google Cloud Platform", "Google Cloud Platform (GCP)"],
+  "RPC": [],
+  "CI/CD": [],
+  "Mentoring": [],
+  "Event-Driven Architecture": [],
+  "Scalable Systems": [],
+  "Automated Testing": ["Test Automation"],
+  "Technical Leadership": [],
+  "Performance Metrics": [],
+  "Reliability": [],
+  "Domain-Driven Design": ["DDD"],
+  "Clean Architecture": [],
+  "Node.js": ["NodeJS"],
+  "MongoDB": ["Mongo DB"],
+  "Kubernetes": ["k8s"],
+  "PostgreSQL": ["postgres"]
+}
