@@ -1,0 +1,107 @@
+{
+  "REST APIs": ["REST APIs", "RESTful APIs", "REST API"],
+  "GCP": [
+    "GCP",
+    "Google Cloud Platform",
+    "Google Cloud Platform (GCP)",
+    "Google Cloud"
+  ],
+  "RPC": ["RPC", "gRPC"],
+  "CI/CD": [
+    "CI/CD",
+    "Continuous Integration",
+    "Continuous Delivery",
+    "GitLab CI",
+    "GitHub Actions"
+  ],
+  "Mentoring": ["Mentoring", "Mentor", "Mentored", "Technical Coaching"],
+  "Event-Driven Architecture": [
+    "Event-Driven Architecture",
+    "Event-Driven",
+    "Event Driven",
+    "Asynchronous Messaging",
+    "Pub/Sub",
+    "Google Cloud Pub/Sub"
+  ],
+  "Scalable Systems": [
+    "Scalable Systems",
+    "Scalable Backend",
+    "Scalable Backend Services",
+    "Scalability",
+    "Distributed Systems",
+    "Enterprise-Scale"
+  ],
+  "Automated Testing": [
+    "Automated Testing",
+    "Test Automation",
+    "Unit Testing",
+    "Unit Tests",
+    "Integration Testing",
+    "Automated Test Cases"
+  ],
+  "Technical Leadership": [
+    "Technical Leadership",
+    "Technical Lead",
+    "Led Technical Discussions",
+    "Architecture Discussions"
+  ],
+  "Performance Metrics": [
+    "Performance Metrics",
+    "Performance",
+    "Page Loading Time",
+    "Application Responsiveness",
+    "Quality KPIs"
+  ],
+  "Reliability": [
+    "Reliability",
+    "Reliable",
+    "Quality Gates",
+    "Quality Regressions"
+  ],
+  "Domain-Driven Design": ["Domain-Driven Design", "DDD"],
+  "Clean Architecture": ["Clean Architecture"],
+  "Node.js": ["Node.js", "NodeJS", "Node"],
+  "MongoDB": ["MongoDB", "Mongo DB"],
+  "Engineering degree": [
+    "Bachelor of Engineering",
+    "Master of Science",
+    "Electrical and Electronics Engineering",
+    "Computer Software Engineering"
+  ],
+  "Electrical Engineering": ["Electrical and Electronics Engineering"],
+  "Computer Engineering": ["Computer Software Engineering"],
+  "programming languages": [
+    "Kotlin",
+    "Java",
+    "C#",
+    "Python",
+    "Spring Boot",
+    "JavaScript",
+    "TypeScript",
+    "Angular",
+    "C++"
+  ],
+  "cross-functional teams": [
+    "cross-functional product development",
+    "cross-functional",
+    "collaboration"
+  ],
+  "technical guidance": [
+    "technical leadership",
+    "mentorship",
+    "technical reference",
+    "mentoring engineers"
+  ],
+  "backend development": [
+    "backend engineering",
+    "API design",
+    "backend modernization"
+  ],
+  "strategic technical direction": [
+    "architectural decisions",
+    "Engineering Decision Records",
+    "EDRs",
+    "technical requirements"
+  ],
+  "multi-tenant SaaS solutions": ["enterprise software", "distributed services", "cloud-native backend services"]
+}
