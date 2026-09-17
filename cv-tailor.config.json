@@ -40,14 +40,14 @@
       },
       "ollama": {
         "model": "granite4.2:3b-q4_K_S",
-        "url": "http://127.0.0.1:11434",
-        "contextSize": 16384,
-        "maxPromptTokens": 10000,
-        "responseTokenReserve": 4000,
         "timeoutMs": 120000,
         "maxAttempts": 3,
         "batchSize": 3,
-        "maxCorrections": 2
+        "maxCorrections": 2,
+        "contextSize": 16384,
+        "maxPromptTokens": 10000,
+        "responseTokenReserve": 4000,
+        "url": "http://127.0.0.1:11434"
       }
     }
   },

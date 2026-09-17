@@ -15,7 +15,7 @@ export function spawnSafe(command, args = [], options = {}) {
     env = process.env,
     onStdout,
     onStderr,
-    timeout = 300000, // 5 min default timeout
+    timeout = 900000, // 15 min default timeout (to support slow local LLMs like Ollama)
   } = options;
 
   if (typeof command !== "string" || !command.trim()) {
