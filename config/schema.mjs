@@ -106,7 +106,9 @@ export const ConfigSchema = z.object({
       jobs: z.string().default("data/jobs"),
       output: z.string().default("output"),
     })
-    .default({}),
+    // `prefault` lets child defaults populate a brand-new workspace. `default({})`
+    // returned the empty object unchanged, leaving paths.output undefined.
+    .prefault({}),
 
   pipeline: z
     .object({

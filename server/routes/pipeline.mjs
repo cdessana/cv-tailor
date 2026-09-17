@@ -8,6 +8,7 @@ router.post("/run", async (req, res) => {
     jobPath,
     theme,
     skipRewrite,
+    analysisOnly,
     providerOverride,
     modelOverride,
   } = req.body || {};
@@ -34,6 +35,7 @@ router.post("/run", async (req, res) => {
         jobPath,
         theme,
         skipRewrite,
+        analysisOnly,
         providerOverride,
         modelOverride,
         onProgress: (payload) => {
@@ -54,6 +56,7 @@ router.post("/run", async (req, res) => {
         jobPath,
         theme,
         skipRewrite,
+        analysisOnly,
         providerOverride,
         modelOverride,
       });

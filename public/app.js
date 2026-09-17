@@ -7,7 +7,7 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
 
   // Application State
   const state = {
-    currentView: "workspace",
+    currentView: "home",
     currentJob: null,
     currentJobPath: null,
     currentAnalysis: null,
@@ -50,6 +50,7 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
       fetchConfig(),
       fetchSavedJobs(),
       fetchEvidenceSummary(),
+      loadLinkedInImportHistory(),
     ]);
   }
 
@@ -58,6 +59,7 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
   // -------------------------------------------------------------
   function setupNavigation() {
     const views = {
+      home: $("#view-home"),
       workspace: $("#view-workspace"),
       evidence: $("#view-evidence"),
       history: $("#view-history"),
@@ -65,6 +67,7 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
     };
 
     const navTabs = {
+      home: $("#nav-home"),
       workspace: $("#nav-workspace"),
       evidence: $("#nav-evidence"),
       history: $("#nav-history"),
@@ -93,7 +96,7 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
 
       if (target === "evidence") {
         loadEvidenceCatalog();
-        loadEvidenceBuilder();
+        refreshEvidenceReviewAvailability();
       }
       if (target === "history") loadHistoryRuns();
       if (target === "settings") loadSettingsForm();
@@ -102,9 +105,15 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
     }
 
     $("#nav-workspace")?.addEventListener("click", () => switchView("workspace"));
+    $("#nav-home")?.addEventListener("click", () => switchView("home"));
     $("#nav-evidence")?.addEventListener("click", () => switchView("evidence"));
     $("#nav-history")?.addEventListener("click", () => switchView("history"));
     $("#nav-settings")?.addEventListener("click", () => switchView("settings"));
+    $("#btn-home-career")?.addEventListener("click", () => switchView("evidence"));
+    $("#home-primary-action")?.addEventListener("click", (event) => {
+      const target = event.target.closest("[data-home-view]")?.dataset.homeView;
+      if (target) switchView(target);
+    });
 
     // Doctor modal triggers
     $$(".btn-doctor-trigger").forEach((button) => {
@@ -112,6 +121,30 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
     });
     $("#btn-close-doctor-modal")?.addEventListener("click", closeDoctorModal);
     $("#btn-modal-rerun-doctor")?.addEventListener("click", () => refreshDoctorStatus({ openModal: true }));
+  }
+
+  function renderHome() {
+    const summary = state.evidenceSummary;
+    const action = $("#home-primary-action");
+    const copy = $("#home-progress-copy");
+    const steps = $("#home-progress-steps");
+    if (!summary || !action || !copy || !steps) return;
+    const roles = summary.careerRolesCount ?? summary.experiencesCount ?? 0;
+    const details = summary.factsCount ?? 0;
+    const readyForTailoring = roles > 0;
+    action.innerHTML = readyForTailoring
+      ? `<button type="button" data-home-view="workspace" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-sm font-bold"><i data-lucide="file-pen-line" class="w-4 h-4"></i>Tailor a CV</button>`
+      : `<button type="button" data-home-view="evidence" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-sm font-bold"><i data-lucide="upload" class="w-4 h-4"></i>Import your resume</button>`;
+    copy.textContent = readyForTailoring
+      ? `${roles} career role${roles === 1 ? "" : "s"} saved. You can tailor a CV now, or add more detail to improve future results.`
+      : "Start by importing a resume or LinkedIn PDF to create your reusable Career Profile.";
+    const progress = [
+      { label: "Career Profile", detail: roles ? `${roles} roles added` : "Not started", complete: roles > 0 },
+      { label: "Career details", detail: details ? `${details} confirmed details` : "Add details to strengthen your profile", complete: details > 0 },
+      { label: "Tailored CV", detail: "Add a job description when you are ready", complete: Boolean(state.currentRun) },
+    ];
+    steps.innerHTML = progress.map((item) => `<div class="rounded-lg border ${item.complete ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"} p-3"><p class="text-xs font-bold ${item.complete ? "text-emerald-900" : "text-slate-800"}">${item.complete ? "✓ " : "○ "}${item.label}</p><p class="text-[11px] ${item.complete ? "text-emerald-800" : "text-slate-500"} mt-1">${item.detail}</p></div>`).join("");
+    if (window.lucide) lucide.createIcons();
   }
 
   // -------------------------------------------------------------
@@ -1431,17 +1464,91 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
       const summary = await res.json();
       state.evidenceSummary = summary;
 
-      if ($("#metric-experiences-count")) $("#metric-experiences-count").textContent = summary.experiencesCount || 0;
+      if ($("#metric-experiences-count")) $("#metric-experiences-count").textContent = summary.careerRolesCount ?? summary.experiencesCount ?? 0;
       if ($("#metric-facts-count")) $("#metric-facts-count").textContent = summary.factsCount || 0;
       if ($("#metric-skills-count")) $("#metric-skills-count").textContent = summary.skillsCount || 0;
       if ($("#metric-queue-count")) $("#metric-queue-count").textContent = summary.pendingReviewCount || 0;
       if ($("#badge-queue-pending")) $("#badge-queue-pending").textContent = summary.pendingReviewCount || 0;
+      renderHome();
     } catch (err) {
       console.error("Evidence summary error:", err);
     }
   }
 
+  const linkedInSectionLabels = { basics: "Profile", about: "About", skills: "Skills", work: "Experience", education: "Education", certificates: "Certifications", publications: "Publications", projects: "Projects", languages: "Languages", volunteer: "Volunteer", awards: "Awards", recommendations: "Recommendations" };
+  function linkedInCardTitle(item) {
+    const candidate = item.candidate || {};
+    if (item.section === "basics") return ({ name: "Name", label: "Professional title", email: "Email", phone: "Phone", location: "Location", profiles: "LinkedIn profile" })[item.field] || "Profile information";
+    if (item.section === "about") return "Professional summary";
+    return candidate.position || candidate.institution || candidate.name || candidate.title || candidate.organization || candidate.language || "Imported information";
+  }
+  function linkedInCardMeta(item) {
+    const candidate = item.candidate || {};
+    if (item.section === "work") return [candidate.name, [candidate.startDate, candidate.endDate || "Current"].filter(Boolean).join(" — ")].filter(Boolean).join(" · ");
+    if (item.section === "education") return [candidate.studyType, candidate.area, [candidate.startDate, candidate.endDate].filter(Boolean).join(" — ")].filter(Boolean).join(" · ");
+    if (item.section === "certificates") return [candidate.issuer, candidate.date].filter(Boolean).join(" · ");
+    if (item.section === "languages") return candidate.fluency || "Level not provided";
+    return candidate.summary || candidate.description || candidate.publisher || candidate.awarder || "";
+  }
+  function linkedInValue(value) {
+    if (value && typeof value === "object") return Object.values(value).filter(Boolean).join(" · ");
+    return String(value ?? "Not provided");
+  }
+  async function loadLinkedInImportHistory() {
+    const container = $("#linkedin-import-history");
+    if (!container) return;
+    try {
+      const response = await fetch("/api/linkedin-import/history");
+      if (!response.ok) throw new Error("Could not load import history.");
+      const history = await response.json();
+      if (!history.length) { container.textContent = ""; return; }
+      const latest = history[0];
+      container.innerHTML = `<div class="border-t border-slate-200 pt-3">Last import: ${escapeHtml(new Date(latest.appliedAt).toLocaleString())} · ${latest.applied} applied · ${latest.skipped} skipped. <button type="button" data-linkedin-history-toggle class="underline font-semibold">View import history</button><div data-linkedin-history-list class="hidden mt-2 space-y-1">${history.map((entry) => `<p>${escapeHtml(new Date(entry.appliedAt).toLocaleString())} — ${entry.applied} applied, ${entry.skipped} skipped (${entry.itemsFound} reviewed)</p>`).join("")}</div></div>`;
+      container.querySelector("[data-linkedin-history-toggle]")?.addEventListener("click", (event) => { const list = container.querySelector("[data-linkedin-history-list]"); const hidden = list?.classList.toggle("hidden"); event.currentTarget.textContent = hidden ? "View import history" : "Hide import history"; });
+    } catch (error) { console.error("LinkedIn import history error:", error); }
+  }
+  function renderLinkedInReview(report, container) {
+    const mapped = report.records.filter((item) => item.mappingStatus === "mapped");
+    const groups = Object.groupBy(mapped, (item) => item.section);
+    const tabs = Object.keys(groups);
+    const cards = (section) => (groups[section] || []).map((item) => {
+      const needsReview = item.reviewStatus === "conflict" || item.reviewStatus === "duplicate";
+      const candidateEntries = item.candidate && typeof item.candidate === "object" && !Array.isArray(item.candidate) ? Object.entries(item.candidate) : [[item.field || "valor", item.candidate]];
+      const details = candidateEntries.filter(([key]) => !["highlights", "profiles"].includes(key) && !(item.section === "publications" && key === "name")).map(([key, value]) => {
+        const content = typeof value === "object" ? JSON.stringify(value) : String(value);
+        const prose = ["summary", "description", "text"].includes(key);
+        return `<div class="${prose ? "sm:col-span-2" : ""}"><dt class="text-slate-400 capitalize">${escapeHtml(key.replace(/([A-Z])/g, " $1"))}</dt><dd class="text-slate-700 break-words ${prose ? "whitespace-pre-wrap leading-relaxed max-w-4xl" : ""}">${escapeHtml(content)}</dd></div>`;
+      }).join("");
+      const wideCard = ["about", "basics"].includes(section);
+      const conflict = item.existing ? `<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs border border-amber-200 bg-amber-50 rounded-lg p-3"><div><p class="font-semibold text-amber-900">Current resume</p><p class="text-amber-800 break-words">${escapeHtml(linkedInValue(item.existing))}</p></div><div><p class="font-semibold text-amber-900">Imported value</p><p class="text-amber-800 break-words">${escapeHtml(linkedInValue(item.candidate))}</p></div></div>` : "";
+      return `<article class="border border-slate-200 rounded-xl p-4 bg-white space-y-3 ${wideCard ? "lg:col-span-2" : ""}" data-linkedin-card="${escapeHtml(item.id)}"><div class="flex gap-3 justify-between"><div class="min-w-0 flex-1"><h5 class="font-bold text-slate-900 text-sm leading-snug break-words">${escapeHtml(linkedInCardTitle(item))}</h5><p class="text-xs text-slate-500 mt-0.5 leading-relaxed break-words">${escapeHtml(linkedInCardMeta(item))}</p></div><span class="shrink-0 h-fit px-2 py-0.5 rounded-full text-[10px] font-bold ${needsReview ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}">${needsReview ? "Review" : "Ready"}</span></div>${conflict}${details ? `<dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-xs">${details}</dl>` : ""}<div class="flex items-center justify-between gap-3 pt-1"><label class="flex items-center gap-2 text-xs font-semibold text-slate-700"><input type="checkbox" checked data-linkedin-include="${escapeHtml(item.id)}" class="accent-emerald-700"> Include in resume</label>${item.existing ? `<select class="border border-slate-300 rounded p-1.5 text-xs" data-linkedin-resolution="${escapeHtml(item.id)}"><option value="approved">Use imported value</option><option value="keep_existing">Keep existing value</option></select>` : ""}</div></article>`;
+    }).join("");
+    const emptySections = report.diagnostics?.emptyDetectedSections || [];
+    container.innerHTML = `<section class="mt-5 border-t border-slate-200 pt-5 space-y-4"><div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3"><div><p class="text-[11px] font-bold uppercase tracking-wide text-emerald-700">Import ready for review</p><h4 class="text-base font-bold text-slate-900">Found ${report.summary.itemsFound} items across ${report.summary.sectionsFound} sections</h4><p class="text-xs text-slate-500 mt-1">Review only what you want to include. Flagged items need attention before updating your resume.</p></div><div class="flex gap-2 text-xs"><span class="px-2 py-1 rounded bg-emerald-50 text-emerald-800">${report.summary.ready} ready</span>${report.summary.conflicts ? `<span class="px-2 py-1 rounded bg-amber-50 text-amber-800">${report.summary.conflicts} to review</span>` : ""}</div></div>${emptySections.length ? `<div class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900"><strong>Incomplete extraction:</strong> ${escapeHtml(emptySections.map((section) => linkedInSectionLabels[section] || section).join(", "))} was detected, but no records could be confirmed. Review the PDF before updating your resume.</div>` : ""}<nav class="flex gap-2 overflow-x-auto pb-1" aria-label="Imported sections">${tabs.map((section, index) => `<button type="button" data-linkedin-tab="${escapeHtml(section)}" class="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold ${index ? "bg-slate-100 text-slate-600" : "bg-slate-900 text-white"}">${escapeHtml(linkedInSectionLabels[section] || section)} <span class="opacity-70">${groups[section].length}</span></button>`).join("")}</nav><div>${tabs.map((section, index) => `<div data-linkedin-panel="${escapeHtml(section)}" class="grid grid-cols-1 lg:grid-cols-2 gap-3 ${index ? "hidden" : ""}">${cards(section)}</div>`).join("")}</div><div class="flex flex-col-reverse sm:flex-row justify-between gap-3 pt-2 border-t border-slate-200"><p class="text-xs text-slate-500">Recommendations and unmapped data stay outside your resume.</p><button id="btn-linkedin-apply" class="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold">Apply selected items to resume</button></div></section>`;
+    container.querySelectorAll("[data-linkedin-tab]").forEach((button) => button.addEventListener("click", () => { const section = button.dataset.linkedinTab; container.querySelectorAll("[data-linkedin-panel]").forEach((panel) => panel.classList.toggle("hidden", panel.dataset.linkedinPanel !== section)); container.querySelectorAll("[data-linkedin-tab]").forEach((tab) => { const active = tab === button; tab.className = `shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold ${active ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600"}`; }); }));
+  }
+
   function setupEvidenceEvents() {
+    $("#btn-linkedin-import")?.addEventListener("click", async () => {
+      const review = $("#linkedin-import-review");
+      try {
+        const file = $("#linkedin-import-pdf")?.files?.[0];
+        let endpoint = "/api/linkedin-import";
+        let payload;
+        if (file) {
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          let binary = ""; for (let offset = 0; offset < bytes.length; offset += 8192) binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
+          endpoint = "/api/linkedin-import/pdf"; payload = { pdfBase64: btoa(binary) };
+        } else payload = { source: JSON.parse($("#linkedin-import-source").value) };
+        const response = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        const report = await response.json(); if (!response.ok) throw new Error(report.error);
+        renderLinkedInReview(report, review);
+        $("#btn-linkedin-apply")?.addEventListener("click", async () => {
+          const decisions = report.records.filter((item) => item.mappingStatus === "mapped").map((item) => { const included = review.querySelector(`[data-linkedin-include="${item.id}"]`)?.checked; const selected = review.querySelector(`[data-linkedin-resolution="${item.id}"]`)?.value; return { id: item.id, status: included ? (selected || "approved") : "rejected" }; });
+          const result = await fetch("/api/linkedin-import/promote", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decisions }) }); const applied = await result.json(); if (!result.ok) throw new Error(applied.error); $("#evidence-builder-container")?.classList.add("hidden"); await Promise.all([fetchEvidenceSummary(), loadEvidenceCatalog(), refreshEvidenceReviewAvailability(), loadLinkedInImportHistory()]); showToast("Imported data and experiences are updated."); review.innerHTML = `<div class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">Selected items were added to your career history. Add details to a role whenever you want to include projects, responsibilities, achievements, or technologies.</div>`; $("#evidence-catalog-container")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      } catch (error) { review.textContent = error.message || "Unable to parse the LinkedIn profile."; }
+    });
     const buildModal = $("#modal-build-evidence");
     const closeBuildModal = () => {
       buildModal?.classList.add("hidden");
@@ -1457,6 +1564,10 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
     $("#btn-build-evidence")?.addEventListener("click", () => {
       buildModal?.classList.remove("hidden");
       if (window.lucide) lucide.createIcons();
+    });
+    $("#btn-resume-evidence-review")?.addEventListener("click", async () => {
+      await loadEvidenceBuilder();
+      $("#evidence-builder-container")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
     $("#btn-close-build-evidence-modal")?.addEventListener("click", closeBuildModal);
     $("#btn-cancel-build-evidence")?.addEventListener("click", closeBuildModal);
@@ -1481,6 +1592,7 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
         closeBuildModal();
         showToast("Candidate evidence created. Review claims before promotion.");
         renderEvidenceBuilder(data);
+        await refreshEvidenceReviewAvailability();
       } catch (err) { showBuildError(err.message); }
     });
     // Search filter
@@ -1558,7 +1670,7 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
         });
 
         if (!res.ok) throw new Error("Could not submit interview facts.");
-        showToast("Claims submitted to the Review Queue for validation.");
+        showToast("Your career details were saved and are ready for profile review.");
 
         $("#modal-interview")?.classList.add("hidden");
         // Clear inputs
@@ -1626,7 +1738,7 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
         $("#direct-exp-skills").value = "";
         if ($("#direct-exp-facts")) $("#direct-exp-facts").value = "";
 
-        showToast("Experience submitted to the Review Queue.");
+        showToast("Your role was added and is ready for profile review.");
         await fetchEvidenceSummary();
         loadEvidenceCatalog($("#input-evidence-search")?.value || "");
       } catch (err) {
@@ -1823,7 +1935,10 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
               <p class="text-xs font-semibold text-slate-800 mt-0.5 break-words">${escapeHtml(exp.position)}</p>
               <p class="text-[11px] text-slate-500 font-mono mt-0.5">${escapeHtml(exp.period || "Present")}</p>
             </div>
-            <span class="text-[10px] font-semibold text-slate-400 shrink-0">Canonical · read-only</span>
+            <div class="shrink-0 text-right space-y-1">
+              <span class="block text-[10px] font-semibold text-slate-500">${exp.sourceKind === "resume" ? "Imported from your resume" : "Confirmed career detail"}</span>
+              <button type="button" class="btn-complete-role text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 underline" data-company="${escapeHtml(exp.company)}" data-position="${escapeHtml(exp.position)}" data-period="${escapeHtml(exp.period || "")}">Add details</button>
+            </div>
           </div>
 
           <!-- Demonstrated Skills (Emphasized) -->
@@ -1898,6 +2013,16 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
       });
     });
 
+    container.querySelectorAll(".btn-complete-role").forEach((button) => {
+      button.addEventListener("click", () => {
+        $("#interview-company").value = button.dataset.company || "";
+        $("#interview-position").value = button.dataset.position || "";
+        $("#interview-period").value = button.dataset.period || "";
+        $("#modal-interview").classList.remove("hidden");
+        $("#interview-facts").focus();
+      });
+    });
+
     if (window.lucide) lucide.createIcons();
   }
 
@@ -1932,6 +2057,18 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
     } catch (err) { console.error("Evidence Builder error:", err); }
   }
 
+  async function refreshEvidenceReviewAvailability() {
+    const button = $("#btn-resume-evidence-review");
+    if (!button) return;
+    try {
+      const status = await evidenceBuilderApi.status();
+      button.classList.toggle("hidden", !status.candidate);
+    } catch (err) {
+      button.classList.add("hidden");
+      console.error("Evidence review availability error:", err);
+    }
+  }
+
   function projectAnswerFields() {
     return `<div data-project-answer class="border border-slate-200 rounded p-2 mt-2 space-y-1"><input data-project-name class="w-full text-xs font-normal bg-white border border-slate-300 rounded p-2" placeholder="Project name"><textarea data-project-facts rows="2" class="w-full text-xs font-normal bg-white border border-slate-300 rounded p-2" placeholder="Confirmed facts (one per line)"></textarea><input data-project-skills class="w-full text-xs font-normal bg-white border border-slate-300 rounded p-2" placeholder="Directly used skills (comma-separated)"></div>`;
   }
@@ -1945,16 +2082,34 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
     const claims = data.candidate.claims || [];
     const claimReviews = new Map((report.claims || []).map((claim) => [claim.id, claim]));
     const issues = report.issues || [];
-    /* eslint-disable no-useless-escape -- generated nested HTML attributes use escaped quotes. */
+    const contexts = new Map((data.candidate.contexts || []).map((context) => [context.id, context]));
+    const labelForContext = (contextId) => {
+      const context = contexts.get(contextId);
+      return context ? [context.position, context.company, context.period].filter(Boolean).join(" · ") : "Your career history";
+    };
+    const issueLabel = (issue) => ({
+      ambiguous_technology: "Confirm the technology used",
+      date_conflict: "Confirm the dates for this role",
+      source_claim_conflict: "Choose the statement that is accurate",
+      answer_conflict: "Choose the detail that is accurate",
+    }[issue.type] || "Confirm this career detail");
+    const unanswered = (data.candidate.questionnaire?.questions || []).filter((question) => !question.answered);
+    const uniqueQuestions = [...new Map(unanswered.map((question) => [`${question.contextId}:${question.key}`, question])).values()];
+    const questionsByContext = uniqueQuestions.reduce((groups, question) => {
+      (groups[question.contextId] ||= []).push(question);
+      return groups;
+    }, {});
+    const questionFields = (questions) => questions.map((question) => question.key === "projects"
+      ? `<div data-project-question="${escapeHtml(question.id)}" class="text-[11px] font-semibold text-slate-700">${escapeHtml(question.prompt)}<p class="font-normal text-slate-500 mt-1">Add each project separately. Facts stay with this role.</p>${projectAnswerFields()}<button type="button" class="btn-add-project-answer mt-2 text-[11px] underline" data-question="${escapeHtml(question.id)}">Add another project</button><label class="mt-2 flex items-center gap-1 font-normal text-slate-600"><input type="checkbox" data-project-unknown="${escapeHtml(question.id)}"> I don't remember a project for this role</label></div>`
+      : `<label class="block text-[11px] font-semibold text-slate-700">${escapeHtml(question.prompt)}<textarea data-question="${escapeHtml(question.id)}" rows="2" class="w-full mt-1 text-xs font-normal bg-white border border-slate-300 rounded p-2"></textarea></label>`).join("");
     container.innerHTML = `
-      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
-        <div><h3 class="text-sm font-bold text-slate-900">Evidence Builder Review</h3><p class="text-xs text-slate-500">${escapeHtml(report.status)} · ${report.summary.approved}/${report.summary.factsExtracted} approved</p><div class="flex gap-3 mt-1"><a href="/api/evidence/builder/candidate" class="text-[11px] underline text-slate-600">Download candidate</a><a href="/api/evidence/builder/report" class="text-[11px] underline text-slate-600">Download report</a></div></div>
-        <button id="btn-promote-evidence" class="text-xs font-bold px-3 py-1.5 rounded-lg ${report.promotionSafe ? "bg-emerald-700 text-white hover:bg-emerald-800" : "bg-slate-100 text-slate-400 cursor-not-allowed"}" ${report.promotionSafe ? "" : "disabled"}>Promote approved evidence</button>
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+        <div><p class="text-[11px] font-bold tracking-wide text-emerald-700 uppercase">Step 3 of 4 · complete your career history</p><h3 class="text-base font-bold text-slate-900">Review your Master Career Profile</h3><p class="text-xs text-slate-500 mt-1">Confirm what we found and add context only where it is useful. Every question is shown with its role.</p><p class="text-[11px] text-slate-500 mt-2">${report.summary.approved} details confirmed · ${issues.filter((issue) => !issue.resolved).length + uniqueQuestions.length} details need attention</p></div>
+        <button id="btn-promote-evidence" class="text-xs font-bold px-3 py-1.5 rounded-lg ${report.promotionSafe ? "bg-emerald-700 text-white hover:bg-emerald-800" : "bg-slate-100 text-slate-400 cursor-not-allowed"}" ${report.promotionSafe ? "" : "disabled"}>Confirm Master Career Profile</button>
       </div>
-      ${issues.length ? `<div class="text-xs bg-rose-50 border border-rose-200 rounded-lg p-3 text-rose-900">${issues.map((issue) => `<div class="flex flex-wrap items-center justify-between gap-2 py-1"><span>${escapeHtml(issue.type)}: ${escapeHtml((issue.values || []).join(" ↔ "))}</span>${issue.resolved ? "<span class=\"font-bold\">Resolved</span>" : `<span class=\"flex items-center gap-2\"><select data-issue-value=\"${escapeHtml(issue.id)}\" class=\"text-[11px] border border-rose-300 rounded px-1.5 py-1 bg-white\" aria-label=\"Choose value for ${escapeHtml(issue.type)}\"><option value=\"\">Choose value…</option>${(issue.values || []).map((value) => `<option value=\"${escapeHtml(value)}\">${escapeHtml(value)}</option>`).join("")}</select><button data-issue=\"${escapeHtml(issue.id)}\" class=\"btn-resolve-issue text-[11px] underline font-bold\">Resolve</button></span>`}</div>`).join("")}</div>` : ""}
-      ${data.candidate.questionnaire?.questions?.filter((question) => !question.answered).length ? `<div class="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2"><h4 class="text-xs font-bold text-slate-800">Follow-up questions</h4><p class="text-[11px] text-slate-500">Questions are selected from gaps in this resume. Answer only what you can confirm; “I don't remember” is valid.</p>${data.candidate.questionnaire.questions.filter((question) => !question.answered).slice(0, 8).map((question) => question.key === "projects" ? `<div data-project-question="${escapeHtml(question.id)}" class="text-[11px] font-semibold text-slate-700">${escapeHtml(question.prompt)}<p class="font-normal text-slate-500 mt-1">Add each project separately. Facts remain attached to that project.</p>${projectAnswerFields()}<button type="button" class="btn-add-project-answer mt-2 text-[11px] underline" data-question="${escapeHtml(question.id)}">Add another project</button><label class="mt-2 flex items-center gap-1 font-normal text-slate-600"><input type="checkbox" data-project-unknown="${escapeHtml(question.id)}"> I don't remember a project for this role</label></div>` : `<label class="block text-[11px] font-semibold text-slate-700">${escapeHtml(question.prompt)}<textarea data-question="${escapeHtml(question.id)}" rows="2" class="w-full mt-1 text-xs font-normal bg-white border border-slate-300 rounded p-2"></textarea></label>`).join("")}<button id="btn-submit-builder-answers" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-800 text-white hover:bg-slate-700">Save answers for review</button></div>` : ""}
-      <div class="space-y-2 max-h-72 overflow-y-auto">${claims.map((claim) => { const context = (data.candidate.contexts || []).find((item) => item.id === claim.contextId); const sources = claim.sources || [claim.source]; const contextLabel = context ? `${escapeHtml(context.company)} · ${escapeHtml(context.position)} · ${escapeHtml(context.period)}${context.project?.name ? ` · Project: ${escapeHtml(context.project.name)}` : ""}` : escapeHtml(claim.contextId); const actions = claimReviews.get(claim.id)?.allowedActions || []; return `<div class="border border-slate-200 rounded-lg p-3 text-xs"><div class="flex justify-between gap-2"><span class="font-semibold text-slate-900">${escapeHtml(claim.claim)}</span><span class="text-[10px] uppercase font-bold">${escapeHtml(claim.reviewStatus)}</span></div><p class="text-slate-600 mt-1">${contextLabel}</p><p class="text-slate-500 mt-1">Sources: ${sources.map((source) => `${escapeHtml(source.type)}:${escapeHtml(source.reference)}`).join(" · ")}</p>${actions.length ? `<div class="mt-2 flex gap-2">${actions.includes("approve") ? `<button data-claim="${escapeHtml(claim.id)}" data-status="approved" class="btn-review-claim text-[11px] font-bold text-emerald-700">Approve</button>` : ""}${actions.includes("reject") ? `<button data-claim="${escapeHtml(claim.id)}" data-status="rejected" class="btn-review-claim text-[11px] font-bold text-slate-600">Reject</button>` : ""}</div>` : ""}</div>`; }).join("")}</div>`;
-    /* eslint-enable no-useless-escape */
+      ${issues.length ? `<section class="text-xs bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2"><h4 class="font-bold text-amber-950">Details that need confirmation</h4>${issues.map((issue) => `<div class="flex flex-wrap items-center justify-between gap-2 py-1 border-t border-amber-100 first:border-0"><div><p class="font-semibold text-slate-900">${issueLabel(issue)}</p><p class="text-slate-600 mt-0.5">${escapeHtml((issue.values || []).join(" or "))}</p></div>${issue.resolved ? "<span class=\"font-semibold text-emerald-700\">Confirmed</span>" : `<span class=\"flex items-center gap-2\"><select data-issue-value=\"${escapeHtml(issue.id)}\" class=\"text-[11px] border border-amber-300 rounded px-1.5 py-1 bg-white\"><option value=\"\">Choose the accurate value…</option>${(issue.values || []).map((value) => `<option value=\"${escapeHtml(value)}\">${escapeHtml(value)}</option>`).join("")}</select><button data-issue=\"${escapeHtml(issue.id)}\" class=\"btn-resolve-issue text-[11px] underline font-bold\">Confirm</button></span>`}</div>`).join("")}</section>` : ""}
+      ${uniqueQuestions.length ? `<section class="space-y-3"><div><h4 class="text-sm font-bold text-slate-900">Complete your career history</h4><p class="text-[11px] text-slate-500 mt-1">Answer only what you can confirm. “I don't remember” is always acceptable.</p></div><div class="grid grid-cols-1 lg:grid-cols-2 gap-3">${Object.entries(questionsByContext).map(([contextId, questions]) => `<div class="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-3"><div class="border-b border-slate-200 pb-2"><p class="text-xs font-bold text-slate-900">${escapeHtml(labelForContext(contextId))}</p><p class="text-[11px] text-slate-500">Details for this role</p></div>${questionFields(questions)}</div>`).join("")}</div><button id="btn-submit-builder-answers" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-800 text-white hover:bg-slate-700">Save profile details</button></section>` : ""}
+      <section class="space-y-2"><div><h4 class="text-sm font-bold text-slate-900">Imported details</h4><p class="text-[11px] text-slate-500">Keep or remove each detail before confirming your profile.</p></div><div class="space-y-2 max-h-72 overflow-y-auto">${claims.map((claim) => { const actions = claimReviews.get(claim.id)?.allowedActions || []; return `<div class="border border-slate-200 rounded-lg p-3 text-xs"><div class="flex justify-between gap-2"><span class="font-semibold text-slate-900">${escapeHtml(claim.claim)}</span><span class="text-[10px] font-bold text-slate-500">${claim.reviewStatus === "approved" ? "CONFIRMED" : "READY TO REVIEW"}</span></div><p class="text-slate-600 mt-1">${escapeHtml(labelForContext(claim.contextId))}</p>${actions.length ? `<div class="mt-2 flex gap-3">${actions.includes("approve") ? `<button data-claim="${escapeHtml(claim.id)}" data-status="approved" class="btn-review-claim text-[11px] font-bold text-emerald-700">Keep</button>` : ""}${actions.includes("reject") ? `<button data-claim="${escapeHtml(claim.id)}" data-status="rejected" class="btn-review-claim text-[11px] font-bold text-slate-600">Remove</button>` : ""}</div>` : ""}</div>`; }).join("")}</div></section>`;
     container.querySelectorAll(".btn-review-claim").forEach((button) => button.addEventListener("click", async () => {
       try { renderEvidenceBuilder(await evidenceBuilderApi.review({ expectedRevision: data.candidate.revision, decisions: [{ claimId: button.dataset.claim, status: button.dataset.status }] })); }
       catch (error) { alert(error.message || "Review could not be saved."); }
@@ -1979,7 +2134,7 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
       let result;
       try { result = await evidenceBuilderApi.answerQuestionnaire({ expectedRevision: data.candidate.revision, answers }); }
       catch (error) { return alert(error.message || "Answers could not be saved."); }
-      showToast("Answers added as pending claims."); renderEvidenceBuilder(result);
+      showToast("Your profile details were saved for confirmation."); renderEvidenceBuilder(result);
     });
     container.querySelectorAll(".btn-add-project-answer").forEach((button) => button.addEventListener("click", () => {
       const holder = container.querySelector(`[data-project-question="${CSS.escape(button.dataset.question)}"]`);
@@ -2003,22 +2158,23 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
     container.querySelector("#btn-promote-evidence")?.addEventListener("click", async () => {
       try { await evidenceBuilderApi.promote({ expectedRevision: data.candidate.revision }); }
       catch (error) { return alert(error.message || "Promotion blocked."); }
-      showToast("Approved evidence promoted to the canonical base.");
-      await fetchEvidenceSummary(); await loadEvidenceCatalog(); await loadEvidenceBuilder();
+      showToast("Your Master Career Profile is confirmed and ready to tailor resumes.");
+      container.classList.add("hidden");
+      await fetchEvidenceSummary(); await loadEvidenceCatalog(); await refreshEvidenceReviewAvailability();
     });
   }
 
   async function loadReviewQueue() {
     const container = $("#evidence-queue-container");
     if (!container) return;
-    container.innerHTML = `<div class="text-xs text-slate-400 py-6 text-center">Loading review queue...</div>`;
+    container.innerHTML = `<div class="text-xs text-slate-400 py-6 text-center">Loading details to complete...</div>`;
 
     try {
       const res = await fetch("/api/evidence/queue");
       const items = await res.json();
 
       if (!items.length) {
-        container.innerHTML = `<div class="p-8 text-center text-xs text-slate-400 bg-white rounded-lg border border-slate-200">The review queue is empty. Submit claims via Guided Career Interview to vet them here.</div>`;
+        container.innerHTML = `<div class="p-8 text-center text-xs text-slate-400 bg-white rounded-lg border border-slate-200">There are no extra career details waiting for review. Add details to any role when you want to enrich your profile.</div>`;
         return;
       }
 
@@ -2043,19 +2199,19 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
                   <h3 class="text-sm font-bold text-slate-900">${escapeHtml(item.company)} — ${escapeHtml(item.position)}</h3>
                   <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${badgeClass}">${item.status}</span>
                 </div>
-                <p class="text-[11px] text-slate-500 font-mono mt-0.5">${escapeHtml(item.period || "")} • Source: ${escapeHtml(item.source || "manual")}</p>
+                <p class="text-[11px] text-slate-500 font-mono mt-0.5">${escapeHtml(item.period || "")}</p>
               </div>
               ${item.status === "pending" || item.status === "conflict" ? `
                 <div class="flex items-center gap-2 shrink-0">
-                  <button class="btn-migrate-queue text-[11px] font-semibold text-slate-700 underline" data-id="${item.id}">Move to Evidence Builder</button>
-                  <button class="btn-reject-queue text-xs font-medium px-2.5 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-600" data-id="${item.id}">Reject</button>
+                  <button class="btn-migrate-queue text-[11px] font-semibold text-slate-700 underline" data-id="${item.id}">Review in profile</button>
+                  <button class="btn-reject-queue text-xs font-medium px-2.5 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-600" data-id="${item.id}">Remove</button>
                 </div>
               ` : ""}
             </div>
 
             ${isConflict && item.conflictDetails ? `
               <div class="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-900 leading-relaxed">
-                <strong>Data Conflict Detected:</strong> ${escapeHtml(item.conflictDetails.message)}
+                <strong>This detail needs confirmation:</strong> ${escapeHtml(item.conflictDetails.message)}
               </div>
             ` : ""}
 
@@ -2075,7 +2231,7 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
         btn.addEventListener("click", async (e) => {
           const id = e.currentTarget.getAttribute("data-id");
           await fetch(`/api/evidence/queue/${id}/reject`, { method: "POST" });
-          showToast("Item rejected.");
+          showToast("Career detail removed.");
           await fetchEvidenceSummary();
           loadReviewQueue();
         });
@@ -2084,13 +2240,13 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
         const res = await fetch(`/api/evidence/builder/from-queue/${encodeURIComponent(btn.dataset.id)}`, { method: "POST" });
         const result = await res.json();
         if (!res.ok) return alert(result.error || "Could not migrate queue item.");
-        showToast("Queue item moved to Evidence Builder for review.");
+        showToast("Your career detail is ready to review in your profile.");
         await loadReviewQueue(); await loadEvidenceBuilder();
       }));
 
       if (window.lucide) lucide.createIcons();
     } catch (err) {
-      container.innerHTML = `<div class="text-xs text-rose-600 p-4 text-center">Error loading review queue: ${err.message}</div>`;
+      container.innerHTML = `<div class="text-xs text-rose-600 p-4 text-center">Unable to load career details: ${err.message}</div>`;
     }
   }
 
