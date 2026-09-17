@@ -66,6 +66,7 @@ export async function saveReviewQueue(queue) {
 export async function getEvidenceSummary() {
   const evidence = await loadEvidence();
   const queue = await loadReviewQueue();
+  const baseResume = await loadBaseResume();
 
   const experiences = evidence.experiences || [];
   const skills = evidence.skills || {};
@@ -80,6 +81,9 @@ export async function getEvidenceSummary() {
 
   return {
     experiencesCount: experiences.length,
+    // Imported roles belong to the user's career history even before their
+    // optional supporting details have been confirmed in the evidence model.
+    careerRolesCount: (baseResume?.work || []).length,
     skillsCount: Object.keys(skills).length,
     factsCount: totalFacts,
     pendingReviewCount: pendingCount,
@@ -94,7 +98,23 @@ export async function getEvidenceSummary() {
  */
 export async function getEvidenceCatalog({ query = "", skill = "", company = "", type = "" } = {}) {
   const evidence = await loadEvidence();
-  let experiences = [...(evidence.experiences || [])];
+  const baseResume = await loadBaseResume();
+  const canonicalExperiences = evidence.experiences || [];
+  const canonicalKeys = new Set(canonicalExperiences.map((entry) => `${entry.company}\u0000${entry.position}\u0000${entry.period}`.toLowerCase()));
+  const resumeExperiences = (baseResume?.work || []).map((entry, index) => {
+    const period = [entry.startDate, entry.endDate || "Present"].filter(Boolean).join(" — ") || "Period not provided";
+    return {
+      id: `resume-work-${index}`,
+      company: entry.name || entry.company || "Company not provided",
+      position: entry.position || "Role not provided",
+      period,
+      facts: entry.highlights || (entry.summary ? [entry.summary] : []),
+      skills: [],
+      type: "professional",
+      sourceKind: "resume",
+    };
+  });
+  let experiences = [...canonicalExperiences.map((entry) => ({ ...entry, sourceKind: "canonical" })), ...resumeExperiences.filter((entry) => !canonicalKeys.has(`${entry.company}\u0000${entry.position}\u0000${entry.period}`.toLowerCase()))];
 
   const q = query.toLowerCase().trim();
   const targetSkill = skill.toLowerCase().trim();
@@ -138,23 +158,14 @@ export async function getEvidenceCatalog({ query = "", skill = "", company = "",
     }
   }
 
-  // Load candidate base resume skills with categories
-  let baseSkills = [];
-  try {
-    const baseResume = await loadBaseResume();
-    if (baseResume && Array.isArray(baseResume.skills)) {
-      baseSkills = baseResume.skills;
-    }
-  } catch {
-    baseSkills = [];
-  }
+  const baseSkills = Array.isArray(baseResume?.skills) ? baseResume.skills : [];
 
   return {
     experiences,
     skills: evidence.skills || {},
     skillFrequencies,
     baseSkills,
-    totalCount: (evidence.experiences || []).length,
+    totalCount: canonicalExperiences.length + resumeExperiences.filter((entry) => !canonicalKeys.has(`${entry.company}\u0000${entry.position}\u0000${entry.period}`.toLowerCase())).length,
     filteredCount: experiences.length,
   };
 }

@@ -7,13 +7,14 @@ import pipelineRouter from "./routes/pipeline.mjs";
 import renderRouter from "./routes/render.mjs";
 import evidenceRouter from "./routes/evidence.mjs";
 import artifactsRouter from "./routes/artifacts.mjs";
+import linkedInImportRouter from "./routes/linkedin-import.mjs";
 
 export function createApp() {
   const app = express();
   const publicDir = path.resolve(process.cwd(), "public");
 
   // Middlewares
-  app.use(express.json({ limit: "10mb" }));
+  app.use(express.json({ limit: "20mb" }));
   app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
   // API Routes
@@ -24,6 +25,7 @@ export function createApp() {
   app.use("/api/render", renderRouter);
   app.use("/api/evidence", evidenceRouter);
   app.use("/api/artifacts", artifactsRouter);
+  app.use("/api/linkedin-import", linkedInImportRouter);
 
   // Serve static assets
   app.use(express.static(publicDir));

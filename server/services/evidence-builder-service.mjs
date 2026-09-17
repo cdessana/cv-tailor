@@ -18,6 +18,7 @@ function paths(config = loadConfig()) {
 }
 
 async function readJson(filePath) { return JSON.parse(await fs.readFile(filePath, "utf8")); }
+async function fileExists(filePath) { try { await fs.access(filePath); return true; } catch (error) { if (error.code === "ENOENT") return false; throw error; } }
 
 async function recoverArtifactTransaction(output) {
   let transaction;
@@ -265,6 +266,11 @@ export async function promoteEvidenceCandidate({ config = loadConfig(), expected
 }
 
 export async function evidenceBuilderStatus({ config = loadConfig() } = {}) {
+  // A previous run may leave review artifacts under output/. They are not a
+  // resume source and must not make a newly empty workspace look populated.
+  if (!(await fileExists(config.paths.baseResume))) {
+    return { candidate: null, report: null, paths: paths(config), canonical: { version: 2, skills: {}, experiences: [] } };
+  }
   try {
     return await getEvidenceCandidate({ config });
   } catch (error) {

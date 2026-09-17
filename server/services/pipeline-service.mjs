@@ -59,9 +59,11 @@ export async function runPipeline({
   jobPath,
   theme,
   skipRewrite: overrideSkipRewrite,
+  analysisOnly = false,
   providerOverride,
   modelOverride,
   onProgress = () => {},
+  logger = console,
   processRunner = spawnSafe,
   renderService = renderResume,
   configOverride,
@@ -116,6 +118,7 @@ export async function runPipeline({
     completedAt: null,
     status: "running",
     skipRewrite,
+    analysisOnly,
     stages: {
       analyse: { name: "Analyse", status: "pending", duration: null, artifact: null },
       tailor: { name: "Tailor", status: "pending", duration: null, artifact: null },
@@ -136,6 +139,7 @@ export async function runPipeline({
     const entry = `[${new Date().toISOString().slice(11, 19)}] ${sanitizeLogValue(message)}`;
     if (runState.logs.length >= MAX_RUN_LOG_ENTRIES) return;
     runState.logs.push(entry);
+    logger.log?.(entry);
     onProgress({ type: "log", message: entry, runState });
   }
 
@@ -225,10 +229,12 @@ export async function runPipeline({
       job: { company: job.company, title: job.title },
       outputDir,
       rewriteEnabled: !skipRewrite,
+      analysisOnly,
     });
     log(`Starting CV Tailor pipeline for ${job.company} — ${job.title}`);
     log(`Target output: ${outputDir}/`);
     log(`LLM rewrite enabled: ${!skipRewrite}`);
+    log(`Analysis-only mode: ${analysisOnly}`);
 
     // -------------------------------------------------------------
     // STAGE 1: ANALYSE
@@ -269,6 +275,19 @@ export async function runPipeline({
       },
     });
     log(`✓ Analyse complete in ${((Date.now() - t0) / 1000).toFixed(2)}s`);
+
+    if (analysisOnly) {
+      for (const stage of ["tailor", "rewrite", "summary", "finalCheck", "render"]) {
+        updateStage(stage, { status: "skipped", duration: 0 });
+        emitEvent("stage.completed", { stage, status: "skipped", duration: 0 });
+      }
+      runState.status = "success";
+      runState.completedAt = new Date().toISOString();
+      emitEvent("pipeline.completed", { status: runState.status, artifacts: Object.keys(runState.artifacts) });
+      log("Analysis-only pipeline completed successfully.");
+      onProgress({ type: "complete", runState });
+      return runState;
+    }
 
     // -------------------------------------------------------------
     // STAGE 2: TAILOR

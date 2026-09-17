@@ -62,6 +62,7 @@ test("pipeline emits attributed, redacted child output and a normalized stage fa
 
 test("successful pipeline stages report duration and artifact paths", async () => {
   const events = [];
+  const terminalLogs = [];
   const runner = async (_command, args, options) => {
     options.onStdout?.("completed\\n");
     const script = args[0];
@@ -86,6 +87,7 @@ test("successful pipeline stages report duration and artifact paths", async () =
     processRunner: runner,
     configOverride: testConfig(testOutputRoot),
     renderService: async () => ({ success: true, htmlPath: "resume.html", pdfPath: "resume.pdf", txtPath: "resume.txt", sanityCheckPassed: true }),
+    logger: { log: (message) => terminalLogs.push(message) },
     onProgress: (payload) => {
       if (payload.type === "pipeline_event") events.push(payload.event);
     },
@@ -98,5 +100,38 @@ test("successful pipeline stages report duration and artifact paths", async () =
   for (const stage of ["analyse", "tailor", "rewrite", "summary", "finalCheck", "render"]) {
     assert.equal(events.some((event) => event.event === "stage.completed" && event.stage === stage), true);
   }
+  for (const stage of ["Analyse", "Tailor", "LLM Rewrite", "Summary Generation", "Final Check", "Render"]) {
+    assert.equal(terminalLogs.some((message) => message.includes(`Running Stage`) && message.includes(stage)), true);
+  }
+  assert.equal(terminalLogs.some((message) => message.includes("[analyse][stdout] completed")), true);
   assert.equal(events.some((event) => event.event === "pipeline.completed"), true);
+});
+
+test("analysis-only pipeline stops after creating the analysis artifact", async () => {
+  const calls = [];
+  const runner = async (_command, args) => {
+    calls.push(args[0]);
+    await fs.mkdir(args[5], { recursive: true });
+    await fs.writeFile(
+      path.join(args[5], "flash-engenheira-de-software-senior-analysis.json"),
+      JSON.stringify({ scores: {}, matches: { strong: [], related: [], missing: [] } }),
+    );
+    return { code: 0, stdout: "", stderr: "" };
+  };
+
+  const result = await runPipeline({
+    jobPath,
+    analysisOnly: true,
+    processRunner: runner,
+    configOverride: testConfig(testOutputRoot),
+    logger: { log: () => {} },
+    renderService: async () => assert.fail("analysis-only mode must not render"),
+  });
+
+  assert.deepEqual(calls, ["scripts/analyse.mjs"]);
+  assert.equal(result.status, "success");
+  assert.equal(result.stages.analyse.status, "success");
+  for (const stage of ["tailor", "rewrite", "summary", "finalCheck", "render"]) {
+    assert.equal(result.stages[stage].status, "skipped");
+  }
 });

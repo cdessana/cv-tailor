@@ -67,7 +67,7 @@
               <h1 class="font-bold text-slate-900 text-base leading-none">CV Tailor</h1>
               <span class="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">Local-First</span>
             </div>
-            <p class="text-xs text-slate-500 hidden sm:block mt-0.5">Factual Resume Tailoring & Pipeline Control</p>
+            <p class="text-xs text-slate-500 hidden sm:block mt-0.5">Career Profile and tailored CVs</p>
           </div>
         </div>
 
@@ -82,13 +82,17 @@
 
       <!-- Navigation Tabs -->
       <nav class="flex items-center gap-1 sm:gap-1.5 overflow-x-auto py-1 scrollbar-none w-full md:w-auto min-w-0" aria-label="Main Navigation">
-        <button id="nav-workspace" class="nav-tab active px-3 py-1.5 sm:py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 sm:gap-2 transition-colors whitespace-nowrap">
-          <i data-lucide="sparkles" class="w-4 h-4"></i>
-          <span>Workspace</span>
+        <button id="nav-home" class="nav-tab active px-3 py-1.5 sm:py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 sm:gap-2 transition-colors whitespace-nowrap">
+          <i data-lucide="house" class="w-4 h-4"></i>
+          <span>Home</span>
         </button>
         <button id="nav-evidence" class="nav-tab px-3 py-1.5 sm:py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 sm:gap-2 transition-colors text-slate-600 hover:text-slate-900 hover:bg-slate-100 whitespace-nowrap">
-          <i data-lucide="database" class="w-4 h-4"></i>
-          <span>Evidence</span>
+          <i data-lucide="briefcase-business" class="w-4 h-4"></i>
+          <span>My Career</span>
+        </button>
+        <button id="nav-workspace" class="nav-tab px-3 py-1.5 sm:py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 sm:gap-2 transition-colors text-slate-600 hover:text-slate-900 hover:bg-slate-100 whitespace-nowrap">
+          <i data-lucide="file-pen-line" class="w-4 h-4"></i>
+          <span>Tailor a CV</span>
         </button>
         <button id="nav-history" class="nav-tab px-3 py-1.5 sm:py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 sm:gap-2 transition-colors text-slate-600 hover:text-slate-900 hover:bg-slate-100 whitespace-nowrap">
           <i data-lucide="history" class="w-4 h-4"></i>
@@ -112,38 +116,54 @@
 
   <!-- Main View Area -->
   <main id="main-content" class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8 space-y-6">
+    <!-- HOME: next-step guidance -->
+    <section id="view-home" class="space-y-6">
+      <div class="bg-slate-900 text-white rounded-2xl p-6 sm:p-8 shadow-sm">
+        <p class="text-xs font-bold uppercase tracking-wider text-emerald-300">Your career, ready for every opportunity</p>
+        <h2 class="text-2xl sm:text-3xl font-bold mt-2">Build a stronger CV for the job you want.</h2>
+        <p class="text-sm text-slate-300 mt-3 max-w-2xl">Start with your reusable Career Profile, then tailor a focused CV for each opportunity.</p>
+        <div id="home-primary-action" class="mt-6"></div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4" aria-label="How CV Tailor works">
+        <article class="bg-white border border-slate-200 rounded-xl p-5"><span class="text-xs font-bold text-emerald-700">1. BUILD ONCE</span><h3 class="font-bold text-slate-900 mt-2">Create your Career Profile</h3><p class="text-xs text-slate-500 mt-2">Import a resume or LinkedIn PDF, then add the context that shows your impact.</p></article>
+        <article class="bg-white border border-slate-200 rounded-xl p-5"><span class="text-xs font-bold text-emerald-700">2. TARGET A ROLE</span><h3 class="font-bold text-slate-900 mt-2">Add a job description</h3><p class="text-xs text-slate-500 mt-2">We organize the important requirements so you can confirm the target.</p></article>
+        <article class="bg-white border border-slate-200 rounded-xl p-5"><span class="text-xs font-bold text-emerald-700">3. MAKE IT YOURS</span><h3 class="font-bold text-slate-900 mt-2">Review and download</h3><p class="text-xs text-slate-500 mt-2">Create a factual, tailored CV and review it before downloading.</p></article>
+      </div>
+      <div class="bg-white border border-slate-200 rounded-xl p-5 sm:p-6"><div class="flex items-center justify-between gap-3"><div><h3 class="font-bold text-slate-900">Your progress</h3><p id="home-progress-copy" class="text-xs text-slate-500 mt-1">Loading your Career Profile…</p></div><button id="btn-home-career" class="text-xs font-semibold px-3 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-800">View My Career</button></div><div id="home-progress-steps" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5"></div></div>
+    </section>
+
     <!-- VIEW 1: WORKSPACE (Default) -->
-    <section id="view-workspace" class="space-y-6">
+    <section id="view-workspace" class="hidden space-y-6">
       <!-- Workspace Sub-Header: Interactive Step Navigation Bar -->
       <div class="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4">
-        <div class="flex items-center gap-1.5 sm:gap-3 overflow-x-auto text-xs py-1 scrollbar-none w-full min-w-0" id="workspace-step-nav" aria-label="Pipeline Steps">
+        <div class="flex items-center gap-1.5 sm:gap-3 overflow-x-auto text-xs py-1 scrollbar-none w-full min-w-0" id="workspace-step-nav" aria-label="Tailored CV steps">
           <button id="step-ind-1" data-step="1" class="step-badge active clickable flex items-center gap-1.5 font-medium px-2.5 sm:px-3 py-1.5 rounded-full bg-slate-900 text-white whitespace-nowrap shrink-0">
             <span class="w-4 h-4 rounded-full bg-white/25 text-center leading-4 text-[10px] font-bold">1</span>
-            <span>Job Ingestion</span>
+            <span>Add job</span>
           </button>
           <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
           
           <button id="step-ind-2" data-step="2" class="step-badge clickable flex items-center gap-1.5 font-medium px-2.5 sm:px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 whitespace-nowrap shrink-0">
             <span class="w-4 h-4 rounded-full bg-slate-200 text-center leading-4 text-[10px] font-bold">2</span>
-            <span>Review Structure</span>
+            <span>Review job</span>
           </button>
           <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
 
           <button id="step-ind-3" data-step="3" class="step-badge clickable flex items-center gap-1.5 font-medium px-2.5 sm:px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 whitespace-nowrap shrink-0">
             <span class="w-4 h-4 rounded-full bg-slate-200 text-center leading-4 text-[10px] font-bold">3</span>
-            <span>Compatibility</span>
+            <span>See your match</span>
           </button>
           <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
 
           <button id="step-ind-4" data-step="4" class="step-badge clickable flex items-center gap-1.5 font-medium px-2.5 sm:px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 whitespace-nowrap shrink-0">
             <span class="w-4 h-4 rounded-full bg-slate-200 text-center leading-4 text-[10px] font-bold">4</span>
-            <span>Execution</span>
+            <span>Create CV</span>
           </button>
           <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
 
           <button id="step-ind-5" data-step="5" class="step-badge clickable flex items-center gap-1.5 font-medium px-2.5 sm:px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 whitespace-nowrap shrink-0">
             <span class="w-4 h-4 rounded-full bg-slate-200 text-center leading-4 text-[10px] font-bold">5</span>
-            <span>Preview & Diff</span>
+            <span>Review CV</span>
           </button>
         </div>
 
@@ -165,12 +185,12 @@
           <div>
             <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
               <i data-lucide="file-input" class="w-5 h-5 text-slate-700"></i>
-              <span>Stage 1: Job Description Ingestion</span>
+              <span>Add a job description</span>
             </h2>
-            <p class="text-xs text-slate-500 mt-0.5">Paste raw job description or choose an existing parsed job file from <code class="font-mono text-slate-700">data/jobs/</code>.</p>
+            <p class="text-xs text-slate-500 mt-0.5">Paste the job description you want to target, or continue a saved job.</p>
           </div>
           <div class="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
-            <label for="select-existing-job" class="text-xs font-semibold text-slate-600 whitespace-nowrap">Load saved:</label>
+            <label for="select-existing-job" class="text-xs font-semibold text-slate-600 whitespace-nowrap">Saved job:</label>
             <select id="select-existing-job" class="text-xs bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-800 focus:bg-white focus:border-slate-900 focus:ring-1 focus:ring-slate-900 focus:outline-none w-full sm:w-auto sm:max-w-[240px]">
               <option value="">-- Choose saved job --</option>
             </select>
@@ -180,7 +200,7 @@
         <!-- Raw Textarea Container -->
         <div>
           <div class="flex flex-wrap items-center justify-between text-xs text-slate-600 mb-1.5 gap-2">
-            <span class="font-semibold">Raw Job Description Text</span>
+            <span class="font-semibold">Job description</span>
             <div class="flex items-center gap-3">
               <button id="btn-clear-raw-text" class="text-[11px] text-slate-400 hover:text-slate-700">Clear text</button>
               <span id="char-count" class="font-mono text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded">0 characters</span>
@@ -217,9 +237,9 @@
             <label class="hidden md:block text-xs font-semibold text-slate-700 mb-1 invisible select-none">Action</label>
             <button id="btn-parse-job" class="w-full py-2.5 px-4 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 min-h-[38px]">
               <i data-lucide="play" class="w-4 h-4"></i>
-              <span id="btn-parse-text">Parse Job Description</span>
+              <span id="btn-parse-text">Continue</span>
             </button>
-            <p class="text-[11px] text-slate-400 mt-1 text-center">Advances to Stage 2 upon parsing</p>
+            <p class="text-[11px] text-slate-400 mt-1 text-center">We will identify the role and its key requirements.</p>
           </div>
         </div>
 
@@ -234,26 +254,26 @@
             <div class="flex items-center gap-2">
               <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
                 <i data-lucide="check-square" class="w-5 h-5 text-emerald-600"></i>
-                <span>Stage 2: Parsed Job Structure Review</span>
+                <span>Review the job requirements</span>
               </h2>
               <span id="badge-semantic-used" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
                 Deterministic
               </span>
             </div>
-            <p class="text-xs text-slate-500 mt-0.5">Review and curate parsed requirements before tailoring. You can edit, add, or delete items.</p>
+            <p class="text-xs text-slate-500 mt-0.5">Confirm the requirements that matter most. You can edit anything before creating your CV.</p>
           </div>
           <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <button id="btn-toggle-raw-json" class="flex-1 sm:flex-initial text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 whitespace-nowrap">
               <i data-lucide="code" class="w-3.5 h-3.5"></i>
-              <span id="toggle-json-text">Inspect Raw JSON</span>
+              <span id="toggle-json-text">Advanced data</span>
             </button>
             <button id="btn-save-job-changes" class="flex-1 sm:flex-initial text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 flex items-center justify-center gap-1.5 whitespace-nowrap">
               <i data-lucide="save" class="w-3.5 h-3.5"></i>
-              <span>Save Job File</span>
+              <span>Save job</span>
             </button>
             <button id="btn-proceed-analyse" class="w-full sm:w-auto text-xs font-semibold px-4 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs flex items-center justify-center gap-1.5 whitespace-nowrap">
               <i data-lucide="arrow-right" class="w-4 h-4"></i>
-              <span>Analyse Compatibility</span>
+              <span>See my match</span>
             </button>
           </div>
         </div>
@@ -367,14 +387,14 @@
           <div>
             <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
               <i data-lucide="bar-chart-2" class="w-5 h-5 text-slate-800"></i>
-              <span>Stage 3: Evidence Compatibility Matrix</span>
+              <span>See your match</span>
             </h2>
-            <p class="text-xs text-slate-500 mt-0.5">Automated factual evaluation of candidate master evidence vs. target job requirements.</p>
+            <p class="text-xs text-slate-500 mt-0.5">See how your Career Profile matches this opportunity before creating your tailored CV.</p>
           </div>
           <div class="flex items-center gap-2 w-full sm:w-auto">
             <button id="btn-run-full-pipeline" class="w-full sm:w-auto text-xs font-semibold px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white shadow-xs flex items-center justify-center gap-2">
               <i data-lucide="play" class="w-4 h-4"></i>
-              <span>Refresh Evidence Matrix</span>
+              <span>Update match</span>
             </button>
           </div>
         </div>
@@ -547,7 +567,7 @@
           <!-- Stage 2 Node -->
           <div id="node-tailor" class="stage-node p-2.5 sm:p-3 rounded-lg border border-slate-200 bg-slate-50 space-y-2 flex flex-col justify-between min-w-0">
             <div class="flex items-center justify-between text-xs">
-              <span class="font-bold text-slate-800 truncate">2. Tailor</span>
+              <span class="font-bold text-slate-800 truncate">Create tailored CV</span>
               <span id="icon-tailor"><i data-lucide="clock" class="w-3.5 h-3.5 text-slate-400"></i></span>
             </div>
             <div class="text-[11px] text-slate-500 font-medium" id="duration-tailor">Pending</div>
@@ -629,7 +649,7 @@
           <div>
             <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
               <i data-lucide="layout" class="w-5 h-5 text-slate-800"></i>
-              <span>Stage 6: Artifacts & Interactive Resume Preview</span>
+              <span>Review your tailored CV</span>
             </h2>
             <p class="text-xs text-slate-500 mt-0.5">Switch themes dynamically, inspect factual diffs, and download production resumes.</p>
           </div>
@@ -722,22 +742,26 @@
           <div>
             <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
               <i data-lucide="database" class="w-5 h-5 text-slate-800"></i>
-              <span>Master Career Evidence Base (<code class="font-mono text-xs text-slate-700">data/evidence.json</code>)</span>
+              <span>Master Career Profile</span>
             </h2>
-            <p class="text-xs text-slate-500 mt-0.5">The ground truth for all resume tailoring. The pipeline strictly rejects any claim not rooted here.</p>
+            <p class="text-xs text-slate-500 mt-0.5">Your complete, reusable career history. Import a resume, add missing context, then confirm it before tailoring a resume.</p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <button id="btn-open-interview-modal" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white flex items-center gap-1.5 shadow-xs transition-colors">
               <i data-lucide="message-square" class="w-3.5 h-3.5"></i>
-              <span>Guided Career Interview</span>
+              <span>Complete profile</span>
             </button>
             <button id="btn-build-evidence" type="button" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white flex items-center gap-1.5 shadow-xs transition-colors">
               <i data-lucide="wand-sparkles" class="w-3.5 h-3.5"></i>
-              <span>Build from Resume</span>
+              <span>Review profile updates</span>
+            </button>
+            <button id="btn-resume-evidence-review" type="button" class="hidden text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 flex items-center gap-1.5 transition-colors">
+              <i data-lucide="clipboard-check" class="w-3.5 h-3.5"></i>
+              <span>Continue profile review</span>
             </button>
             <button id="btn-add-experience-modal" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 flex items-center gap-1.5 shadow-2xs transition-colors">
               <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-              <span>Add Experience</span>
+              <span>Add a role</span>
             </button>
             <a href="/api/evidence/export" download class="text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 transition-colors">
               <i data-lucide="download" class="w-3.5 h-3.5"></i>
@@ -749,25 +773,39 @@
         <!-- Metric Stat Counters -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
           <div class="p-3.5 bg-slate-50 rounded-lg border border-slate-200">
-            <span class="text-[11px] font-semibold text-slate-500 block">Verified Experiences</span>
+            <span class="text-[11px] font-semibold text-slate-500 block">Career roles</span>
             <span id="metric-experiences-count" class="text-2xl font-black text-slate-900">0</span>
           </div>
           <div class="p-3.5 bg-slate-50 rounded-lg border border-slate-200">
-            <span class="text-[11px] font-semibold text-slate-500 block">Documented Career Facts</span>
+            <span class="text-[11px] font-semibold text-slate-500 block">Confirmed details</span>
             <span id="metric-facts-count" class="text-2xl font-black text-slate-900">0</span>
           </div>
           <div class="p-3.5 bg-slate-50 rounded-lg border border-slate-200">
-            <span class="text-[11px] font-semibold text-slate-500 block">Cataloged Skills</span>
+            <span class="text-[11px] font-semibold text-slate-500 block">Skills</span>
             <span id="metric-skills-count" class="text-2xl font-black text-slate-900">0</span>
           </div>
           <div class="p-3.5 bg-slate-50 rounded-lg border border-slate-200">
-            <span class="text-[11px] font-semibold text-slate-500 block">Review Queue Items</span>
+            <span class="text-[11px] font-semibold text-slate-500 block">Details to review</span>
             <span id="metric-queue-count" class="text-2xl font-black text-amber-700">0</span>
           </div>
         </div>
       </div>
 
       <div id="evidence-builder-container" class="hidden bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-3"></div>
+
+      <div class="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div><h3 class="text-sm font-bold text-slate-900">Import LinkedIn Profile</h3><p class="text-xs text-slate-500 mt-0.5">Upload the PDF downloaded from LinkedIn. It is processed locally; CV Tailor does not sign in to, scrape, or contact LinkedIn.</p></div>
+          <button id="btn-linkedin-import" type="button" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 text-white">Parse profile</button>
+        </div>
+        <div class="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-slate-700 space-y-1"><p class="font-semibold text-slate-900">How to import your profile</p><ol class="list-decimal ml-4 space-y-1"><li>Open your LinkedIn profile and choose its PDF download option.</li><li>Upload that downloaded PDF below.</li><li>Select <em>Parse profile</em>, review every proposed change, then apply only the items you confirm.</li></ol><p class="text-slate-500">Nothing is sent to LinkedIn or saved to your resume before review.</p></div>
+        <label for="linkedin-import-pdf" class="block text-xs font-semibold text-slate-700">LinkedIn profile PDF</label>
+        <input id="linkedin-import-pdf" type="file" accept="application/pdf,.pdf" class="w-full text-xs border border-slate-300 rounded p-2">
+        <p class="text-[11px] text-slate-500">Use a text-based PDF. Scanned PDFs without selectable text cannot be imported yet.</p>
+        <details class="text-xs text-slate-600"><summary class="cursor-pointer font-medium">Advanced: paste structured JSON instead</summary><textarea id="linkedin-import-source" rows="5" class="w-full mt-2 text-xs font-mono border border-slate-300 rounded p-2" placeholder='{"profile":{"name":"…","headline":"…"},"education":[…]}'></textarea></details>
+        <div id="linkedin-import-review" class="text-xs text-slate-600"></div>
+        <div id="linkedin-import-history" class="text-xs text-slate-500"></div>
+      </div>
 
       <!-- CANDIDATE SKILLS & CORE COMPETENCIES SHOWCASE (EMPHASIZED) -->
       <div id="section-candidate-skills" class="bg-white rounded-xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-4">
@@ -778,7 +816,7 @@
               <h3 class="text-sm font-bold text-slate-900">Candidate Technical Skills & Core Competencies</h3>
               <span id="evidence-skills-count-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 border border-slate-200">0 cataloged</span>
             </div>
-            <p class="text-xs text-slate-500">Verified competencies grounded in your career record. Click any skill to filter matching experiences.</p>
+            <p class="text-xs text-slate-500">Skills found in your career history. Click any skill to filter matching roles.</p>
           </div>
           <div id="active-skill-filter-bar" class="hidden flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-xs">
             <span class="text-slate-600 font-medium">Filtered by:</span>
@@ -795,14 +833,14 @@
         </div>
       </div>
 
-      <!-- Sub-Tabs: Catalog vs Review Queue -->
+      <!-- Sub-tabs: career history and details to complete -->
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-2">
         <div class="flex items-center gap-2">
           <button id="tab-evidence-catalog" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white">
-            Evidence Catalog
+            Career history
           </button>
           <button id="tab-evidence-queue" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 flex items-center gap-1.5">
-            <span>Review Queue</span>
+            <span>Details to complete</span>
             <span id="badge-queue-pending" class="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">0</span>
           </button>
         </div>
@@ -825,12 +863,12 @@
 
       <!-- Catalog Experience Cards -->
       <div id="evidence-catalog-container" class="space-y-4">
-        <div class="text-center py-8 text-xs text-slate-400">Loading career evidence catalog...</div>
+        <div class="text-center py-8 text-xs text-slate-400">Loading your career history...</div>
       </div>
 
       <!-- Review Queue Container -->
       <div id="evidence-queue-container" class="hidden space-y-4">
-        <div class="text-center py-8 text-xs text-slate-400">Loading review queue...</div>
+        <div class="text-center py-8 text-xs text-slate-400">Loading details to complete...</div>
       </div>
     </section>
 
@@ -951,7 +989,7 @@
       <div class="flex items-center justify-between border-b border-slate-200 pb-3">
         <div class="flex items-center gap-2">
           <i data-lucide="message-square" class="w-5 h-5 text-slate-800"></i>
-          <h3 id="modal-interview-title" class="text-base font-bold text-slate-900">Guided Career Interview</h3>
+          <h3 id="modal-interview-title" class="text-base font-bold text-slate-900">Add career details</h3>
         </div>
         <button id="btn-close-interview" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg" aria-label="Close dialog">
           <i data-lucide="x" class="w-4 h-4"></i>
@@ -959,7 +997,7 @@
       </div>
 
       <p class="text-xs text-slate-500 leading-relaxed">
-        Structure past achievements into verifiable factual claims. Submitting places them into the <strong>Review Queue</strong> for validation before merging into <code class="font-mono">evidence.json</code>.
+        Add the projects, responsibilities, achievements, and technologies that make this role more useful when tailoring future resumes. You will be able to review the details before they are added to your profile.
       </p>
 
       <div class="space-y-3 text-xs">
@@ -994,7 +1032,7 @@
         <button id="btn-cancel-interview" class="text-xs px-3.5 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold transition-colors">Cancel</button>
         <button id="btn-submit-interview" class="text-xs px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-1.5 shadow-xs transition-colors">
           <i data-lucide="send" class="w-3.5 h-3.5"></i>
-          <span>Submit to Review Queue</span>
+          <span>Save for profile review</span>
         </button>
       </div>
     </div>
@@ -1065,27 +1103,27 @@
     <div class="bg-white rounded-xl max-w-xl w-full border border-slate-200 shadow-xl p-4 sm:p-6 space-y-4 modal-content-box">
       <div class="flex items-center justify-between border-b border-slate-200 pb-3">
         <div>
-          <h3 id="modal-build-evidence-title" class="text-base font-bold text-slate-900">Build candidate evidence</h3>
-          <p class="text-xs text-slate-500 mt-1">Sources are provenance references only; they are not scraped or analyzed automatically.</p>
+          <h3 id="modal-build-evidence-title" class="text-base font-bold text-slate-900">Prepare your profile review</h3>
+          <p class="text-xs text-slate-500 mt-1">We will organize the information already in your resume so you can confirm it and fill in only the missing context. Nothing is added to your profile yet.</p>
         </div>
         <button id="btn-close-build-evidence-modal" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg" aria-label="Close dialog"><i data-lucide="x" class="w-4 h-4"></i></button>
       </div>
       <div class="space-y-3 text-xs">
         <fieldset class="space-y-2">
-          <legend class="font-semibold text-slate-700">Resume input</legend>
-          <label class="flex items-center gap-2"><input type="radio" name="evidence-resume-source" value="configured" checked> Use configured base resume</label>
-          <label class="flex items-center gap-2"><input type="radio" name="evidence-resume-source" value="file"> Upload validated structured resume JSON</label>
+          <legend class="font-semibold text-slate-700">Resume to review</legend>
+          <label class="flex items-center gap-2"><input type="radio" name="evidence-resume-source" value="configured" checked> Use my current career profile</label>
+          <label class="flex items-center gap-2"><input type="radio" name="evidence-resume-source" value="file"> Upload a structured resume JSON file</label>
           <input id="input-evidence-resume-file" type="file" accept="application/json,.json" class="hidden w-full border border-slate-300 rounded p-2" aria-label="Structured resume JSON file">
         </fieldset>
         <div class="border-t border-slate-200 pt-3">
-          <div class="flex items-center justify-between gap-2"><label class="font-semibold text-slate-700">Supporting source references</label><button id="btn-add-evidence-source" type="button" class="text-xs underline text-slate-700">Add source</button></div>
+          <div class="flex items-center justify-between gap-2"><label class="font-semibold text-slate-700">Optional supporting files</label><button id="btn-add-evidence-source" type="button" class="text-xs underline text-slate-700">Add file</button></div>
           <div id="evidence-source-inputs" class="space-y-2 mt-2"></div>
         </div>
         <p id="build-evidence-error" class="hidden text-rose-700 bg-rose-50 border border-rose-200 rounded p-2" role="alert"></p>
       </div>
       <div class="flex justify-end gap-2 pt-3 border-t border-slate-200">
         <button id="btn-cancel-build-evidence" type="button" class="text-xs px-3.5 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold">Cancel</button>
-        <button id="btn-submit-build-evidence" type="button" class="text-xs px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold">Build candidate</button>
+        <button id="btn-submit-build-evidence" type="button" class="text-xs px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold">Start profile review</button>
       </div>
     </div>
   </div>

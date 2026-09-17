@@ -1,209 +1,170 @@
 {
-  "$schema": "https://raw.githubusercontent.com/jsonresume/resume-schema/master/schema.json",
   "basics": {
     "name": "Carmina Nascimento",
-    "label": "Senior Software Engineer",
+    "label": "Senior Software Engineer | Backend & Distributed Systems | System Design | Cloud | Event-Driven Architecture",
+    "summary": "Senior Software Engineer focused on backend engineering, system design and distributed systems. I build and evolve software systems that deal with complex requirements, scale, performance and long-term maintainability — from modernizing legacy platforms to designing backend services and asynchronous, event-driven solutions. My experience spans Kotlin, Java, Spring Boot, Python, .NET, GCP, relational and NoSQL databases, as well as API design, performance optimization, cloud services and software architecture. At Instituto de Pesquisas ELDORADO, I work across the software lifecycle, from architecture and backend development to product delivery and technical problem solving. I have also contributed to developer productivity through AI-assisted engineering workflows and internal tools. Earlier in my career, I spent almost seven years at Sidia, working on Samsung-related software platforms and progressively moving from QA into software engineering. This gave me a strong perspective on software quality, testing, development, architecture and the evolution of complex legacy systems. I also enjoy mentoring engineers, reviewing code and helping teams turn ambiguous problems into maintainable technical solutions. Areas of interest: Backend Engineering · Distributed Systems · System Design · Software Architecture · Cloud Computing · Event-Driven Systems · Performance · AI-assisted Software Engineering",
     "email": "cdessana@gmail.com",
-    "phone": "+5592982774777",
-    "summary": "Senior Software Engineer with 8+ years of experience designing scalable backend systems, modernizing legacy applications, and delivering enterprise software from concept to production. Experienced in Kotlin, Java, Python, Spring Boot, .NET, Google Cloud Platform, and Angular, with a strong focus on software architecture, developer productivity, technical leadership, and AI-assisted engineering. Focused on building maintainable systems, mentoring engineers, and improving software delivery through automation and engineering best practices.",
     "location": {
-      "region": "Amazonas",
-      "countryCode": "BR"
-    },
-    "profiles": [
-      {
-        "network": "LinkedIn",
-        "username": "Carmina Nascimento",
-        "url": "https://www.linkedin.com/in/carmina-nascimento/"
-      }
-    ]
+      "raw": "Amazonas, Brazil"
+    }
   },
+  "skills": [
+    {
+      "name": "C++"
+    },
+    {
+      "name": "SQL"
+    },
+    {
+      "name": ".NET Core"
+    }
+  ],
   "work": [
     {
       "name": "Instituto de Pesquisas Eldorado",
       "position": "Senior Full Stack Engineer",
+      "location": "Manaus, AM",
       "startDate": "2024-03",
       "highlights": [
-        "Design, develop, and maintain 4 cloud-native backend services using Kotlin, Java, Spring Boot, Python (Flask), MySQL, and Google Cloud Platform, supporting enterprise-scale applications.",
-        "Develop RESTful APIs and event-driven integrations using Google Cloud Pub/Sub and asynchronous messaging, enabling scalable communication between distributed systems.",
-        "Collaborate on architectural decisions across monolithic and distributed services, improving scalability, maintainability, and long-term system evolution.",
-        "Apply Domain-Driven Design (DDD) principles when evolving backend services and domain boundaries, supporting clearer separation of responsibilities and maintainable system evolution.",
-        "Optimized complex database queries and backend processing, reducing page loading time from 1 minute 40 seconds to 17 seconds (an 83% improvement) and significantly enhancing the user experience.",
-        "Led the technical implementation of a new Net Promoter Score (NPS) feature, designing approximately 12 user interfaces, implementing backend and frontend components, designing the database schema, documenting the architecture, and coordinating data integration with consuming teams from design through production.",
-        "Championed a documentation-first engineering culture by authoring 20+ technical documents in Confluence, including onboarding guides, architecture documentation, Engineering Decision Records (EDRs), database schemas and development workflows, creating a sustainable engineering knowledge base.",
-        "Mentor trainees and interns, contributing to the conversion of two interns into full-time engineers.",
-        "Leveraged AI-assisted design tools (Gemini CLI and Stitch) to rapidly prototype UI/UX concepts, enabling efficient collaboration with Product Management in the absence of a dedicated designer.",
-        "Designed and developed LLM-powered developer productivity tools adopted across the engineering team, including an assistant that analyzes Jira change requests together with the project codebase to explain requirements, identify impacted components, and reduce dependency on senior engineers during implementation.",
-        "Developed an AI-assisted workflow adopted across the team that generates and updates unit tests based on source code changes, significantly reducing the manual effort required to create test scaffolding while preserving developer review and quality standards.",
-        "Served as a primary technical contact for platform users, gathering feedback, translating user needs into technical requirements, and partnering with Product Management to prioritize improvements that enhanced product usability and customer satisfaction.",
-        "Co-authored peer-reviewed technical publications based on engineering projects, transforming practical software engineering experience into published research."
+        "Design, develop, and maintain cloud-native backend services using Kotlin, Java, Spring Boot, Python (Flask), MySQL, and Google Cloud Platform, supporting enterprise-scale applications.",
+        "Design RESTful APIs and event-driven integrations using Google Cloud Pub/Sub and asynchronous messaging, contributing to scalable and reliable distributed systems.",
+        "Participate in system architecture and technical decisions across monolithic and distributed environments, focusing on scalability, maintainability, performance, and long-term system evolution.",
+        "Optimize backend processing and complex database queries.",
+        "Design and develop LLM-powered developer productivity tools, including AI- assisted workflows for analyzing Jira change requests, identifying impacted components, and generating or updating unit tests based on source code changes.",
+        "Drive engineering practices that improve knowledge sharing and maintainability, authoring technical documents covering architecture, database schemas, engineering decisions, onboarding, and development workflows.",
+        "Mentor trainees and interns, supporting their technical development and contributing to the conversion of two interns into full-time engineers.",
+        "Collaborate closely with Product Management and platform users to translate business and user needs into technical requirements and product improvements.",
+        "Contribute to technical publications based on software engineering projects, connecting practical engineering work with applied research."
       ]
     },
     {
       "name": "Sidia Instituto de Ciência e Tecnologia",
       "position": "Full Stack Engineer",
-      "startDate": "2018-04",
+      "location": "Greater Manaus",
+      "startDate": "2017-06",
       "endDate": "2024-03",
       "highlights": [
-        "Designed, developed, and maintained enterprise software solutions using Java, C#, .NET, WPF, JavaScript, Angular, MySQL, and REST APIs, supporting Samsung's Quality Assurance organization across multiple strategic initiatives.",
-        "Assumed technical leadership of a critical project following the departure of the technical lead, planning delivery, coordinating 2 software engineering interns, leading technical discussions, collaborating with Samsung stakeholders, and successfully delivering the remaining project scope.",
-        "Designed and developed a centralized quality management platform that replaced spreadsheet-based workflows for Samsung's Latin America QA hub, enabling approximately 25 QA engineers to manage 80+ concurrent testing projects, execution status, and validation results through a web application that remains in active use.",
-        "Designed scalable backend services and REST APIs supporting enterprise quality assurance workflows and cross-system integrations.",
-        "Led the modernization of legacy backend services by migrating APIs to .NET 5, improving maintainability, reliability, and long-term platform evolution.",
-        "Modernized a large legacy analytics platform by refactoring backend services, migrating business logic from the frontend to the backend, and improving application architecture while continuing to deliver new features.",
-        "Optimized backend services and database operations powering near real-time dashboards, charts, maps, and reporting for Samsung device quality monitoring, processing data from thousands of devices daily while improving application responsiveness and scalability.",
-        "Redesigned application workflows in collaboration with UX designers, delivering more intuitive interfaces and improving usability across multiple system modules.",
-        "Established automated quality gates by implementing GitLab CI pipelines that enforced unit test coverage thresholds, preventing quality regressions during continuous integration.",
-        "Developed comprehensive unit tests and extended an internal Visual Studio add-in to provide developers with real-time code coverage feedback, improving software quality and developer productivity.",
-        "Participated in architecture discussions, conducted code reviews, and led large-scale refactoring initiatives that reduced technical debt, simplified future development, and improved long-term maintainability."
+        "Progressed from Quality Assurance to Full Stack Engineering, taking on increasing ownership of enterprise software, backend systems, architecture, and technical leadership across multiple Samsung initiatives.",
+        "Designed and developed a centralized quality management platform that replaced spreadsheet-based workflows for Samsung’s Latin America QA hub, enabling QA engineers to manage concurrent testing projects, execution status, and validation results through a web application that remains in active use.",
+        "Designed and maintained enterprise applications and RESTful backend services using Java, C#, .NET, WPF, JavaScript, Angular, MySQL, and REST APIs, supporting Samsung’s Quality Assurance organization.",
+        "Led the modernization of legacy backend services by migrating APIs to .NET 5 and refactoring application architecture to improve maintainability, reliability, and long-term evolution.",
+        "Modernized a large legacy analytics platform by moving business logic from the frontend to the backend, reducing technical debt while continuing to deliver new functionality.",
+        "Optimized backend services and database operations powering near real- time dashboards, charts, maps, and reporting for Samsung device quality monitoring, processing data from thousands of devices daily.",
+        "Assumed technical leadership of a critical project following the departure of the technical lead, coordinating two software engineering interns, leading technical discussions, collaborating with Samsung stakeholders, and successfully delivering the remaining project scope.",
+        "Established automated quality gates through GitLab CI pipelines and developed comprehensive unit tests and developer tooling that provided real- time code coverage feedback, improving software quality and preventing regressions.",
+        "Participated in architecture discussions, code reviews, and large-scale refactoring initiatives, driving improvements in system maintainability, performance, and development practices."
       ]
-    },
-    {
-      "name": "Sidia Instituto de Ciência e Tecnologia",
-      "position": "Quality Assurance Analyst",
-      "startDate": "2017-06",
-      "endDate": "2018-10",
-      "highlights": []
     },
     {
       "name": "VTinova",
       "position": "Junior Development Analyst",
-      "startDate": "2013-09",
+      "location": "Manaus Area, Brazil",
+      "startDate": "2014-06",
       "endDate": "2014-10",
-      "highlights": []
+      "highlights": [
+        "Developed and maintained embedded software systems.",
+        "Prepared official software builds for functional and field testing."
+      ]
+    },
+    {
+      "name": "VTinova",
+      "position": "Software Intern",
+      "location": "Greater Manaus",
+      "startDate": "2013-09",
+      "endDate": "2014-06",
+      "highlights": [
+        "Designed test plans and specified detailed test cases.",
+        "Executed manual and automated tests, reporting and tracking defects.",
+        "Communicated test results and monitored issue resolution.",
+        "Contributed to the development and maintenance of embedded software systems.",
+        "Prepared official software builds for functional and field testing."
+      ]
     },
     {
       "name": "Nokia Institute of Technology",
       "position": "Software Intern",
+      "location": "Manaus, Amazonas, Brazil",
       "startDate": "2012-04",
       "endDate": "2012-08",
-      "highlights": []
+      "highlights": [
+        "Supported the development of automation projects, contributing to technical implementation and testing activities.",
+        "Analyzed testing methodologies and contributed to improving validation processes.",
+        "Assisted in evaluating technical specifications, devices, and system designs.",
+        "Supported the development lifecycle of new engineering projects, collaborating with cross-functional teams."
+      ]
     }
   ],
   "education": [
     {
       "institution": "PUC Minas",
-      "area": "DevOps & Continuous Software Engineering",
       "studyType": "Master of Business Administration",
+      "area": "DevOps & Continuous Software Engineering",
       "startDate": "2025-04",
       "endDate": "2026-12"
     },
     {
       "institution": "Universidade Tecnológica Federal do Paraná",
-      "area": "Computer Software Engineering",
       "studyType": "Master of Business Administration - MBA",
+      "area": "Computer Software Engineering",
       "startDate": "2019",
       "endDate": "2020"
     },
     {
       "institution": "Universidade Federal do Amazonas",
-      "area": "Electrical and Electronics Engineering",
       "studyType": "Master of Science",
+      "area": "Electrical and Electronics Engineering",
       "startDate": "2014",
       "endDate": "2017"
     },
     {
       "institution": "Universidade do Estado do Amazonas - UEA",
-      "area": "Electrical and Electronics Engineering",
       "studyType": "Bachelor of Engineering (BE)",
+      "area": "Electrical and Electronics Engineering",
       "startDate": "2008",
       "endDate": "2014"
     },
     {
       "institution": "Brunel University",
-      "area": "Electrical and Electronics Engineering",
       "studyType": "Bachelor of Engineering (BEng)",
+      "area": "Electrical and Electronics Engineering",
       "startDate": "2012",
       "endDate": "2013"
     }
   ],
   "certificates": [
     {
-      "name": "React Nanodegree",
-      "issuer": "Udacity"
+      "name": "React Nanodegree"
+    },
+    {
+      "name": "Generative AI: Prompt Engineering Basics"
     },
     {
       "name": "Certified Tester, Foundation Level (CTFL)"
     }
   ],
-  "skills": [
+  "publications": [
     {
-      "name": "Backend Engineering",
-      "keywords": [
-        "Java",
-        "Kotlin",
-        "Spring Boot",
-        "Node.js",
-        "Python",
-        ".NET Core",
-        "RESTful APIs",
-        "gRPC"
-      ]
+      "name": "Determinação de um conjunto reduzido de características morfológicas para classificação de lesões mamárias em imagens de ultrassom utilizando máquinas de vetores de suporte"
     },
     {
-      "name": "Architecture",
-      "keywords": [
-        "System Architecture",
-        "Domain-Driven Design",
-        "Event-Driven Architecture",
-        "Distributed Systems",
-        "Scalable Systems"
-      ]
+      "name": "Classification of bifurcations regions in IVOCT images using support vector machine and artificial neural network models"
     },
     {
-      "name": "Architecture Concepts",
-      "level": "Familiar",
-      "keywords": ["Clean Architecture"]
-    },
-    {
-      "name": "Frontend",
-      "keywords": ["JavaScript", "TypeScript", "Angular"]
-    },
-    {
-      "name": "Data",
-      "keywords": ["SQL", "MySQL", "MongoDB"]
-    },
-    {
-      "name": "Cloud & DevOps",
-      "keywords": [
-        "Google Cloud Platform (GCP)",
-        "Google Cloud Pub/Sub",
-        "GitLab CI",
-        "CI/CD",
-        "Continuous Integration"
-      ]
-    },
-    {
-      "name": "Quality Engineering",
-      "keywords": [
-        "Automated Testing",
-        "Unit Testing",
-        "Integration Testing",
-        "Code Reviews"
-      ]
-    },
-    {
-      "name": "Technical Leadership",
-      "keywords": [
-        "Technical Leadership",
-        "Mentoring",
-        "Technical Coaching",
-        "Architecture Discussions"
-      ]
-    },
-    {
-      "name": "Other",
-      "keywords": ["C++"]
+      "name": "Migrating Legacy Systems: An experience report on the industrial environment"
     }
   ],
   "languages": [
     {
       "language": "English",
-      "fluency": "Fluent"
+      "fluency": "Full Professional"
     },
     {
       "language": "Spanish",
-      "fluency": "Basic"
+      "fluency": "Elementary"
+    },
+    {
+      "language": "French",
+      "fluency": "Elementary"
     }
   ]
 }
