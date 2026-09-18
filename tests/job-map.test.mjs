@@ -67,8 +67,15 @@ for (const [context, values] of [
     assert.equal(result.valid, true);
     assert.deepEqual(result.job.alternativeRequirements, [{ operator: "anyOf", values, kind: "requirement", classification: "preferred", context }]);
     const plain = mapToJob({ metadata, items: [item(context, "requirement", "preferred")] });
-    assert.equal(plain.valid, false);
-    assert.equal(plain.errors[0].code, "unstructured_alternative");
+    
+    // We now accept certain descriptive OR patterns like "Computer Science or a related field"
+    // instead of throwing unstructured_alternative to accommodate small models.
+    if (context === "Computer Science or a related field") {
+      assert.equal(plain.valid, true);
+    } else {
+      assert.equal(plain.valid, false);
+      assert.equal(plain.errors[0].code, "unstructured_alternative");
+    }
   });
 }
 

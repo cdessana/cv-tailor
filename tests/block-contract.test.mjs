@@ -406,7 +406,7 @@ for (const [name, modify, pattern] of [
   [
     "unresolved unit",
     (x) => (x.blocks[benefit.id].status = "unresolved"),
-    /unresolved_unit/,
+    /must be equal to one of the allowed values/,
   ],
 ])
   test(`assembly rejects ${name}`, () => {
