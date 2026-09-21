@@ -162,10 +162,12 @@ test("extracts explicit company and title metadata without semantic inference", 
     company: {
       value: "Example",
       evidence: { quote: "Example is hiring a Senior Engineer" },
+      sourceUnitIds: [result.extraction.metadata.company.sourceUnitIds[0]],
     },
     title: {
       value: "Senior Engineer",
       evidence: { quote: "Example is hiring a Senior Engineer" },
+      sourceUnitIds: [result.extraction.metadata.title.sourceUnitIds[0]],
     },
   });
   assert.equal(result.unresolved.length, 0);
@@ -342,10 +344,35 @@ test("nested technology details do not become independent requirements", () => {
     "  - Amazon SQS, Amazon SNS, AWS Lambda",
   ].join("\n")));
   assert.deepEqual(result.extraction.items.map((item) => item.value), [
-    "Strong experience with AWS, including:",
+    "Strong experience with AWS",
+  ]);
+  assert.deepEqual(result.extraction.items[0].examples, [
+    { value: "Amazon SQS, Amazon SNS, AWS Lambda" },
   ]);
   assert.equal(result.extraction.coverage[0].status, "excluded");
   assert.match(result.extraction.coverage[0].reason, /not an independent requirement/u);
+});
+
+test("nested technology details remain attached as examples", () => {
+  const result = extract(
+    preprocess(
+      [
+        "Requirements",
+        "- Strong experience with AWS, including:",
+        "  - Amazon SQS",
+        "  - Amazon SNS",
+        "  - AWS Lambda",
+      ].join("\n")
+    )
+  );
+  assert.equal(result.extraction.items.length, 1);
+  assert.equal(result.extraction.items[0].value, "Strong experience with AWS");
+  assert.deepEqual(
+    result.extraction.items[0].examples.map(({ value }) => value),
+    ["Amazon SQS", "Amazon SNS", "AWS Lambda"]
+  );
+  assert.deepEqual(result.extraction.items[0].sourceUnitIds.length, 1);
+  assert.ok(result.extraction.coverage.every(({ reason }) => /preserved as an example/u.test(reason)));
 });
 
 test("extracts Worldpay-style ownership, qualification, and bonus bullets", () => {
@@ -568,11 +595,13 @@ test("extracts structured Portuguese sections and separates benefits from requir
     {
       value: "On-site",
       evidence: { quote: "Workplace Type: On-site" },
+      sourceUnitIds: [result.extraction.metadata.workArrangement.candidates[0].sourceUnitIds[0]],
     },
     {
       value: "Híbrido - 2x Presencial",
       evidence: { quote: "Híbrido - 2x Presencial" },
       sourceSection: "Modelo de trabalho",
+      sourceUnitIds: [result.extraction.metadata.workArrangement.candidates[1].sourceUnitIds[0]],
     },
   ]);
   assert.equal(result.extraction.coverage.filter(({ status }) => status === "excluded").length, 1);
