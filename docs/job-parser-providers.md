@@ -42,9 +42,10 @@ Selection precedence is:
 
 `gemini` requires `GEMINI_API_KEY`. `ollama` requires the configured local
 service and model to be available. `none` is deterministic-only mode: it makes no
-semantic-provider request and rejects a job description if deterministic parsing
-leaves unresolved blocks. This default ensures that semantic parsing never
-transmits a job description until the user explicitly selects a provider.
+semantic-provider request. A structurally usable job is still written when
+unresolved prose remains; the report records that prose as diagnostics. This
+ensures that semantic parsing never transmits a job description until the user
+explicitly selects a provider.
 
 Provider-specific environment variables override values from the configuration
 file. Gemini preserves `GEMINI_MODEL`, `GEMINI_TIMEOUT_MS`,
@@ -84,13 +85,13 @@ parser does not publish a partial `jobs.json`. The final document is assembled i
 source order only after every block has been accepted; an invalid singleton
 fails the run with no final output.
 
-For long-running Ollama parses, pass `--checkpoint <path>` to persist accepted
-blocks and confirmed metadata after each batch. A subsequent run resumes only
-when the input, provider, model, and relevant batching configuration match the
-checkpoint; stale or corrupt checkpoints are ignored. Checkpoints are written
-atomically and removed after a successful final output. Delete the checkpoint
-manually to force a clean run. Checkpoint files may contain job-description
-text and extracted values, so keep them protected like other parser artifacts.
+The legacy full-extraction transport supports checkpoints and targeted
+corrections. The default decision transport is intentionally narrower: it
+reuses deterministic structural extraction and asks only for classifications of
+unresolved units. It batches and retries requests, but does not persist provider
+decision checkpoints. A provider setup or request failure falls back to the
+validated structural result when that result can form a usable job; otherwise
+the run fails normally.
 
 Gemini sends the source job description to Google's Gemini service. Ollama keeps
 processing local only when its URL points to a service running on infrastructure
@@ -100,10 +101,14 @@ structured output; smaller models may fail strict extraction or exhaust the
 configured correction attempts. No result is accepted merely because a provider
 returned it.
 
-The Ollama adapter minimizes that burden by sending only deterministically
-unresolved source blocks and requesting a flat provider-facing record format.
-The adapter then translates those records into the canonical extraction
-contract. For supported LinkedIn archive files, header metadata and short bullets
+The default Ollama and Gemini adapters minimize that burden by sending only
+deterministically unresolved source units. Their decision contract accepts an
+exact unit ID and one of exclude, requirement, responsibility, alternative, or
+metadata; alternatives carry complete source-backed values and metadata carries
+an exact key/value pair. The parser—not the provider—derives evidence, source
+sections, classification coverage, and final schema records. Set a provider's
+decisionMode option to false only to use the legacy full-extraction transport.
+For supported LinkedIn archive files, header metadata and short bullets
 under `SKILLS & KEYWORDS` are extracted deterministically before this step.
 Keywords are retained as unclassified skills and are never promoted to required
 or preferred qualifications. Archive separators, repeated metadata, navigation
@@ -112,13 +117,10 @@ optimizations do not bypass the local schema, complete block accounting,
 semantic checks, or exact source-evidence validation.
 
 Recognized required, preferred, responsibility, and competency headings are
-also used as a bounded safety net. If a provider tries to exclude a substantive
-bullet under one of those headings, the adapter preserves the complete bullet
-with the heading's classification only when that source-backed record passes the
-same schema, semantic, and evidence checks as provider output. Unsafe cases stay
-unresolved or enter the normal correction path; prose is never partially guessed
-or silently accepted. The provider's valid, more precise extraction always wins
-when it agrees with the explicit section signal.
+used deterministically. Their substantive bullets are retained locally before
+any provider call; a provider cannot weaken or replace their classification.
+Unsignaled prose is eligible for an optional decision, but prose is never
+partially guessed or silently accepted.
 
 The preprocessor recognizes an exact, reviewed vocabulary of headings even when
 they are plain lines without Markdown or a trailing colon. This includes common
@@ -133,9 +135,17 @@ instead of being silently promoted or weakened.
 
 There is deliberately no automatic fallback between providers. Authentication,
 configuration, timeout, rate-limit, request, and invalid-response failures are
-reported through stable `SEMANTIC_PROVIDER_*` categories. All provider output is
-treated as untrusted: the same local schema, block accounting, and source-evidence
-checks run before output can be accepted.
+reported through stable `SEMANTIC_PROVIDER_*` categories. In decision mode,
+those failures are warnings when deterministic extraction already yields a valid
+job, and fatal only when no valid final contract can be produced. All provider
+output is treated as untrusted: the same local schema, block accounting, and
+source-evidence checks run before output can be accepted.
+
+The tracked regression corpus currently covers Stripe, BairesDev, Azion,
+Bradesco, zerohash, Inter, IQVIA, NTT DATA, and BTG descriptions under
+`tmp/jobs-descriptions/`. Fixtures for Foursys, Jusbrasil, and Exadel have not
+been supplied in this workspace, so they are not synthesized or represented as
+source regressions.
 
 Set `JOB_PARSER_DEBUG=1` to write local diagnostics alongside the requested
 output. `<output>.provider.json` records the effective provider, model, and

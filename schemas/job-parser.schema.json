@@ -180,6 +180,9 @@
         "sourceSection": {
           "$ref": "#/definitions/text"
         },
+        "provenance": {
+          "enum": ["job-poster-added"]
+        },
         "sourceUnitIds": {
           "type": "array",
           "minItems": 1,
@@ -267,6 +270,9 @@
         },
         "sourceSection": {
           "$ref": "#/definitions/text"
+        },
+        "provenance": {
+          "enum": ["job-poster-added"]
         },
         "sourceUnitIds": {
           "type": "array",
