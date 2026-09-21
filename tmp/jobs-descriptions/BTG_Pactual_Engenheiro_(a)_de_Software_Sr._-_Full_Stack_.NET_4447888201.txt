@@ -1,0 +1,66 @@
+================================================================================
+JOB POSTING ARCHIVE: ENGENHEIRO (A) DE SOFTWARE SR. - FULL STACK .NET
+================================================================================
+Company:              BTG Pactual
+Job Title:            Engenheiro (a) de Software Sr. - Full Stack .NET
+Job ID:               4447888201
+Location:             São Paulo, São Paulo, Brazil
+Workplace Type:       On-site
+Experience Level:     Mid-Senior level
+Employment Type:      Full-time
+Date Posted:          2026-09-13 (11 hours ago)
+Salary / Comp:        Not specified
+LinkedIn URL:         https://br.linkedin.com/jobs/view/engenheiro-a-de-software-sr-full-stack-net-at-btg-pactual-4447888201
+Archive Fetched At:   2026-09-13T20:31:41.698Z
+================================================================================
+
+JOB DESCRIPTION:
+--------------------------------------------------------------------------------
+No Seu Dia a Dia
+
+• Desenvolver aplicações escaláveis e sustentáveis, alinhadas às necessidades do negócio.
+• Construir e evoluir soluções backend em .NET e frontend em Angular.
+• Garantir a qualidade do código, aplicando boas práticas de engenharia, testes automatizados e documentação técnica.
+• Colaborar na definição de arquiteturas e soluções, propondo melhorias contínuas.
+• Apoiar na gestão de problemas, incidentes e monitoramento de performance.
+
+Esperamos De Você
+
+• Experiência sólida em desenvolvimento de software.
+• Domínio em .NET, C# e APIs RESTful.
+• Experiência com Angular.
+• Vivência com AWS (EKS, Lambda, S3, Glue).
+• Experiência em metodologias ágeis (Scrum, Kanban, SAFe).
+
+Diferencial
+
+• Experiência em bancos ou fintechs.
+• Conhecimento em padrões de projeto (SOLID, Clean Code, Design Patterns).
+• Arquitetura de APIs e microsserviços resilientes.
+• Conhecimento em bancos de dados relacionais e não relacionais.
+
+Benefícios
+
+• Participação nos Lucros e Resultados (PLR);
+• Auxílio Alimentação e Refeição;
+• Plano Médico;
+• Plano Odontológico;
+• Auxílio Creche/Babá;
+• Vale Transporte;
+• WellHub;
+• TotalPass;
+• Programa de Apoio Pessoal (EAP);
+• Planos por adesão como Previdência Privada e Seguro de Vida;
+• Desconto em Farmácia;
+• Programa de Nutrição;
+• Programa de Gestantes;
+• Licença Maternidade e Paternidade Estendida – empresa Cidadã.
+
+SKILLS & KEYWORDS:
+--------------------------------------------------------------------------------
+• AWS
+• Scrum
+
+================================================================================
+Archived via LinkedIn Job Data Fetcher | Job ID: 4447888201
+================================================================================
