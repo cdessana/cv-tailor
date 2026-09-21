@@ -27,12 +27,14 @@ test("Stripe keeps structural responsibilities and qualifications without enrich
   assert.ok(job.responsibilities?.length);
   assert.ok(job.requirements?.required?.length);
   assert.ok(job.requirements?.preferred?.length);
+  assert.ok(!job.responsibilities.some((value) => /Sao Paulo-based team|US and Europe/iu.test(value)));
 });
 
 test("BairesDev preserves Portuguese structured requirements and responsibilities", async () => {
   const job = await parseFixture("BairesDev_");
   assert.ok(job.responsibilities?.length);
   assert.ok(job.requirements?.required?.some((value) => /ASP\.NET|\.NET Core/iu.test(value)));
+  assert.ok(!JSON.stringify(job).includes("--------------------------------------------------------------------------------"));
 });
 
 test("Azion preserves Rust/C++ wording without inventing a choice", async () => {
@@ -52,6 +54,12 @@ test("Bradesco and zerohash parse their deterministic section content", async ()
   assert.ok(zerohash.requirements?.required?.length);
 });
 
+test("BTG is a clean deterministic structured vacancy", async () => {
+  const job = await parseFixture("BTG_Pactual_");
+  assert.ok(job.responsibilities?.length);
+  assert.ok(job.company && job.title);
+});
+
 test("Inter squashed markup, IQVIA requirements, and NTT mixed prose remain usable", async () => {
   const [inter, iqvia, ntt] = await Promise.all([
     parseFixture("Inter_"),
@@ -61,6 +69,8 @@ test("Inter squashed markup, IQVIA requirements, and NTT mixed prose remain usab
   assert.ok(inter.responsibilities?.length);
   assert.ok(inter.requirements?.required?.length);
   assert.ok(iqvia.requirements?.required?.length || iqvia.requirements?.preferred?.length);
+  assert.ok(![...(iqvia.requirements?.required ?? []), ...(iqvia.requirements?.preferred ?? [])]
+    .some((value) => /^(?:our|the)\s+(?:main\s+)?stack|we use/iu.test(value)));
   // NTT's Activities prose is intentionally an ambiguous-enrichment case; a
   // valid structural job with identification metadata is the required fallback.
   assert.ok(ntt.company && ntt.title);
