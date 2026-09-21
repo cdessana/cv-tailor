@@ -77,15 +77,49 @@ test("semantic provider output maps and feeds analyse directly", async () => {
   assert.equal(analysis.code, 0, analysis.stderr);
 });
 
-test("unresolved and unrepresentable cases fail without accepted output", async () => {
+test("narrow semantic decisions derive source-grounded records locally", async () => {
+  const directory = await tempDir();
+  const input = path.join(directory, "job.txt");
+  const output = path.join(directory, "job.json");
+  await fs.writeFile(input, [
+    "Example is hiring a Senior Engineer",
+    "Requirements",
+    "Good knowledge of Unix, SQL and scripting languages",
+  ].join("\n"));
+  const result = await runJobParser({
+    input,
+    output,
+    semanticProvider: ({ unresolved }) => ({
+      decisions: [{ unitId: unresolved[0].unit.id, action: "requirement" }],
+    }),
+  });
+  assert.deepEqual(result.job.requirements.required, ["Good knowledge of Unix, SQL and scripting languages"]);
+});
+
+test("narrow semantic alternatives retain source classification and evidence locally", async () => {
+  const directory = await tempDir();
+  const input = path.join(directory, "alternative-decision.txt");
+  const output = path.join(directory, "alternative-decision.json");
+  await fs.writeFile(input, "Example is hiring a Senior Engineer\nRequirements\nExperience with Java or Kotlin");
+  const result = await runJobParser({
+    input,
+    output,
+    semanticProvider: ({ unresolved }) => ({
+      decisions: [{ unitId: unresolved[0].unit.id, action: "alternative", values: ["Java", "Kotlin"] }],
+    }),
+  });
+  assert.deepEqual(result.job.alternativeRequirements[0].values, ["Java", "Kotlin"]);
+});
+
+test("lossless explicit alternatives parse without semantic enrichment", async () => {
   const directory = await tempDir();
   const input = path.join(directory, "raw.txt");
   const output = path.join(directory, "job.json");
   await fs.writeFile(input, "Example is hiring a Senior Engineer\nRequirements\n- AWS or GCP, Azure", "utf8");
   const result = await command([path.join(root, "scripts/job-parser.mjs"), input, "--output", output], directory);
-  assert.notEqual(result.code, 0);
-  assert.match(result.stderr, /SEMANTIC_ERROR|MAPPING_ERROR/);
-  await assert.rejects(() => fs.access(output));
+  assert.equal(result.code, 0, result.stderr);
+  const job = JSON.parse(await fs.readFile(output, "utf8"));
+  assert.deepEqual(job.requirements.required, ["AWS or GCP, Azure"]);
 });
 
 test("missing metadata fails explicitly without accepted output", async () => {
@@ -98,41 +132,61 @@ test("missing metadata fails explicitly without accepted output", async () => {
   await assert.rejects(() => fs.access(output));
 });
 
-test("ambiguous wording fails conservatively without a semantic provider", async () => {
+test("ambiguous wording remains a usable structural parse when enrichment is unavailable", async () => {
   const directory = await tempDir();
   const input = path.join(root, "test/fixtures/jobs/raw/ambiguous.txt");
   const output = path.join(directory, "ambiguous.json");
   const result = await command([path.join(root, "scripts/job-parser.mjs"), input, "--output", output], directory);
-  assert.notEqual(result.code, 0);
-  assert.match(result.stderr, /SEMANTIC_ERROR/);
-  await assert.rejects(() => fs.access(output));
+  assert.equal(result.code, 0, result.stderr);
+  const report = JSON.parse(await fs.readFile(`${output}.report.json`, "utf8"));
+  assert.ok(report.warnings.some((warning) => warning.code === "semantic_enrichment_unavailable"));
 });
 
-test("malformed semantic output is rejected before writing", async () => {
+test("malformed semantic output degrades to a structural parse with a warning", async () => {
   const directory = await tempDir();
   const input = path.join(root, "test/fixtures/jobs/raw/malformed-semantic.txt");
   const output = path.join(directory, "malformed.json");
-  await assert.rejects(() => runJobParser({
+  const result = await runJobParser({
     input,
     output,
     semanticProvider: () => ({ items: [{ type: "item", value: "Communication", kind: "competency", classification: "required", evidence: { quote: "Strong communication and leadership skills" }, extra: true }] }),
-  }), /SEMANTIC_ERROR/);
-  await assert.rejects(() => fs.access(output));
+  });
+  assert.ok(result.warnings.some((warning) => warning.code === "semantic_enrichment_failed"));
+  assert.deepEqual(JSON.parse(await fs.readFile(output, "utf8")), result.job);
 });
 
-test("hallucinated semantic extraction fails evidence validation", async () => {
+test("semantic timeout degrades to a structural parse with a warning", async () => {
+  const directory = await tempDir();
+  const input = path.join(directory, "timeout.txt");
+  const output = path.join(directory, "timeout.json");
+  await fs.writeFile(input, "Example is hiring a Senior Engineer\nCandidate profile\n- Modern cloud experience");
+  const result = await runJobParser({
+    input,
+    output,
+    semanticProvider: async () => {
+      throw Object.assign(new Error("Semantic provider timed out."), { code: "OLLAMA_TIMEOUT" });
+    },
+  });
+  assert.ok(result.warnings.some((warning) => warning.code === "semantic_enrichment_failed"));
+  assert.equal(result.job.company, "Example");
+  assert.equal(result.diagnostics.unresolved.length, 1);
+  await fs.access(output);
+});
+
+test("hallucinated semantic enrichment is rejected while structural output survives", async () => {
   const directory = await tempDir();
   const input = path.join(root, "test/fixtures/jobs/raw/hallucinated.txt");
   const output = path.join(directory, "hallucinated.json");
-  await assert.rejects(() => runJobParser({
+  const result = await runJobParser({
     input,
     output,
     semanticProvider: () => ({ items: [{ type: "item", value: "AWS", kind: "skill", classification: "required", evidence: { quote: "Experience with AWS is required" } }] }),
-  }), /SEMANTIC_ERROR/);
-  await assert.rejects(() => fs.access(output));
+  });
+  assert.ok(result.warnings.some((warning) => warning.code === "semantic_enrichment_failed"));
+  assert.deepEqual(JSON.parse(await fs.readFile(output, "utf8")), result.job);
 });
 
-test("explicit alternatives map as one group and reach analyse", async () => {
+test("explicit structured alternatives remain lossless until optional enrichment", async () => {
   const directory = await tempDir();
   const input = path.join(root, "test/fixtures/jobs/raw/alternative.txt");
   const output = path.join(directory, "alternative.json");
@@ -144,8 +198,8 @@ test("explicit alternatives map as one group and reach analyse", async () => {
       items: [{ type: "alternative", operator: "anyOf", values: ["AWS", "GCP"], kind: "skill", classification: "required", evidence: { quote: "AWS or GCP" } }],
     }),
   });
-  assert.deepEqual(result.job.alternativeRequirements[0].values, ["AWS", "GCP"]);
-  assert.equal(result.job.requirements, undefined);
+  assert.deepEqual(result.job.requirements.required, ["AWS or GCP"]);
+  assert.equal(result.job.alternativeRequirements, undefined);
   const analysis = await analyze(output, directory);
   assert.equal(analysis.code, 0, analysis.stderr);
 });
@@ -177,16 +231,17 @@ for (const location of [undefined, "Osasco, SP", "Osasco (SP), Recife (PE)"]) {
 }
 
 for (const quote of ["Job location: London", "Job location: Osasco"]) {
-  test(`unsupported location blocks output with evidence ${quote}`, async (t) => {
+  test(`unsupported location enrichment is discarded with a warning: ${quote}`, async (t) => {
     const directory = await tempDir();
     t.after(() => fs.rm(directory, { recursive: true, force: true }));
     const input = path.join(directory, "job.txt");
     const output = path.join(directory, "job.json");
     await fs.writeFile(input, "Example is hiring an Engineer\n\nJob location: Osasco");
-    await assert.rejects(runJobParser({ input, output, semanticProvider: () => ({
+    const result = await runJobParser({ input, output, semanticProvider: () => ({
       items: [], metadata: { location: { value: "London", evidence: { quote } } },
-    }) }), /evidence validation failed/);
-    await assert.rejects(fs.access(output), { code: "ENOENT" });
+    }) });
+    assert.ok(result.warnings.some((warning) => warning.code === "semantic_enrichment_failed"));
+    await fs.access(output);
   });
 }
 

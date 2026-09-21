@@ -139,13 +139,14 @@ test("runs a fully deterministic raw JD without a semantic provider", async () =
   assert.deepEqual(JSON.parse(await fs.readFile(output, "utf8")), result.job);
 });
 
-test("fails without a semantic provider and does not create output", async () => {
+test("writes a structural parse with a warning when no semantic provider is available", async () => {
   const directory = await tempDir();
   const input = path.join(directory, "job.txt");
   const output = path.join(directory, "job.json");
   await fs.writeFile(input, "Example is hiring a Senior Engineer\nCandidate profile\n- Modern cloud experience", "utf8");
-  await assert.rejects(() => runJobParser({ input, output }), /SEMANTIC_ERROR/);
-  await assert.rejects(() => fs.access(output));
+  const result = await runJobParser({ input, output });
+  assert.ok(result.warnings.some((warning) => warning.code === "semantic_enrichment_unavailable"));
+  await fs.access(output);
 });
 
 test("provider, evidence, mapping, and output failures do not write partial output", async () => {
@@ -183,15 +184,13 @@ test("provider, evidence, mapping, and output failures do not write partial outp
   );
 });
 
-test("failed replacement preserves an existing output", async () => {
+test("structural fallback may replace an existing output", async () => {
   const directory = await tempDir();
   const input = path.join(directory, "job.txt");
   const output = path.join(directory, "job.json");
   await fs.writeFile(input, "Example is hiring a Senior Engineer\nCandidate profile\n- Modern cloud experience", "utf8");
   await fs.writeFile(output, '{"company":"Previous","title":"Job"}\n', "utf8");
-  await assert.rejects(() => runJobParser({ input, output }), /SEMANTIC_ERROR/);
-  assert.equal(
-    await fs.readFile(output, "utf8"),
-    '{"company":"Previous","title":"Job"}\n'
-  );
+  const result = await runJobParser({ input, output });
+  assert.equal(result.job.company, "Example");
+  assert.ok(result.warnings.some((warning) => warning.code === "semantic_enrichment_unavailable"));
 });

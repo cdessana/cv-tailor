@@ -245,7 +245,7 @@ test("Ollama model-not-found failures are actionable, neutral, and not retried",
   assert.equal(calls, 1);
 });
 
-test("none fails unresolved parsing without replacing an existing output", async () => {
+test("none preserves a usable structural parse with a diagnostic", async () => {
   const directory = await fs.mkdtemp(
     path.join(os.tmpdir(), "job-parser-none-")
   );
@@ -256,20 +256,12 @@ test("none fails unresolved parsing without replacing an existing output", async
   const config = ConfigSchema.parse({
     jobParser: { semanticProvider: "none" },
   });
-  await assert.rejects(
-    () => runJobParser({ input, output, config, env: {} }),
-    (error) =>
-      error instanceof SemanticProviderError &&
-      error.code === "SEMANTIC_PROVIDER_REQUIRED" &&
-      /SEMANTIC_ERROR/u.test(error.message)
-  );
-  assert.equal(
-    await fs.readFile(output, "utf8"),
-    '{"company":"Previous","title":"Job"}\n'
-  );
+  const result = await runJobParser({ input, output, config, env: {} });
+  assert.ok(result.warnings.some((warning) => warning.code === "semantic_enrichment_unavailable"));
+  assert.equal(result.job.company, "Example");
 });
 
-test("debug audit records a disabled provider failure before accepted output", async () => {
+test("debug audit records a disabled provider warning beside accepted structural output", async () => {
   const directory = await fs.mkdtemp(
     path.join(os.tmpdir(), "job-parser-audit-")
   );
@@ -279,21 +271,18 @@ test("debug audit records a disabled provider failure before accepted output", a
   const config = ConfigSchema.parse({
     jobParser: { semanticProvider: "none" },
   });
-  await assert.rejects(
-    () =>
-      runJobParser({ input, output, config, env: { JOB_PARSER_DEBUG: "1" } }),
-    /SEMANTIC_PROVIDER_REQUIRED/
-  );
+  const result = await runJobParser({ input, output, config, env: { JOB_PARSER_DEBUG: "1" } });
   const audit = JSON.parse(
     await fs.readFile(`${output}.provider.json`, "utf8")
   );
   assert.equal(audit.selected.name, "none");
   assert.equal(audit.selected.status, "disabled");
   assert.equal(audit.error.code, "SEMANTIC_PROVIDER_REQUIRED");
-  await assert.rejects(() => fs.access(output));
+  assert.ok(result.warnings.some((warning) => warning.code === "semantic_enrichment_unavailable"));
+  await fs.access(output);
 });
 
-test("debug audit records provider misconfiguration without credentials", async () => {
+test("debug audit records provider misconfiguration beside accepted structural output", async () => {
   const directory = await fs.mkdtemp(
     path.join(os.tmpdir(), "job-parser-config-audit-")
   );
@@ -303,11 +292,7 @@ test("debug audit records provider misconfiguration without credentials", async 
   const config = ConfigSchema.parse({
     jobParser: { semanticProvider: "gemini" },
   });
-  await assert.rejects(
-    () =>
-      runJobParser({ input, output, config, env: { JOB_PARSER_DEBUG: "1" } }),
-    /SEMANTIC_PROVIDER_CONFIG_ERROR/
-  );
+  const result = await runJobParser({ input, output, config, env: { JOB_PARSER_DEBUG: "1" } });
   const audit = JSON.parse(
     await fs.readFile(`${output}.provider.json`, "utf8")
   );
@@ -318,7 +303,8 @@ test("debug audit records provider misconfiguration without credentials", async 
     audit.providers.find((provider) => provider.name === "gemini").availability,
     "misconfigured"
   );
-  await assert.rejects(() => fs.access(output));
+  assert.ok(result.warnings.some((warning) => warning.code === "semantic_enrichment_failed"));
+  await fs.access(output);
 });
 
 test("configuration-file validation failures use the provider configuration category", async () => {
@@ -338,17 +324,13 @@ test("configuration-file validation failures use the provider configuration cate
   const previousConfigPath = process.env.CV_TAILOR_CONFIG;
   process.env.CV_TAILOR_CONFIG = path.join(directory, "cv-tailor.config.json");
   try {
-    await assert.rejects(
-      () => runJobParser({ input, output, env: { JOB_PARSER_DEBUG: "1" } }),
-      (error) =>
-        error instanceof SemanticProviderError &&
-        error.code === "SEMANTIC_PROVIDER_CONFIG_ERROR"
-    );
+    const result = await runJobParser({ input, output, env: { JOB_PARSER_DEBUG: "1" } });
     const audit = JSON.parse(
       await fs.readFile(`${output}.provider.json`, "utf8")
     );
     assert.equal(audit.error.code, "SEMANTIC_PROVIDER_CONFIG_ERROR");
-    await assert.rejects(() => fs.access(output));
+    assert.ok(result.warnings.some((warning) => warning.code === "semantic_enrichment_failed"));
+    await fs.access(output);
   } finally {
     if (previousConfigPath === undefined) delete process.env.CV_TAILOR_CONFIG;
     else process.env.CV_TAILOR_CONFIG = previousConfigPath;

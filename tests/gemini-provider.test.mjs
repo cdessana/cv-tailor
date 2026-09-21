@@ -10,6 +10,20 @@ const ordinary = { type: "item", value: "Node.js", kind: "skill", classification
 const unitId = input.sections[0].units[0].id;
 const valid = { status: "extracted", items: [ordinary], alternatives: [], metadata: {}, reason: "" };
 
+test("Gemini decision mode emits narrow source-ID actions", async () => {
+  const payload = { candidates: [{ content: { parts: [{ functionCall: {
+    name: "decide_units", args: { decisions: [{ unitId, action: "requirement" }] },
+  } }] } }] };
+  const provider = createGeminiProvider({
+    decisionMode: true,
+    apiKey: "test-secret",
+    fetchImpl: async () => response(payload),
+  });
+  assert.deepEqual(await provider(input), {
+    decisions: [{ unitId, action: "requirement" }],
+  });
+});
+
 test("returns schema-valid structured Gemini output without network", async () => {
   let request;
   let rawResponse;

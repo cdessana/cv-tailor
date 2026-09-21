@@ -57,6 +57,20 @@ function blockResult(block) {
   };
 }
 
+test("Ollama decision mode emits narrow source-ID actions", async () => {
+  const document = preprocessJobDescription("Requirements\nAmbiguous source text");
+  const provider = createOllamaProvider({
+    decisionMode: true,
+    chat: async () => ({ message: { content: JSON.stringify({
+      decisions: [{ unitId: document.sections[0].units[0].id, action: "requirement" }],
+    }) } }),
+  });
+  const result = await provider(document);
+  assert.deepEqual(result, {
+    decisions: [{ unitId: document.sections[0].units[0].id, action: "requirement" }],
+  });
+});
+
 function wireRecord(record, recordType, metadataKey = "none") {
   return {
     recordType,
