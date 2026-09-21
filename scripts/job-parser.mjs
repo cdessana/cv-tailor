@@ -232,6 +232,14 @@ export async function runJobParser({
     unresolved: deterministic.unresolved.length,
   });
   let extraction = deterministic.extraction;
+  const semanticWarnings = [];
+  const unresolvedDiagnostics = deterministic.unresolved.map(({ unit, heading, signal, reason }) => ({
+    unitId: unit.id,
+    sourceSection: heading?.text ?? null,
+    signal: signal ?? null,
+    reason,
+  }));
+  let semanticFailure;
   let providerInfo = semanticProvider
     ? { name: "injected", model: null, used: false }
     : undefined;
@@ -287,7 +295,13 @@ export async function runJobParser({
           env,
           normalizedError
         );
-        throw asSemanticStageError(normalizedError);
+        semanticWarnings.push({
+          code: "semantic_enrichment_failed",
+          stage: "configuration",
+          message: normalizedError.message,
+          unresolvedUnitIds: deterministic.unresolved.map(({ unit }) => unit.id),
+        });
+        semanticFailure ??= normalizedError;
       }
     }
     if (!semanticProvider) {
@@ -295,11 +309,17 @@ export async function runJobParser({
         "SEMANTIC_PROVIDER_REQUIRED",
         "Unresolved content cannot be parsed while the semantic provider is none."
       );
-      providerInfo.status = "disabled";
+      if (providerInfo.status !== "misconfigured") providerInfo.status = "disabled";
       await writeProviderAudit(output, providerInfo, config, env, error);
-      throw asSemanticStageError(error);
+      semanticWarnings.push({
+        code: "semantic_enrichment_unavailable",
+        stage: "configuration",
+        message: error.message,
+        unresolvedUnitIds: deterministic.unresolved.map(({ unit }) => unit.id),
+      });
+      semanticFailure ??= error;
     }
-    try {
+    if (semanticProvider) try {
       console.info(
         `[job-parser] Using semantic provider ${providerInfo.name}${providerInfo.model ? ` (model=${providerInfo.model})` : ""}.`
       );
@@ -332,7 +352,13 @@ export async function runJobParser({
     } catch (error) {
       providerInfo.status = "failed";
       await writeProviderAudit(output, providerInfo, config, env, error);
-      throw asSemanticStageError(error);
+      semanticWarnings.push({
+        code: "semantic_enrichment_failed",
+        stage: "enrichment",
+        message: error.message,
+        unresolvedUnitIds: deterministic.unresolved.map(({ unit }) => unit.id),
+      });
+      semanticFailure ??= error;
     }
   }
   if (!providerInfo) {
@@ -348,7 +374,7 @@ export async function runJobParser({
       status: "not-needed",
     };
   }
-  await writeProviderAudit(output, providerInfo, config, env);
+  await writeProviderAudit(output, providerInfo, config, env, semanticFailure);
   if (env.JOB_PARSER_DEBUG === "1" && deterministic.unresolved.length === 0) {
     try {
       await writeTextAtomically(
@@ -379,11 +405,15 @@ export async function runJobParser({
     throw new Error(`MAPPING_ERROR: ${error.message}`, { cause: error });
   }
   if (!mapped.valid) {
+    // Enrichment only degrades gracefully when deterministic output can still
+    // satisfy the final job contract (including required identification).
+    if (semanticFailure) throw asSemanticStageError(semanticFailure);
     throw new Error(`MAPPING_ERROR: ${JSON.stringify(mapped.errors)}`);
   }
   recordEvent("stage.completed", { stage: "mapping" });
-  if (mapped.warnings?.length) {
-    reportWarnings(mapped.warnings);
+  const warnings = [...(mapped.warnings ?? []), ...semanticWarnings];
+  if (warnings.length) {
+    reportWarnings(warnings);
   }
   try {
     console.info(`[job-parser] Writing validated output: ${output}`);
@@ -401,7 +431,10 @@ export async function runJobParser({
         skills: extraction.skills?.length ?? 0,
         coverage: extraction.coverage?.length ?? 0,
       },
-      warnings: mapped.warnings?.length ?? 0,
+      warnings,
+      diagnostics: {
+        unresolved: unresolvedDiagnostics,
+      },
       observability: {
         ...observability,
         completedAt: new Date().toISOString(),
@@ -420,7 +453,13 @@ export async function runJobParser({
     );
   }
   console.info("[job-parser] Job parsing completed successfully.");
-  return { output, job: mapped.job, semanticProvider: providerInfo };
+  return {
+    output,
+    job: mapped.job,
+    semanticProvider: providerInfo,
+    warnings,
+    diagnostics: { unresolved: unresolvedDiagnostics },
+  };
 }
 
 if (

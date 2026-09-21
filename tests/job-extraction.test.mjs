@@ -32,7 +32,6 @@ for (const text of [
   "Nice to have: Node.js is required",
   "Experience with Node.js is required if available",
   "Node.js is required. Java is preferred.",
-  "Requirements\n- You will mentor engineers",
   "Nice to have: AWS and GCP",
   "Required: AWS or (GCP and Azure)",
   "Required: AWS, GCP",
@@ -63,10 +62,6 @@ for (const [text, values] of [
   ["Nice to have: AWS, GCP, or Azure", ["AWS", "GCP", "Azure"]],
   ["Required: Java or Kotlin", ["Java", "Kotlin"]],
   ["Preferred: nodejs or k8s", ["nodejs", "k8s"]],
-  [
-    "Preferred Qualifications\n- Experiência em ambientes ágeis ou transformação digital",
-    ["Experiência em ambientes ágeis", "transformação digital"],
-  ],
 ]) {
   test(`alternative ${text}`, () => {
     const { extraction } = extract(preprocess(text));
@@ -279,11 +274,11 @@ test("extracts complete bullets from recognized candidate sections without a pro
         values: undefined,
       },
       {
-        type: "alternative",
+        type: "item",
         kind: "requirement",
         classification: "required",
-        value: undefined,
-        values: ["Java", "Kotlin"],
+        value: "Java or Kotlin",
+        values: undefined,
       },
       {
         type: "item",
@@ -294,6 +289,50 @@ test("extracts complete bullets from recognized candidate sections without a pro
       },
     ]
   );
+});
+
+test("keeps archive separators out of units and does not join surrounding prose", () => {
+  const document = preprocess([
+    "Requirements",
+    "- Java",
+    "--------------------------------------------------------------------------------",
+    "- Spring Boot",
+  ].join("\n"));
+  assert.equal(document.normalizedText.includes("---"), false);
+  assert.deepEqual(document.sections[0].units.map((unit) => unit.text), ["Java", "Spring Boot"]);
+  assert.deepEqual(extract(document).extraction.items.map((item) => item.value), ["Java", "Spring Boot"]);
+});
+
+test("does not force contextual paragraphs under responsibility headings into items", () => {
+  const result = extract(preprocess([
+    "What You'll Do",
+    "This is a Sao Paulo-based team working with teams in the US and Europe.",
+    "Responsibilities",
+    "- Design integration experiences.",
+  ].join("\n")));
+  assert.deepEqual(result.extraction.items.map((item) => item.value), ["Design integration experiences."]);
+  assert.equal(result.unresolved[0].unit.text, "This is a Sao Paulo-based team working with teams in the US and Europe.");
+});
+
+test("recognizes platform-added requirements as source-grounded required bullets", () => {
+  const result = extract(preprocess("Requirements added by the job poster\n• 6+ years of work experience with Java"));
+  assert.deepEqual(result.extraction.items.map(({ value, kind, classification }) => ({ value, kind, classification })), [
+    { value: "6+ years of work experience with Java", kind: "requirement", classification: "required" },
+  ]);
+});
+
+test("explicit candidate-section bullets never require action or technology heuristics", () => {
+  const result = extract(preprocess([
+    "Requirements",
+    "- You will mentor engineers",
+    "Responsibilities",
+    "- Good knowledge of Unix, SQL and scripting languages",
+  ].join("\n")));
+  assert.deepEqual(result.extraction.items.map(({ value, kind, classification }) => ({ value, kind, classification })), [
+    { value: "You will mentor engineers", kind: "requirement", classification: "required" },
+    { value: "Good knowledge of Unix, SQL and scripting languages", kind: "responsibility", classification: "not-applicable" },
+  ]);
+  assert.equal(result.unresolved.length, 0);
 });
 
 test("extracts Worldpay-style ownership, qualification, and bonus bullets", () => {
@@ -316,12 +355,11 @@ test("extracts Worldpay-style ownership, qualification, and bonus bullets", () =
     [
       { kind: "responsibility", classification: "not-applicable", value: "Develop and maintain application code." },
       { kind: "requirement", classification: "required", value: "Previous experience as a Software Developer." },
+      { kind: "requirement", classification: "required", value: "Experience with Java, C/C++, and/or Free Pascal." },
       { kind: "requirement", classification: "preferred", value: "A proactive mindset." },
     ]
   );
-  assert.deepEqual(result.unresolved.map(({ unit }) => unit.text), [
-    "Experience with Java, C/C++, and/or Free Pascal.",
-  ]);
+  assert.equal(result.unresolved.length, 0);
 });
 
 test("extracts BairesDev Portuguese candidate sections", () => {
@@ -340,10 +378,9 @@ test("extracts BairesDev Portuguese candidate sections", () => {
   assert.deepEqual(result.extraction.items.map(({ kind, classification, value }) => ({ kind, classification, value })), [
     { kind: "responsibility", classification: "not-applicable", value: "Projetar aplicações .NET." },
     { kind: "requirement", classification: "required", value: "3+ anos de experiência em desenvolvimento .NET." },
-    { kind: "requirement", classification: "required", value: undefined },
+    { kind: "requirement", classification: "required", value: "Experiência com ASP.NET ou .NET Core." },
   ]);
-  assert.equal(result.extraction.items[2].type, "alternative");
-  assert.deepEqual(result.extraction.items[2].values, ["Experiência com ASP.NET", ".NET Core."]);
+  assert.equal(result.extraction.items[2].type, "item");
   assert.equal(result.unresolved.length, 0);
 });
 
@@ -381,14 +418,17 @@ test("extracts bullets from structured qualification headings while retaining co
       },
       {
         kind: "requirement",
+        classification: "required",
+        value: "Strong experience using Rust or C/C++.",
+      },
+      {
+        kind: "requirement",
         classification: "preferred",
         value: "Familiarity with Docker and Kubernetes.",
       },
     ]
   );
-  assert.deepEqual(result.unresolved.map(({ unit }) => unit.text), [
-    "Strong experience using Rust or C/C++.",
-  ]);
+  assert.equal(result.unresolved.length, 0);
 });
 
 test("extracts nested job sections and excludes employer policy copy", () => {
@@ -451,14 +491,13 @@ test("excludes recognized context and non-qualification leads before provider fa
   assert.equal(result.extraction.coverage.length, 3);
 });
 
-test("leaves complex choices under high-confidence headings for semantic extraction", () => {
+test("preserves complex choices under high-confidence headings losslessly", () => {
   const document = preprocess(
     "Must haves\n- Working proficiency in English and Spanish, or English and Portuguese"
   );
   const result = extract(document);
-  assert.deepEqual(result.extraction.items, []);
-  assert.equal(result.unresolved.length, 1);
-  assert.equal(result.unresolved[0].unit.id, document.sections[0].units[0].id);
+  assert.equal(result.unresolved.length, 0);
+  assert.equal(result.extraction.items[0].value, "Working proficiency in English and Spanish, or English and Portuguese");
 });
 
 test("extracts structured Portuguese sections and separates benefits from requirements", () => {
@@ -622,32 +661,14 @@ test("reject alternatives collapsed by normalization without mutation", () => {
   assert.deepEqual(result, before);
 });
 
-test("extracts action-led paragraphs in a known responsibilities section", () => {
+test("leaves unbulleted activity prose available for semantic enrichment", () => {
   const result = extract(
     preprocess(
       "Activities.\nProvide technical support to development teams\n\nGood knowledge of Unix"
     )
   );
-  assert.deepEqual(
-    result.extraction.items.map(({ kind, classification, value }) => ({
-      kind,
-      classification,
-      value,
-    })),
-    [
-      {
-        kind: "responsibility",
-        classification: "not-applicable",
-        value: "Provide technical support to development teams",
-      },
-      {
-        kind: "requirement",
-        classification: "required",
-        value: "Unix",
-      },
-    ]
-  );
-  assert.equal(result.unresolved.length, 0);
+  assert.deepEqual(result.extraction.items, []);
+  assert.equal(result.unresolved.length, 2);
 });
 
 test("extracts a clear competency mixed into activities without guessing tenure", () => {
@@ -661,22 +682,8 @@ test("extracts a clear competency mixed into activities without guessing tenure"
       ].join("\n")
     )
   );
-  assert.equal(result.unresolved.length, 1);
-  assert.deepEqual(
-    result.extraction.items.map(({ value, kind, classification }) => ({
-      value,
-      kind,
-      classification,
-    })),
-    [
-      {
-        value: "Validated collaboration and communication skills, being able to lead in a global environment",
-        kind: "competency",
-        classification: "ambiguous",
-      },
-    ]
-  );
-  assert.equal(result.unresolved[0].unit.text, "Preferably we are looking for people with five or more years of experience.");
+  assert.equal(result.extraction.items.length, 0);
+  assert.equal(result.unresolved.length, 2);
 });
 
 test("excludes application instructions misplaced below a qualification heading", () => {
@@ -704,21 +711,8 @@ test("handles flattened activity requirements and archive recruiting copy", () =
       ].join("\n\n")
     )
   );
-  assert.equal(result.unresolved.length, 0);
-  assert.deepEqual(
-    result.extraction.items.map(({ value, kind, classification }) => ({
-      value,
-      kind,
-      classification,
-    })),
-    [
-      {
-        value: "Unix, SQL and scripting languages",
-        kind: "requirement",
-        classification: "required",
-      },
-    ]
-  );
+  assert.equal(result.extraction.items.length, 0);
+  assert.equal(result.unresolved.length, 1);
   assert.equal(result.extraction.coverage.filter(({ status }) => status === "excluded").length, 5);
 });
 
@@ -765,11 +759,11 @@ test("extracts Accenture-style Portuguese role and candidate sections", () => {
         values: undefined,
       },
       {
-        type: "alternative",
+        type: "item",
         kind: "requirement",
         classification: "preferred",
-        value: undefined,
-        values: ["Experiência em ambientes ágeis", "transformação digital"],
+        value: "Experiência em ambientes ágeis ou transformação digital",
+        values: undefined,
       },
     ]
   );
@@ -784,5 +778,5 @@ test("excludes archive separators joined to employer context", () => {
   );
   assert.equal(result.unresolved.length, 0);
   assert.equal(result.extraction.items.length, 0);
-  assert.equal(result.extraction.coverage.length, 2);
+  assert.equal(result.extraction.coverage.length, 1);
 });

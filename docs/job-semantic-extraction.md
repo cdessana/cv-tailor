@@ -36,3 +36,19 @@ npm run test:preprocess
 
 This stage does not call an LLM, normalize aliases, map alternatives to legacy
 arrays, inspect candidate data, or calculate scores.
+
+## Narrow enrichment decisions
+
+New providers may return `decisions` rather than the legacy full extraction
+object. Each decision contains a `unitId` and an action: `exclude`,
+`requirement`, or `responsibility`. The parser derives evidence quotes, source
+unit references, source section, coverage, and required/preferred classification
+locally. `requirement` is accepted only when the source section already has an
+explicit required or preferred signal. The existing full extraction response is
+kept as a compatibility path for Ollama and Gemini while their adapters migrate.
+
+The migration boundary is intentionally in `semantic-extract.mjs`: switching an
+adapter to the decision contract does not change `job.json`, source-evidence
+validation, aliases, alternative validation, or any downstream consumer. Until
+the built-in adapters are migrated, their responses remain subject to the
+stricter legacy validation path.
