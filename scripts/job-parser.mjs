@@ -338,6 +338,7 @@ export async function runJobParser({
               : undefined,
         }
       );
+      semanticWarnings.push(...(extraction.semanticWarnings ?? []));
       providerInfo.used = true;
       providerInfo.status = "succeeded";
       console.info(

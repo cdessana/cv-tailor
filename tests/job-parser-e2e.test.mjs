@@ -152,6 +152,33 @@ test("narrow metadata decisions derive evidence and source references locally", 
   assert.equal(result.job.location, "London");
 });
 
+test("unresolved semantic decisions retain a structurally usable job with diagnostics", async () => {
+  const directory = await tempDir();
+  const input = path.join(directory, "unresolved-decision.txt");
+  const output = path.join(directory, "unresolved-decision.json");
+  await fs.writeFile(input, [
+    "Example is hiring a Senior Engineer",
+    "Requirements",
+    "- Java",
+    "Activities",
+    "Good knowledge of Unix, SQL and scripting languages",
+  ].join("\n"));
+  const result = await runJobParser({
+    input,
+    output,
+    semanticProvider: ({ unresolved }) => ({
+      decisions: [{
+        unitId: unresolved[0].unit.id,
+        action: "unresolved",
+        reason: "Candidate qualification versus context is unclear.",
+      }],
+    }),
+  });
+  assert.deepEqual(result.job.requirements.required, ["Java"]);
+  assert.ok(result.warnings.some(({ code }) => code === "semantic_unit_unresolved"));
+  assert.equal(result.diagnostics.unresolved.length, 1);
+});
+
 test("lossless explicit alternatives parse without semantic enrichment", async () => {
   const directory = await tempDir();
   const input = path.join(directory, "raw.txt");

@@ -44,7 +44,7 @@ arrays, inspect candidate data, or calculate scores.
 
 Default providers return `decisions` rather than the legacy full extraction
 object. Each decision contains a `unitId` and an action: `exclude`,
-`requirement`, `responsibility`, `alternative`, or `metadata`.
+`unresolved`, `requirement`, `responsibility`, `alternative`, or `metadata`.
 Alternatives carry exact source-backed `values`; metadata carries
 `metadataKey` and an exact `value`. The parser derives evidence quotes,
 source-unit references, source section, and coverage locally. A requirement
@@ -54,6 +54,11 @@ final `qualifications` entry instead of inventing required/preferred strength.
 The existing full extraction response is kept as a compatibility path for
 explicit `decisionMode: false` configurations and older checkpoints. New
 configuration defaults to narrow decision mode.
+
+An `unresolved` decision must include a concise source-grounded reason. It
+accounts for the unit without asserting a qualification, responsibility, or
+technology. It remains a parser warning/diagnostic rather than a coverage error,
+so a valid deterministic job is still published.
 
 The migration boundary is intentionally in `semantic-extract.mjs`: switching an
 adapter to the decision contract does not change source-evidence validation,

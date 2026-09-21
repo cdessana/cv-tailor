@@ -32,7 +32,6 @@ for (const [name, change, code] of [
   ["duplicate decision",x=>x.coverage.push(x.coverage[0]),"duplicate_unit"],
   ["bad index",x=>x.coverage[0].itemIndices=[99],"invalid_item_reference"],
   ["unrelated evidence",x=>x.coverage[0].itemIndices=[1],"unrelated_item_reference"],
-  ["unresolved qualification",x=>x.coverage[0]={unitId:units[0].id,status:"unresolved",reason:"Cannot determine classification."},"unresolved_unit"],
 ]) test(`coverage rejects ${name}`,()=>{
   const copy=structuredClone(extraction);change(copy);
   const result=validateCoverage(document,copy,{required:true});
@@ -50,11 +49,24 @@ test("coverage rejects malformed decisions and blank exclusions",()=>{
   ]) assert.throws(()=>validateCoverage(document,{items:[],coverage:[entry]}),/Invalid intermediate/);
 });
 
-test("optional legacy coverage and explicit unresolved blocking",async()=>{
+test("unresolved coverage is a diagnostic rather than a structural failure", async () => {
+  const copy = structuredClone(extraction);
+  copy.items = [item("AI fluency")];
+  copy.coverage[0] = { unitId: units[0].id, status: "unresolved", reason: "Cannot determine classification." };
+  copy.coverage[1].itemIndices = [0];
+  const result = validateCoverage(document, copy, { required: true });
+  assert.equal(result.valid, true);
+  assert.equal(result.warnings[0].code, "unresolved_unit");
+});
+
+test("optional legacy coverage and explicit unresolved decisions",async()=>{
   assert.equal(validateCoverage(document,{items:[]}).valid,true);
   const copy=structuredClone(extraction);
   copy.coverage[0]={unitId:units[0].id,status:"unresolved",reason:"Unclear classification"};
-  await assert.rejects(semanticExtract(document,{items:[]},async()=>copy),/coverage validation failed/);
+  copy.items = [item("AI fluency")];
+  copy.coverage[1].itemIndices = [0];
+  const result = await semanticExtract(document,{items:[]},async()=>copy);
+  assert.equal(result.semanticWarnings[0].code,"semantic_unit_unresolved");
 });
 
 test("remote is not employmentType, but valid employment terms pass",()=>{
@@ -150,11 +162,17 @@ test("new source-reference contract rejects old index bookkeeping and contradict
     [x=>delete x.items[0].sourceUnitIds,"missing_source_reference"],
     [x=>x.coverage.push({unitId:db.id,status:"excluded",reason:"Metadata only"}),"conflicting_decision"],
     [x=>x.coverage=[],"unaccounted_unit"], // Nortal missing tail units
-    [x=>x.coverage[0].status="unresolved","unresolved_unit"],
   ]){
     const copy=structuredClone(response);change(copy);
     const result=deriveCoverage(doc,copy);
     assert.equal(result.valid,false);
     assert.ok(result.errors.some(e=>e.code===code),JSON.stringify(result.errors));
   }
+  const unresolved = structuredClone(response);
+  unresolved.coverage[0] = { unitId: ai.id, status: "unresolved", reason: "Classification is unclear." };
+  unresolved.items = [{ ...item("Database knowledge"), sourceUnitIds: [db.id] }];
+  unresolved.coverage.push({ unitId: db.id, status: "excluded", reason: "Duplicate test decision." });
+  const unresolvedResult = deriveCoverage(doc, unresolved);
+  assert.equal(unresolvedResult.valid, false);
+  assert.ok(unresolvedResult.errors.some((error) => error.code === "conflicting_decision"));
 });
