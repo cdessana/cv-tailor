@@ -6,15 +6,18 @@ intermediate items, and an injected provider. The provider may be an LLM adapter
 later, but this stage currently uses deterministic mocked providers in tests.
 
 The provider receives only source text, sections, and unresolved units. Candidate
-data, resumes, scores, and final job objects are outside this interface. Provider
-output must conform to `schemas/job-parser.schema.json`.
+data, resumes, scores, and final job objects are outside this interface. Default
+providers return narrow source-ID decisions; the parser derives evidence,
+source-unit references, section context, classification coverage, and canonical
+records locally. Legacy full-extraction responses must conform to
+`schemas/job-parser.schema.json`.
 
-Every semantic item and present metadata value must include an evidence quote that
-occurs in the original source text. Exact matching is attempted first, followed
-by matching with normalized whitespace. Approved parser aliases may support a
-canonical value such as `Kubernetes` when the source explicitly says `k8s`;
-related matching aliases are never used. Fabricated evidence is rejected with
-structured validation errors before merging.
+For legacy responses, every semantic item and present metadata value must include
+an evidence quote that occurs in the original source text. Exact matching is
+attempted first, followed by matching with normalized whitespace. Approved parser
+aliases may support a canonical value such as `Kubernetes` when the source
+explicitly says `k8s`; related matching aliases are never used. Fabricated
+evidence is rejected with structured validation errors before merging.
 Responsibilities remain separate from competencies, ambiguous classifications
 remain ambiguous, and alternatives remain one `anyOf` item.
 
@@ -39,17 +42,21 @@ arrays, inspect candidate data, or calculate scores.
 
 ## Narrow enrichment decisions
 
-New providers may return `decisions` rather than the legacy full extraction
+Default providers return `decisions` rather than the legacy full extraction
 object. Each decision contains a `unitId` and an action: `exclude`,
-`requirement`, or `responsibility`. The parser derives evidence quotes, source
-unit references, source section, coverage, and required/preferred classification
-locally. `requirement` is accepted only when the source section already has an
-explicit required or preferred signal. The existing full extraction response is
-kept as a compatibility path for explicit `decisionMode: false` configurations
-and older checkpoints. New configuration defaults to narrow decision mode.
+`requirement`, `responsibility`, `alternative`, or `metadata`.
+Alternatives carry exact source-backed `values`; metadata carries
+`metadataKey` and an exact `value`. The parser derives evidence quotes,
+source-unit references, source section, and coverage locally. A requirement
+under an explicit required or preferred heading retains that classification; a
+source-backed qualification in neutral or Activities prose becomes a generic
+final `qualifications` entry instead of inventing required/preferred strength.
+The existing full extraction response is kept as a compatibility path for
+explicit `decisionMode: false` configurations and older checkpoints. New
+configuration defaults to narrow decision mode.
 
 The migration boundary is intentionally in `semantic-extract.mjs`: switching an
-adapter to the decision contract does not change `job.json`, source-evidence
-validation, aliases, alternative validation, or any downstream consumer. Until
-the built-in adapters are migrated, their responses remain subject to the
-stricter legacy validation path.
+adapter to the decision contract does not change source-evidence validation,
+aliases, alternative validation, or downstream consumers. Gemini and Ollama use
+the decision contract by default; their legacy full-extraction path remains
+available only when decision mode is disabled.

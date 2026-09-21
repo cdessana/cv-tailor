@@ -96,6 +96,29 @@ test("narrow semantic decisions derive source-grounded records locally", async (
   assert.deepEqual(result.job.requirements.required, ["Good knowledge of Unix, SQL and scripting languages"]);
 });
 
+test("narrow semantic decisions preserve an Activities qualification without inventing strength", async () => {
+  const directory = await tempDir();
+  const input = path.join(directory, "activities-decision.txt");
+  const output = path.join(directory, "activities-decision.json");
+  await fs.writeFile(input, [
+    "Example is hiring a Senior Engineer",
+    "Activities",
+    "Good knowledge of Unix, SQL and scripting languages",
+  ].join("\n"));
+  const result = await runJobParser({
+    input,
+    output,
+    semanticProvider: ({ unresolved }) => ({
+      decisions: [{ unitId: unresolved[0].unit.id, action: "requirement" }],
+    }),
+  });
+  assert.deepEqual(
+    result.job.qualifications,
+    ["Good knowledge of Unix, SQL and scripting languages"]
+  );
+  assert.equal(result.job.requirements, undefined);
+});
+
 test("narrow semantic alternatives retain source classification and evidence locally", async () => {
   const directory = await tempDir();
   const input = path.join(directory, "alternative-decision.txt");

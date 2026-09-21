@@ -26,10 +26,11 @@ Positional input is equivalent to `--input`. Without `--output`, the CLI writes
 the semantic provider in this order: `--semantic-provider`,
 `JOB_PARSER_PROVIDER`, `jobParser.semanticProvider` in the config file, then the
 `none` default. Supported values are `gemini`, `ollama`, and `none`. The last
-option disables network/model extraction and fails rather than dropping
-unresolved content. Gemini or Ollama must be explicitly selected before the job
-description can be sent to a semantic provider. Programmatic callers can still
-inject a provider through `runJobParser`.
+option disables network/model extraction; when the deterministic result can form
+a valid job, unresolved units are retained as report diagnostics rather than
+discarded or treated as a fatal error. Gemini or Ollama must be explicitly
+selected before the job description can be sent to a semantic provider.
+Programmatic callers can still inject a provider through `runJobParser`.
 
 Supported LinkedIn archive text receives additional deterministic handling:
 header metadata is preserved, short `SKILLS & KEYWORDS` bullets remain
