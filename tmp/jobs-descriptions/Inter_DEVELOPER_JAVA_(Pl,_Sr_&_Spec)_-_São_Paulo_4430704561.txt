@@ -1,0 +1,79 @@
+================================================================================
+JOB POSTING ARCHIVE: DEVELOPER JAVA (PL, SR & SPEC) | SÃO PAULO
+================================================================================
+Company:              Inter
+Job Title:            DEVELOPER JAVA (Pl, Sr & Spec) | São Paulo
+Job ID:               4430704561
+Location:             São Paulo, São Paulo, Brazil
+Workplace Type:       On-site
+Experience Level:     Not specified
+Employment Type:      Full-time
+Date Posted:          2026-09-13 (8 hours ago)
+Salary / Comp:        Not specified
+LinkedIn URL:         https://br.linkedin.com/jobs/view/developer-java-pl-sr-spec-s%C3%A3o-paulo-at-inter-4430704561
+Archive Fetched At:   2026-09-13T20:31:41.874Z
+================================================================================
+
+JOB DESCRIPTION:
+--------------------------------------------------------------------------------
+Conheça o Inter 
+Pioneiros, mudamos o mercado ao lançar o primeiro banco digital do Brasil e seguimos criando tendências com tecnologia de ponta. Evoluímos para um Super App Financeiro Global, com soluções completas e inovação de primeira. Aqui, o trabalho tem propósito: construir oportunidades reais, transformar a vida das pessoas e o mercado financeiro. Esse é o nosso Jeito Inter de Fazer. Se você quer fazer parte dessa mudança e deixar um legado, seu lugar é aqui.
+
+Vem ser Sangue Laranja.
+Get to Know Inter 
+As pioneers, we transformed the market by launching Brazil’s first digital bank and continue to shape the future with cutting-edge technology.
+We have evolved into a Global Financial Super App, delivering complete solutions and leading innovation. Here, work has purpose: creating real opportunities, transforming people’s lives, and reshaping the financial market.
+This is the Inter way of making things happen. If you want to be part of this transformation and leave your mark, your place is here.
+Become Sangue Laranja.
+ Buscamos Pessoas Desenvolvedoras Java | Pleno, Sênior e Especialista
+O Inter tá crescendo: novos produtos, novos mercados e uma escala cada vez maior.
+Por isso, a gente tá procurando pessoas desenvolvedoras Java que queiram construir o futuro da arquitetura do nosso Super App.
+Se você curte mais resolver problemas do que repetir padrões, seu lugar é aqui com a gente.
+O desafio
+Você vai construir os serviços distribuídos que fazem nosso Super App funcionar pra milhões de pessoas. Seu objetivo será garantir alta disponibilidade e baixa latência, com decisões de arquitetura que impactam de verdade a experiência de quem usa o app.
+Mais do que só implementar, a gente quer que você participe das decisões técnicas e ajude a evoluir o jeito que a gente faz tecnologia no Inter. No seu dia a dia, você vai:• Desenvolver e manter aplicações em Java (11/17/21) com Spring Boot e Micronaut
+• Modelar e implementar APIs RESTful seguindo API First
+• Trabalhar com PostgreSQL, SQL Server, MongoDB e DynamoDB
+• Participar das decisões de arquitetura e boas práticas
+• Implementar autenticação e autorização (JWT, OAuth2, Basic Auth)
+• Melhorar continuamente qualidade de código e processos
+Obrigatório• Graduação completa em área tecnológica
+• Experiência sólida com Java e Spring
+• Experiência com microsserviços e APIs REST
+• Conhecimento em bancos relacionais e não relacionais
+• Experiência com AWS e Kubernetes
+• Noções de segurança e autenticação
+• Disponibilidade para trabalho presencial
+Diferenciais• Arquitetura distribuída (CQRS, Event Sourcing)
+• Monitoramento (Prometheus, Grafana, ELK)
+• Testes automatizados
+E pra simplificar a sua vida, olha só o que a gente oferece:
+• Vale-alimentação e vale-refeição
+• Plano de saúde e odontológico completo
+• Seguro de vida
+• Day Off no seu aniversário
+• Licença parental estendida
+• Programa Baby On Board
+• Auxílio-creche/babá
+• WellHub (antigo Gympass): Acesso a academias e estúdios no Brasil todo
+• Vantagens exclusivas no Super App: Você tem acesso a benefícios como o Duo Gourmet, que te dá pratos em dobro nos melhores restaurantes, e muito mais
+• Cartão Prime Inter: Um cartão com benefícios exclusivos
+• Programas de treinamento e capacitação: A gente investe no seu desenvolvimento com cursos, workshops e plataformas de aprendizado pra você nunca parar de crescer.
+Como funciona o processo• Conversa inicial
+• Avaliações técnicas
+• Entrevista com Talent
+• Entrevista com liderança
+• Proposta
+
+SKILLS & KEYWORDS:
+--------------------------------------------------------------------------------
+• Java
+• SQL
+• PostgreSQL
+• MongoDB
+• AWS
+• Kubernetes
+
+================================================================================
+Archived via LinkedIn Job Data Fetcher | Job ID: 4430704561
+================================================================================

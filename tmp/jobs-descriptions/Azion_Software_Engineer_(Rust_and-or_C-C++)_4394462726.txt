@@ -1,0 +1,110 @@
+================================================================================
+JOB POSTING ARCHIVE: SOFTWARE ENGINEER (RUST AND/OR C/C++)
+================================================================================
+Company:              Azion
+Job Title:            Software Engineer (Rust and/or C/C++)
+Job ID:               4394462726
+Location:             São Paulo, São Paulo, Brazil
+Workplace Type:       Remote
+Experience Level:     Not specified
+Employment Type:      Full-time
+Date Posted:          2026-04-06 (5 months ago)
+Salary / Comp:        Not specified
+LinkedIn URL:         https://br.linkedin.com/jobs/view/software-engineer-rust-and-or-c-c%2B%2B-at-azion-4394462726
+Archive Fetched At:   2026-09-11T02:01:38.638Z
+================================================================================
+
+JOB DESCRIPTION:
+--------------------------------------------------------------------------------
+About Azion
+
+We are a global technology company specializing in digital applications and security. Our platform helps companies operate more agilely, reducing response times and increasing the reliability of their systems.
+
+At Azion, our purpose is to simplify application development and transform the future with cutting-edge technology. Here, you will have the chance to develop in an innovative environment, alongside a high-performance team, working on real challenges and creating solutions that make a difference.
+
+About The Position
+
+We are looking for a Software Engineer to join our Engineering team at our São Paulo/SP or Porto Alegre/RS offices. As part of the Engineering department, the selected candidate will be responsible for developing highly concurrent systems in Rust and/or C/C++, optimizing performance, distributed caching, and connection management to handle thousands of requests per second with low latency.
+
+Key Responsibilities
+
+• Develop and maintain high-performance systems using Rust and/or C/C++, depending on the team's technical needs;
+• Design and implement highly concurrent and asynchronous applications capable of handling thousands of requests per second with low latency;
+• Optimize system performance, including memory usage, CPU utilization, throughput, and latency;
+• Develop and maintain components related to distributed caching, connection management, load balancing, automatic reconnections, and backpressure;
+• Work with network and application protocols such as TCP/IP, HTTP, DNS, and TLS;
+• Develop and maintain scalable and resilient services running in Linux/Unix environments;
+• Contribute to the architecture and evolution of distributed and high-performance systems;
+• Collaborate on secure development practices, automated testing, CI/CD pipelines, and software automation;
+• Troubleshoot and investigate performance, networking, and system-level issues.
+
+Required Qualifications
+
+• Strong experience in software or systems development using Rust or C/C++;
+• Experience or solid understanding of low-level programming, systems development, or high-performance applications;
+• Understanding of Internet and networking concepts, including TCP/IP, HTTP, DNS, and TLS;
+• Experience with Linux/Unix environments;
+• Knowledge of software architecture and distributed systems concepts;
+• Experience with Git;
+• Familiarity with CI/CD and automation pipelines;
+• Familiarity with secure software development practices;
+• Intermediate English.
+
+Preferred Qualifications
+
+• Experience with highly concurrent, asynchronous, or multi-threaded systems;
+• Experience with TCP and UDP communication, sockets, or packet troubleshooting;
+• Experience with distributed systems, caching, high-performance web/cloud servers, or multi-tenant applications;
+• Knowledge or experience with Nginx, OpenResty, Caddy, Envoy, or similar HTTP proxy/cache technologies;
+• Familiarity with Docker and Kubernetes;
+• Experience with automated testing, including unit, functional, integration, or E2E tests;
+• Experience with DevOps or DevSecOps practices;
+• Familiarity with cloud environments such as AWS, GCP, or similar platforms;
+• Understanding of REST APIs;
+• Knowledge of Internet protocol RFCs;
+• Experience with Edge Computing, CDN, or globally distributed systems;
+• Knowledge of HTTP/3 and QUIC;
+• Experience with near real-time applications.
+
+Benefits & Azion Way Of Life
+
+• CLT hiring model;
+• Health and dental plan;
+• Flexible VR and VA (Flash Card), including during vacation periods;
+• Transport voucher without payroll deduction;
+• Annual internal hackathons;
+• Mobility allowance (additional amount for travel);
+• Freestyle (incentive to customize the workstation);
+• Stock options (according to policy);
+• Birthday day off;
+• TotalPass;
+• Flexible working hours (really flexible);
+• Nomad Program to work from anywhere for up to 30 days per year (according to policy);
+• Annual international exchange program.
+
+FlexWork Model
+
+We offer a FlexWork model that prioritizes acculturation and collaboration. For the first three months, you will work on-site in the local office, an essential step in building solid relationships and a genuine connection with our values and culture. We believe that this initial immersion not only strengthens the team, but also boosts creativity and innovation.
+
+After this period, you will have the possibility to apply for the hybrid model, working on-site at least three times a week. This approach balances interaction in person and autonomy, creating a dynamic and productive working environment.
+
+At Azion, all applications are welcome, regardless of gender, sexual orientation, age, pregnancy, disability, ethnicity, color, country of origin, or religion. We believe that an inclusive environment contributes to our success and that respect is present in all our relationships.
+
+Come and join our team! We look forward to getting to know you and walking a path of success in technology together!
+
+SKILLS & KEYWORDS:
+--------------------------------------------------------------------------------
+• AWS
+• GCP
+• Docker
+• Kubernetes
+• CI/CD
+• Git
+• REST APIs
+• Linux
+• Distributed Systems
+• DevOps
+
+================================================================================
+Archived via LinkedIn Job Data Fetcher | Job ID: 4394462726
+================================================================================

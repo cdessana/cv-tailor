@@ -47,7 +47,7 @@ const JobParserProviderOptionsSchema = z.object({
   maxAttempts: z.number().int().positive().max(10).default(3),
   batchSize: z.number().int().positive().max(12).default(3),
   maxCorrections: z.number().int().nonnegative().max(3).default(2),
-  decisionMode: z.boolean().default(false),
+  decisionMode: z.boolean().default(true),
 });
 
 const JobParserOllamaSchema = JobParserProviderOptionsSchema.extend({

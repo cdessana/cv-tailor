@@ -1,0 +1,64 @@
+================================================================================
+JOB POSTING ARCHIVE: ENGENHEIRO DE SOFTWARE (.NET) - REMOTE WORK | REF#303239
+================================================================================
+Company:              BairesDev
+Job Title:            Engenheiro de Software (.NET) - Remote Work | REF#303239
+Job ID:               4464695717
+Location:             São Paulo, São Paulo, Brazil
+Workplace Type:       On-site
+Experience Level:     Entry level
+Employment Type:      Full-time
+Date Posted:          2026-09-08 (2 days ago)
+Salary / Comp:        Not specified
+LinkedIn URL:         https://br.linkedin.com/jobs/view/engenheiro-de-software-net-remote-work-ref%23303239-at-bairesdev-4464695717
+Archive Fetched At:   2026-09-11T02:01:01.762Z
+================================================================================
+
+JOB DESCRIPTION:
+--------------------------------------------------------------------------------
+Há mais de 15 anos, a BairesDev® é líder em projetos tecnológicos. Entregamos soluções inovadoras para gigantes como Google e Rolls-Royce e as startups mais inovadoras do Vale do Silício.
+
+Temos uma equipe diversa de mais de 4.000 profissionais formada pelo Top 1% dos talentos de tecnologia do mundo, trabalhando remotamente em cargos de impacto global.
+
+Ao se candidatar para este cargo, você está dando o primeiro passo em um processo que vai além do comum. Nosso objetivo é alinhar suas paixões, habilidades, e expectativas às nossas vagas, colocando você no caminho para desenvolver uma carreira de sucesso excepcional.
+
+Desenvolva e mantenha aplicações .NET que entregam soluções confiáveis para atender aos objetivos de negócio. Você construirá sistemas backend escaláveis, colaborará com equipes multifuncionais e implementará melhores práticas ao longo do ciclo de vida de desenvolvimento de software.
+
+O Que Você Fará
+
+• Projetar, desenvolver e manter aplicações e serviços .NET.
+• Escrever código limpo e eficiente, seguindo as melhores práticas .NET e os padrões de codificação.
+• Construir e integrar APIs, bancos de dados e serviços de terceiros.
+• Colaborar com membros da equipe para coletar requisitos e implementar soluções.
+• Participar de revisões de código e contribuir para iniciativas de melhoria contínua.
+• Fazer debug e otimizar aplicações para garantir performance e confiabilidade.
+
+O Que Procuramos
+
+• 3+ anos de experiência em desenvolvimento .NET.
+• Sólido conhecimento de C# e do framework .NET.
+• Experiência com frameworks de desenvolvimento web como ASP.NET ou .NET Core.
+• Familiaridade com bancos de dados SQL e conceitos de modelagem de dados.
+• Compreensão de princípios de desenvolvimento de software e padrões de design.
+• Nível avançado de inglês.
+
+Como tornamos seu trabalho (e sua vida) mais fácil:
+
+• Modalidade 100% remota - trabalhe de qualquer lugar.
+• Excelente remuneração em USD ou na sua moeda local, como preferir.
+• Hardware para você trabalhar de casa.
+• Horários flexíveis - faça seu próprio horário.
+• Licença parental remunerada, férias, e feriados nacionais.
+• Ambiente de trabalho inovador e multicultural.
+• Colabore e aprenda com o Top 1% global dos talentos de cada área.
+• Ambiente de apoio com mentoria, promoções, desenvolvimento de habilidades, e diversas oportunidades de crescimento.
+
+Junte-se a uma equipe global onde seus talentos excepcionais podem se destacar!
+
+SKILLS & KEYWORDS:
+--------------------------------------------------------------------------------
+• SQL
+
+================================================================================
+Archived via LinkedIn Job Data Fetcher | Job ID: 4464695717
+================================================================================

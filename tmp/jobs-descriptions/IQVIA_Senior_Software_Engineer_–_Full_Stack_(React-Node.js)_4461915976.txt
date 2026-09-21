@@ -1,0 +1,108 @@
+================================================================================
+JOB POSTING ARCHIVE: SENIOR SOFTWARE ENGINEER – FULL STACK (REACT/NODE.JS)
+================================================================================
+Company:              IQVIA
+Job Title:            Senior Software Engineer – Full Stack (React/Node.js)
+Job ID:               4461915976
+Location:             São Paulo, São Paulo, Brazil
+Workplace Type:       On-site
+Experience Level:     Not specified
+Employment Type:      Full-time
+Date Posted:          2026-09-03 (1 week ago)
+Salary / Comp:        Not specified
+LinkedIn URL:         https://br.linkedin.com/jobs/view/senior-software-engineer-%E2%80%93-full-stack-react-node-js-at-iqvia-4461915976
+Archive Fetched At:   2026-09-11T02:03:18.012Z
+================================================================================
+
+JOB DESCRIPTION:
+--------------------------------------------------------------------------------
+Fullstack Developer (React.js / Node.js)
+
+Offer Description
+
+We are looking for a highly motivated and experienced Senior Software Engineer, who is very used to working as a key member of a lean, Agile product development team. You will play an essential role in designing, building, enhancing and maintaining our bespoke client-facing software products using modern technologies, which are key to the success of our business.
+
+Our software is deployed in Azure, so familiarity with Azure services is a definite advantage. Our backend is deployed on dockerized applications running on Kubernetes. We use different data storage mechanism, depending on the one that fits better the requirements, so you’ll find data in Postgres, Elasticsearch, Snowflake or Databricks. We have frontend applications which are written on React and they communicate through ts-rest.
+
+Requirements Description
+
+• Bachelor's or higher degree in computer science, software development or a related field
+• Substantial relevant development experience and demonstrable capability of working in a role having senior engineer responsibilities (7+)
+• Experience with Typescript, Node.js, React, Azure or similar cloud services
+• Ability to write clean, readable, well formed, self-explanatory code
+• Experience in designing and building complex major components, services or applications, from scratch
+• Good interpersonal and communication skills, in English, both written and spoken
+• Hands on experience with core components of the application development environment configuration: GitLab pipelines, Docker
+
+Your Responsibilities
+
+• Independently developing or enhancement of new and existing system components, services and applications.
+• Providing peer support to other developers, through code reviews, peer programming, collaborative technical design, mentoring less experienced folks or assisting in on-boarding new developers.
+• Write and maintain automated tests to ensure the quality of the codebase
+• Participating in regular formal and informal team sessions, like sprint-planning, refinement sessions, kick-offs, daily stand-ups and retros.
+• Helping to continuously improve our CI/CD pipeline, as well as the tools and methods that the team uses, to provide as much value as possible, with high quality, for as little effort as possible
+• Proactively sharing knowledge and producing “just good enough” documentation
+
+Years Of Experience
+
+• 7+ years of experience in React.js, Node.js
+
+Required Skills/experience
+
+Must-have
+
+• React (JavaScript, front-end)
+• NodeJS (JavaScript, back-end)
+• TypeScript
+
+Working with
+
+• Continuous Integration / Continuous Delivery environments
+• Automated Build Pipelines
+
+Desired
+
+• Python
+• Docker
+• Elasticsearch
+• PostgreSQL
+
+Nice to have
+
+If you have any of the following skills it will be a very welcome addition: Terraform, Python, ETL, Elasticsearch
+
+If you happen to have SCALA knowhow or would like to learn SCALA and Apache Spark we would be delighted.
+
+Soft Skills
+
+• Positive, can-do approach to work, delivering on commitments
+• Have good communication skills
+• Solution Oriented
+• Committed
+• Structured
+• Creative
+
+Foreign language
+
+• English fluent, both written and spoken
+
+IQVIA is a leading global provider of clinical research services, commercial insights and healthcare intelligence to the life sciences and healthcare industries. We create intelligent connections to accelerate the development and commercialization of innovative medical treatments to help improve patient outcomes and population health worldwide. Learn more at https://jobs.iqvia.com
+
+IQVIA is committed to integrity in our hiring process and maintains a zero tolerance policy for candidate fraud. All information and credentials submitted in your application must be truthful and complete. Any false statements, misrepresentations, or material omissions during the recruitment process will result in immediate disqualification of your application, or termination of employment if discovered later, in accordance with applicable law. We appreciate your honesty and professionalism.
+
+SKILLS & KEYWORDS:
+--------------------------------------------------------------------------------
+• Python
+• JavaScript
+• TypeScript
+• React
+• Node.js
+• PostgreSQL
+• Azure
+• Docker
+• Kubernetes
+• CI/CD
+
+================================================================================
+Archived via LinkedIn Job Data Fetcher | Job ID: 4461915976
+================================================================================

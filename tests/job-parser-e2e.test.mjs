@@ -111,6 +111,24 @@ test("narrow semantic alternatives retain source classification and evidence loc
   assert.deepEqual(result.job.alternativeRequirements[0].values, ["Java", "Kotlin"]);
 });
 
+test("narrow metadata decisions derive evidence and source references locally", async () => {
+  const directory = await tempDir();
+  const input = path.join(directory, "metadata-decision.txt");
+  const output = path.join(directory, "metadata-decision.json");
+  await fs.writeFile(input, "Example is hiring a Senior Engineer\n\nJob location: London");
+  const result = await runJobParser({
+    input,
+    output,
+    semanticProvider: ({ unresolved }) => ({ decisions: [{
+      unitId: unresolved[0].unit.id,
+      action: "metadata",
+      metadataKey: "location",
+      value: "London",
+    }] }),
+  });
+  assert.equal(result.job.location, "London");
+});
+
 test("lossless explicit alternatives parse without semantic enrichment", async () => {
   const directory = await tempDir();
   const input = path.join(directory, "raw.txt");
