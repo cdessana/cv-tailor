@@ -1,0 +1,103 @@
+================================================================================
+JOB POSTING ARCHIVE: PESSOA DESENVOLVEDORA BACK END SR - JAVA
+================================================================================
+Company:              Banco Bradesco
+Job Title:            Pessoa Desenvolvedora Back end SR - Java
+Job ID:               4449095665
+Location:             Osasco, São Paulo, Brazil
+Workplace Type:       On-site
+Experience Level:     Not specified
+Employment Type:      Full-time
+Date Posted:          2026-08-26 (2 weeks ago)
+Salary / Comp:        Not specified
+LinkedIn URL:         https://br.linkedin.com/jobs/view/pessoa-desenvolvedora-back-end-sr-java-at-banco-bradesco-4449095665
+Archive Fetched At:   2026-09-11T02:03:17.863Z
+================================================================================
+
+JOB DESCRIPTION:
+--------------------------------------------------------------------------------
+Sobre o Bradesco 
+
+A gente acredita no poder da confiança. Confiança que aproxima, orienta e transforma a vida das pessoas no dia a dia. Entrar no Bradesco é fazer parte de um momento real de transformação. Um ambiente que combina a solidez de uma história construída ao longo de décadas com a evolução constante de quem está sempre olhando para frente. Aqui, você encontra espaço para aprender, crescer e assumir protagonismo na sua trajetória, com apoio, estrutura e oportunidades que acompanham o seu desenvolvimento. Mais do que trabalhar em uma grande instituição, é sobre fazer parte de um time que impacta milhões de pessoas, contribui para o desenvolvimento do país e constrói, todos os dias, um futuro mais acessível e sustentável para a sociedade.
+
+ Sobre a área 
+
+Departamento de Sistemas (DS): Viabilizamos soluções de TI que proporcionem o funcionamento harmônico entre os sistemas de suporte ao negócio, mantendo a arquitetura de aplicativos estruturada e tecnologicamente atualizada, atendendo aos requisitos de negócio com alta disponibilidade e performance.
+
+ Como será seu dia a dia? 
+
+Como Software Engineer III, você atuará na área de Cartões e suas principais atividades serão:
+
+• Produzir códigos eficientes e inteligíveis respeitando as especificações;
+• Testar e implementar programas e sistemas;
+• Reparar e aprimorar softwares existentes;
+• Determinar a montagem e a estrutura de banco de dados;
+• Projetar, implantar e realizar manutenção de sistemas e aplicações;
+• Utilizar as metodologias de desenvolvimento de sistemas, linguagem de programação e ferramentas de desenvolvimento designadas e homologadas pela empresa.
+
+ Modelo de trabalho 
+
+Híbrido - 2x Presencial
+
+Unidade: Osasco SP | Curitiba - PR | Recife - PE | Rio de Janeiro - RJ | Uberlândia - MG
+
+ Perfil que buscamos 
+
+Valorizamos quem entende o cliente em profundidade, trabalha em parceria e transforma conhecimento em entregas com impacto. Profissionais com senso de dono, consistência na execução e foco em resultado, que evoluem continuamente, compartilham aprendizados e usam tecnologia para transformar desafios em soluções relevantes para o negócio.
+
+ Requisitos 
+
+• Experiência em desenvolvimento com microsserviços para backend;
+• Linguagem de programação: Java;
+• Framework / containers: Springboot e Dockers;
+• Experiência em desenvolvimento de frontend web com arquiteturas de micro-frontends modernas e componentizadas;
+• Experiência com provedores de nuvem pública;
+• Experiência com softwares para API Management, arquitetura API-first, API mashups, modelos de monetização, segurança de APIs;
+• Experiência com conteinerização de serviços;
+• Conhecimento ou experiência com service mesh, sidecar proxy, etc.
+
+ O que você encontra aqui 
+
+ Cuidar de você 
+
+• Plano de saúde e odontológico
+• Seguro de vida
+• Viva Bem: programa de saúde, bem-estar e qualidade de vida
+• TotalPass
+
+ Crescer com você 
+
+• Universidade corporativa Bradesco (Unibrad)
+• Parcerias educacionais
+
+ Segurança para o seu futuro 
+
+• Participação nos lucros ou Bônus (conforme a elegibilidade de cargo)
+• Previdência privada
+• Condições especiais em produtos e serviços
+• Isenção de Tarifas: condições especiais em diversos produtos e serviços
+
+ Apoio à sua vida e à sua família 
+
+• Vale alimentação e refeição
+• 13ª cesta alimentação
+• Auxílio creche ou babá
+• Licença Maternidade de 180 dias, acompanhamento assistencial da gestação até o pós-parto
+• Licença Paternidade estendida de 20 dias
+• Vale transporte opcional
+
+Tudo pensado para apoiar sua jornada de crescimento com equilíbrio, segurança e oportunidade.
+
+ Diversidade 
+
+No Bradesco, diversidade é valor e estratégia. Trabalhamos para construir um ambiente inclusivo e um quadro de colaboradores que reflita a diversidade da sociedade brasileira. Por isso, valorizamos pessoas com diferentes histórias e características, como gênero, raça, orientação sexual, deficiência, idade e outras dimensões da diversidade.
+
+Se você acredita na confiança como base para transformar, gosta de desafios e quer crescer em um ambiente que evolui junto com você, seu lugar pode ser aqui. Vem ser Bradesco!
+
+SKILLS & KEYWORDS:
+--------------------------------------------------------------------------------
+• Java
+
+================================================================================
+Archived via LinkedIn Job Data Fetcher | Job ID: 4449095665
+================================================================================

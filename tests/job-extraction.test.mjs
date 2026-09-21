@@ -335,6 +335,19 @@ test("explicit candidate-section bullets never require action or technology heur
   assert.equal(result.unresolved.length, 0);
 });
 
+test("nested technology details do not become independent requirements", () => {
+  const result = extract(preprocess([
+    "Required Qualifications",
+    "- Strong experience with AWS, including:",
+    "  - Amazon SQS, Amazon SNS, AWS Lambda",
+  ].join("\n")));
+  assert.deepEqual(result.extraction.items.map((item) => item.value), [
+    "Strong experience with AWS, including:",
+  ]);
+  assert.equal(result.extraction.coverage[0].status, "excluded");
+  assert.match(result.extraction.coverage[0].reason, /not an independent requirement/u);
+});
+
 test("extracts Worldpay-style ownership, qualification, and bonus bullets", () => {
   const document = preprocess(
     [

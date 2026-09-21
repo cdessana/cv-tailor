@@ -1,0 +1,81 @@
+================================================================================
+JOB POSTING ARCHIVE: UNIX & SQL PRODUCTION SUPPORT ENGINEER
+================================================================================
+Company:              NTT DATA North America
+Job Title:            UNIX & SQL Production Support Engineer
+Job ID:               4411619599
+Location:             Greater São Paulo Area
+Workplace Type:       On-site
+Experience Level:     Not specified
+Employment Type:      Full-time
+Date Posted:          2026-09-13 (9 hours ago)
+Salary / Comp:        $30
+LinkedIn URL:         https://br.linkedin.com/jobs/view/unix-sql-production-support-engineer-at-ntt-data-north-america-4411619599
+Archive Fetched At:   2026-09-13T20:37:08.829Z
+================================================================================
+
+JOB DESCRIPTION:
+--------------------------------------------------------------------------------
+Req ID: 331549
+
+NTT DATA strives to hire exceptional, innovative and passionate individuals who want to grow with us. If you want to be part of an inclusive, adaptable, and forward-thinking organization, apply now.
+
+We are currently seeking a UNIX & SQL Production Support Engineer to join our team in Sao Paulo, São Paulo (BR-SP), Brazil (BR).
+
+NTT Data Services is looking for an energetic, fast learning and self-motivated person that has strong technical skills, who is able to work well with groups on a global level, and a consultative approach to work with us in this an onsite position.
+
+Location: Itaim Bibi, Sao Paulo
+
+Activities.
+
+Actively provide support for resolution of L2 issues with detailed analysis. Also help in code fixes and rigorous testing where required
+
+Good knowledge of Unix, SQL and scripting languages
+
+Work on supporting Product servers and clients on cutting-edge platforms.
+
+Contribute to our continuous improvement and continuous delivery
+
+Continually focus on enhancing the performance of the applications
+
+Work effectively in collaboration with other team members
+
+Provide technical feedback and support to Development teams
+
+Perform detailed RCA of issues in production, and implement corrective actions
+
+Validated collaboration and communication skills, being able to lead in a global environment
+
+Preferably we are looking for people with five or more years of experience but should be to extend a good offer for your level of experience.
+
+Past experience in positions like: Support Engineer, Production support, technical analyst 4 support, software engineer, application support, (and more) are welcome.
+
+Basic Qualifications:
+
+3+ years of relevant experience in application Maintenance and Support.
+
+Unix, SQL and knowledge of other scripting languages
+
+Knowledge of programming language – preferably Java
+
+If you are interested, please send your resume & we will call you ASAP.
+
+Note: The recruitment for this position is s made from Mexico.
+
+Lic. Salvador Velasco.
+
+About NTT DATA
+
+NTT DATA is a $30 billion trusted global innovator of business and technology services. We serve 75% of the Fortune Global 100 and are committed to helping clients innovate, optimize and transform for long term success. As a Global Top Employer, we have diverse experts in more than 50 countries and a robust partner ecosystem of established and start-up companies. Our services include business and technology consulting, data and artificial intelligence, industry solutions, as well as the development, implementation and management of applications, infrastructure and connectivity. We are one of the leading providers of digital and AI infrastructure in the world. NTT DATA is a part of NTT Group, which invests over $3.6 billion each year in R&D to help organizations and society move confidently and sustainably into the digital future. Visit us at us.nttdata.com
+
+NTT DATA endeavors to make https://us.nttdata.com accessible to any and all users. If you would like to contact us regarding the accessibility of our website or need assistance completing the application process, please contact us at https://us.nttdata.com/en/contact-us. This contact information is for accommodation requests only and cannot be used to inquire about the status of applications. NTT DATA is an equal opportunity employer. Qualified applicants will receive consideration for employment without regard to race, color, religion, sex, sexual orientation, gender identity, national origin, disability or protected veteran status. For our EEO Policy Statement, please click here. If you'd like more information on your EEO rights under the law, please click here. For Pay Transparency information, please click here.
+
+SKILLS & KEYWORDS:
+--------------------------------------------------------------------------------
+• Java
+• SQL
+• AI
+
+================================================================================
+Archived via LinkedIn Job Data Fetcher | Job ID: 4411619599
+================================================================================

@@ -108,12 +108,25 @@ test("splits a compact heading and bullet without changing evidence offsets", ()
   checkRanges(result);
 });
 
+test("splits an embedded archive heading and bullet after introductory prose", () => {
+  const source = "Introdução da vaga. No seu dia a dia, você vai:• Desenvolver aplicações Java";
+  const result = preprocess(source);
+  assert.deepEqual(result.sections.map((section) => section.heading?.text), [
+    undefined,
+    "No seu dia a dia, você vai",
+  ]);
+  assert.equal(result.sections[0].units[0].text, "Introdução da vaga.");
+  assert.equal(result.sections[1].units[0].text, "Desenvolver aplicações Java");
+  checkRanges(result);
+});
+
 const groups = {
   required: [
     "Requirements",
     "Required Qualifications",
     "Must Have",
     "What You'll Need",
+    "What You Bring",
   ],
   preferred: ["Preferred Qualifications", "Nice to Have", "Bonus", "Desirable"],
   responsibilities: ["Responsibilities", "What You'll Do", "Your Role", "In this role, you will"],

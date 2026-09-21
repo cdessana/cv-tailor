@@ -45,7 +45,8 @@ object. Each decision contains a `unitId` and an action: `exclude`,
 unit references, source section, coverage, and required/preferred classification
 locally. `requirement` is accepted only when the source section already has an
 explicit required or preferred signal. The existing full extraction response is
-kept as a compatibility path for Ollama and Gemini while their adapters migrate.
+kept as a compatibility path for explicit `decisionMode: false` configurations
+and older checkpoints. New configuration defaults to narrow decision mode.
 
 The migration boundary is intentionally in `semantic-extract.mjs`: switching an
 adapter to the decision contract does not change `job.json`, source-evidence

@@ -1,0 +1,113 @@
+================================================================================
+JOB POSTING ARCHIVE: SENIOR SOFTWARE ENGINEER (LATAM)
+================================================================================
+Company:              zerohash
+Job Title:            Senior Software Engineer (LATAM)
+Job ID:               4449532874
+Location:             Greater São Paulo Area
+Workplace Type:       Remote
+Experience Level:     Mid-Senior level
+Employment Type:      Full-time
+Date Posted:          2026-08-10 (1 month ago)
+Salary / Comp:        $280
+LinkedIn URL:         https://br.linkedin.com/jobs/view/senior-software-engineer-latam-at-zerohash-4449532874
+Archive Fetched At:   2026-09-11T02:01:02.187Z
+================================================================================
+
+JOB DESCRIPTION:
+--------------------------------------------------------------------------------
+About The Job
+
+zerohash is looking for a Senior Software Engineer to help architect and build new features, as well as scaling the gateway to Finance 2.0. We are a high performing team looking for an equally ambitious and driven teammate. The right candidate for this position is detail oriented, deeply technical, and driven. You are eager to learn new technologies and complex systems. You build resiliency and scalability into the platform at every step. If you're looking to have a massive impact in a high-growth startup in one of the most exciting markets in decades, you will find this role challenging and rewarding in equal measure.
+
+This is a fully remote role for a candidate based in LATAM.
+
+Responsibilities
+
+• Support the company’s vital business by contributing to the design and development of software in an event-driven microservices environment
+• Develop microservices in Golang
+• Work with platform engineers to setup new services
+• Respond to production issues and alerts
+• When necessary, communicate directly with client technical teams
+
+Requirements
+
+• 5+ years of experience, preferably in the FinTech space
+• A humble and scrappy get-it-done mindset; you’re resourceful and in your element going from 0 to 1
+• Excellent problem solving skills - can troubleshoot complex systems
+• Deep Proficiency with Golang.
+• Understanding of SQL and database schema design
+• Comfort with ambiguity; the ability to independently lay out and test clear hypotheses and solve problems without well-defined direction
+• Excellent verbal and written communication skills
+
+Preferred
+
+• Bachelors in computer science or equivalent experience
+• Experience at a banking-as-a-service, brokerage-as a service, payment-as-a-service business
+• Experience with digital assets
+
+Benefits
+
+• Healthcare Insurance: zerohash covers roughly 100% of employee premiums as well as a portion of spouse/children (U.S. only)
+• Vision & Dental Insurance (U.S. only)
+• Chance to earn equity
+• Maternity & Paternity leave (after 6 months)
+• WeWork All Access Membership
+• WFH Yearly Stipend
+• L&D Yearly Stipend (after 6 months)
+
+About Zerohash
+
+zerohash is the leading crypto and stablecoin infrastructure platform and the operating system for digital money, powering the next generation of financial services. Founded in 2017, zerohash enables banks, brokerages, fintechs, and payment companies to offer crypto trading, stablecoin payments, and tokenized assets without having to build or manage complex blockchain infrastructure on their own.
+
+The zerohash platform supports three core pillars: Trade, Transact, and Tokenize. Through a single integration, customers can launch regulated crypto buy, sell, and custody services; enable 24/7 stablecoin-based funding, payouts, and settlement; and issue and manage tokenized assets with built-in compliance, risk controls, and reporting. By abstracting away technical, regulatory, and operational complexity, zerohash allows partners to treat digital assets as just another financial primitive: fast, programmable, and global.
+
+zerohash is trusted by some of the world’s most recognized financial and consumer brands, including Interactive Brokers, Morgan Stanley, Stripe, Franklin Templeton, BlackRock, DraftKings, Gusto, Worldpay, Kalshi, One Pay, among others. Today, zero infrastructure supports millions of end users across brokerage, wealth, payments, and marketplace platforms globally.
+
+The company is deeply regulated and compliance-first, operating across the U.S. and internationally with licenses and approvals that allow partners to enter crypto and stablecoins with confidence. zerohash has become a trusted partner for enterprises seeking to modernize financial products while meeting the highest standards for security, risk management, and regulatory oversight.
+
+To date, zerohash has raised over $280 million in funding from a mix of leading venture firms and strategic investors, including Morgan Stanley, Interactive Brokers, SoFi, Point72 Ventures, Bain Capital Crypto, Lightspeed Venture Partners, and more.
+
+zerohash has been featured in top-tier media outlets such as Bloomberg, CNBC, The Wall Street Journal, Financial Times, Reuters, Forbes, and CoinDesk, and its leadership team regularly contributes to global conversations on the future of payments, investing, and financial infrastructure.
+
+At zerohash, we're building the infrastructure that makes digital money work securely, compliantly, and at global scale.
+
+The zerohash Culture
+
+All zerohash employees are guided by the following characteristics and core principles:
+
+• Independence/Ownership - An ability to work autonomously. Join zerohash, pitch ideas, and shape the work you do.
+• Passion - We are innovating quickly and challenging the status quo. We want you to think big, be creative and make a difference every day.
+• Collaborative - A good attitude and respect for others. We’re teammates, not co-workers. Everything we do is a shared success and equally a shared failure - we talk in terms of “we” not “me”.
+• Initiative - An ability and passion for learning and asking questions. We will champion you, challenge you and push you to achieve your best - and we expect you to do the same.
+• Empathy - An ability to listen, respect, and understand your co-workers, customers, and everyone you interact with no matter how different they are to you.
+• Adaptability - An ability to respond quickly. We are in a fast-paced industry and so we expect you to be creative when solving a new problem and comfortable under pressure.
+• Transparency - We believe that transparency is critical to empowering everyone to make the best decisions, both the company to its people and vice versa.
+• Integrity - Integrity creates trust. As both an organization collectively and as individuals, it is our most valuable asset.
+
+Follow us
+
+Twitter
+
+LinkedIn
+
+Youtube
+
+• We’ve recently seen an increase in individuals impersonating zerohash recruiters to target job seekers. Please stay vigilant and keep the following in mind to ensure you are communicating with the real zerohash team:
+• Verified Emails Only: Official outreach will only come from a @zerohash.com email address.
+• No Messaging Apps: We will never contact you via unsolicited text messages, WhatsApp, or Telegram.
+• Official Applications: Only apply directly through our careers webpage (zerohash.com/careers) or zero-hash.breezy.hr.
+
+See something suspicious?
+
+If you want to verify an interview request or report a fake job posting or suspicious communication, please contact us immediately at talent @zerohash.com. This email is for fraud reports only. Candidate application inquiries will not be responded to.
+
+SKILLS & KEYWORDS:
+--------------------------------------------------------------------------------
+• Golang
+• SQL
+• Microservices
+
+================================================================================
+Archived via LinkedIn Job Data Fetcher | Job ID: 4449532874
+================================================================================
