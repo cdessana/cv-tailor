@@ -200,6 +200,37 @@ test("missing metadata fails explicitly without accepted output", async () => {
   await assert.rejects(() => fs.access(output));
 });
 
+test("SnowHeap-style headers and closing Join-as line form a valid zero-provider job", async () => {
+  const directory = await tempDir();
+  const input = path.join(directory, "snowheap.txt");
+  const output = path.join(directory, "snowheap.json");
+  await fs.writeFile(input, [
+    "Company: SnowHeap",
+    "About the job",
+    "A data analytics and AI software company.",
+    "Tasks",
+    "- Design and maintain fullstack software solutions.",
+    "Requirements",
+    "- Strong proficiency in Elixir.",
+    "",
+    "Join SnowHeap LLC as a Senior Fullstack Software Engineer and help shape the future.",
+  ].join("\n"));
+  let calls = 0;
+  const result = await runJobParser({
+    input,
+    output,
+    semanticProvider: async () => {
+      calls += 1;
+      throw new Error("provider must not be needed for structural content");
+    },
+  });
+  assert.equal(result.job.company, "SnowHeap");
+  assert.equal(result.job.title, "Senior Fullstack Software Engineer");
+  assert.deepEqual(result.job.responsibilities, ["Design and maintain fullstack software solutions."]);
+  assert.deepEqual(result.job.requirements.required, ["Strong proficiency in Elixir."]);
+  assert.equal(calls, 0);
+});
+
 test("ambiguous wording remains a usable structural parse when enrichment is unavailable", async () => {
   const directory = await tempDir();
   const input = path.join(root, "test/fixtures/jobs/raw/ambiguous.txt");

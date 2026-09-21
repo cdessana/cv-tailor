@@ -173,6 +173,24 @@ test("extracts explicit company and title metadata without semantic inference", 
   assert.equal(result.unresolved.length, 0);
 });
 
+test("extracts standalone company headers and Join-as titles across sections", () => {
+  const result = extract(preprocess([
+    "Company: SnowHeap",
+    "Tasks",
+    "- Build reliable software.",
+    "Requirements",
+    "- Strong proficiency in Elixir.",
+    "",
+    "Join SnowHeap LLC as a Senior Fullstack Software Engineer and help shape the future.",
+  ].join("\n")));
+  assert.equal(result.extraction.metadata.company.value, "SnowHeap");
+  assert.equal(result.extraction.metadata.title.value, "Senior Fullstack Software Engineer");
+  assert.equal(result.extraction.items[0].kind, "responsibility");
+  assert.equal(result.extraction.items[1].kind, "requirement");
+  assert.ok(result.extraction.metadata.company.sourceUnitIds?.length);
+  assert.ok(result.extraction.metadata.title.sourceUnitIds?.length);
+});
+
 test("extracts LinkedIn archive header metadata deterministically", () => {
   const source = [
     "JOB POSTING ARCHIVE: SOFTWARE ENGINEER",
@@ -646,9 +664,9 @@ test("excludes LinkedIn archive boilerplate deterministically", () => {
   ].join("\n");
   const result = extract(preprocess(source));
   assert.equal(result.unresolved.length, 0);
-  assert.equal(result.extraction.coverage.length, 4);
+  assert.equal(result.extraction.coverage.length, 5);
   assert.ok(
-    result.extraction.coverage.every((entry) => entry.status === "excluded")
+    result.extraction.coverage.some((entry) => entry.status === "metadata")
   );
 });
 
