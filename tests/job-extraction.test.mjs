@@ -316,8 +316,8 @@ test("does not force contextual paragraphs under responsibility headings into it
 
 test("recognizes platform-added requirements as source-grounded required bullets", () => {
   const result = extract(preprocess("Requirements added by the job poster\n• 6+ years of work experience with Java"));
-  assert.deepEqual(result.extraction.items.map(({ value, kind, classification }) => ({ value, kind, classification })), [
-    { value: "6+ years of work experience with Java", kind: "requirement", classification: "required" },
+  assert.deepEqual(result.extraction.items.map(({ value, kind, classification, provenance }) => ({ value, kind, classification, provenance })), [
+    { value: "6+ years of work experience with Java", kind: "requirement", classification: "required", provenance: "job-poster-added" },
   ]);
 });
 
