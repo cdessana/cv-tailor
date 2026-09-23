@@ -1,0 +1,98 @@
+================================================================================
+JOB POSTING ARCHIVE: ENGENHEIRO DE SOFTWARE ESPECIALISTA SR - P&D IA
+================================================================================
+Company:              Evertec Brasil
+Job Title:            Engenheiro de Software Especialista SR - P&D IA
+Job ID:               4438325792
+Location:             São Paulo, São Paulo, Brazil
+Workplace Type:       Hybrid
+Experience Level:     Not specified
+Employment Type:      Full-time
+Date Posted:          2026-09-13 (8 hours ago)
+Salary / Comp:        Not specified
+LinkedIn URL:         https://br.linkedin.com/jobs/view/engenheiro-de-software-especialista-sr-p-d-ia-at-evertec-brasil-4438325792
+Archive Fetched At:   2026-09-13T20:42:15.964Z
+================================================================================
+
+JOB DESCRIPTION:
+--------------------------------------------------------------------------------
+CLT, São Paulo Hybrid
+
+Muito prazer, Somos a Evertec!
+
+A Evertec é uma empresa especializada em tecnologia para o setor financeiro, com mais de 27 anos de atuação e presença em 26 países da América Latina e Caribe. Com mais de 11 bilhões de transações processadas anualmente, somos referência em soluções que impulsionam a transformação digital do mercado.
+
+Oferecemos um portfólio completo de soluções em software, atendendo instituições financeiras, empresas e fintechs que buscam inovação, segurança e eficiência.
+
+Nosso compromisso é com a excelência tecnológica, a inclusão financeira e a geração de valor sustentável para clientes, colaboradores e parceiros, promovendo um ecossistema mais conectado e acessível.
+
+Requirements
+
+A área de AI Office é responsável por iniciativas e direcionamentos de IA na empresa e busca um Engenheiro de Software Especialista SR para compor nosso time, na maior empresa de desenvolvimento de softwares e produtos para o mercado financeiro do Brasil, onde acreditamos que a inovação tecnológica inspira a evolução.
+
+Esse Cargo Será Responsável Por
+
+• Foco em Modernização, eficiência e crescimento através de P&D em IA
+• Pesquisa em IA;
+• Modernização de software legados;
+• Desenvolvimento + aquitetura de novos produtos;
+
+Para dar #match, essa vaga necessita que atenda alguns requisitos obrigatórios:
+
+• Experiencia no mercado Financeiro;
+• Especialidade em Software nivel avançado;
+• Conhecimentos avançados em uso de IA;
+• Experiência no desenvolvimento e aquitetura de novos produtos;
+• Histórico robusto em desenvolvimento e arquitetura de software;
+• Conhecimento sólido em metodologias ágeis, gestão de processos e produtos;
+• Habilidade comprovada em integrar diferentes áreas e alcançar alta performance;
+• Sólidos conhecimentos em Modelagem de Dados, Integrações, Python, .NET ou Java e plataformas como Azure ,GCP e/ou Aws;
+• Experiência prática em automação e visão estratégica de negócios;
+• Capacidade excepcional de comunicação e engajamento de equipes técnicas;
+• Atuação ativa na adoção de tecnologias emergentes e desenvolvimento de trilhas técnicas e certificações internas.
+
+Caso possua o conhecimento ou atuação abaixo, será um diferencial:
+
+• Perfil acadêmico e prático, mentor de profissionais na área de tecnologia;
+• Proficiência em Inglês.
+
+Benefits
+
+E ai, se identificou com o que leu até agora? Então, vou te contar o que você encontrará aqui, além de um ambiente dinâmico:
+
+• Vale refeição ou alimentação;
+• Benefício Flexível (Flash);
+• Assistência médica;
+• Parceiros para atendimento psicológico, jurídico, financeiro e nutricional (CLUDE, C4LIFE E ASQ);
+• Psicologia Viva;
+• Assistência Odontológica;
+• Auxílio creche;
+• Auxílio para filhos com necessidades especiais;
+• Auxílio fertilização;
+• Extensão Licença Maternidade e Paternidade;
+• Vale transporte ou Auxílio Home Office (para contrato teletrabalho);
+• Gympass (Wellhub) e TotalPass;
+• Horários flexíveis;
+• Seguro de vida;
+• Clube de parcerias;
+• Parceria com Sesc;
+• Just dress no code (sem código de vestimenta);
+• Day off no aniversário;
+• Beca (programa de incentivo a educação);
+• PPR ou Bônus - conforme atingimento de metas e resultados.
+
+Valorizamos a diversidade e entendemos que o que acrescenta é justamente ideias e pontos de vistas variados. Por isso raça, cor, religião, gênero e identidade de gênero, nacionalidade, deficiência, orientação sexual, ascendência ou idade, não serão impeditivos de você fazer parte do nosso time.
+
+SKILLS & KEYWORDS:
+--------------------------------------------------------------------------------
+• Python
+• Java
+• AWS
+• GCP
+• Azure
+• AI
+• Excel
+
+================================================================================
+Archived via LinkedIn Job Data Fetcher | Job ID: 4438325792
+================================================================================

@@ -59,6 +59,27 @@ test("BTG is a clean deterministic structured vacancy", async () => {
   assert.ok(job.company && job.title);
 });
 
+test("Evertec retains explicit Portuguese qualifications when enrichment is unavailable", async () => {
+  const result = await parseFixture("Evertec_");
+  const required = result.job.requirements?.required ?? [];
+  assert.equal(result.job.company, "Evertec Brasil");
+  assert.ok(required.some((value) => /Python, \.NET ou Java/iu.test(value)));
+  assert.ok(required.some((value) => /Azure ,GCP e\/ou Aws/iu.test(value)));
+  assert.equal(result.semanticProvider.used, false);
+  assert.ok(result.warnings.some((warning) => warning.code === "semantic_enrichment_unavailable"));
+});
+
+test("Campspot retains structured responsibilities and AI-platform requirements locally", async () => {
+  const result = await parseFixture("Campspot_");
+  const required = result.job.requirements?.required ?? [];
+  assert.equal(result.job.company, "Campspot");
+  assert.ok(result.job.responsibilities?.some((value) => /Claude Code to implement new features/iu.test(value)));
+  assert.ok(required.some((value) => /Anthropic API/iu.test(value)));
+  assert.ok(required.some((value) => /TypeScript and React/iu.test(value)));
+  assert.equal(result.semanticProvider.used, false);
+  assert.ok(result.warnings.some((warning) => warning.code === "semantic_enrichment_unavailable"));
+});
+
 test("Inter squashed markup, IQVIA requirements, and NTT mixed prose remain usable", async () => {
   const [{ job: inter }, { job: iqvia }, { job: ntt }] = await Promise.all([
     parseFixture("Inter_"),

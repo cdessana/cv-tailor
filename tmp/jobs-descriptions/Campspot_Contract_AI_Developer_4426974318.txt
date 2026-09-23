@@ -1,0 +1,73 @@
+================================================================================
+JOB POSTING ARCHIVE: CONTRACT AI DEVELOPER
+================================================================================
+Company:              Campspot
+Job Title:            Contract AI Developer
+Job ID:               4426974318
+Location:             Brazil
+Workplace Type:       On-site
+Experience Level:     Not specified
+Employment Type:      Contract
+Date Posted:          2026-09-13 (7 hours ago)
+Salary / Comp:        $25
+LinkedIn URL:         https://br.linkedin.com/jobs/view/contract-ai-developer-at-campspot-4426974318
+Archive Fetched At:   2026-09-13T20:42:15.799Z
+================================================================================
+
+JOB DESCRIPTION:
+--------------------------------------------------------------------------------
+Welcome to Campspot! Whether you are an avid camper, the occasional glamper, an expert RV-er, or new to the outdoors entirely, we're interested in working with you. Our team values diverse perspectives as we seek to create an easy-to-navigate and meaningful camping experience for everyone.
+
+We hope you will consider joining our team! ALL human beings are welcome, and we are committed to helping you thrive here. We believe our team, as well as the outdoors, is for everyone.
+
+AI FIRST DEVELOPMENT APPROACH
+
+Campspot is building new AI-native products that are purpose-built to bring intelligent automation, dynamic tooling, and agentic workflows to our product ecosystem. It is an actively evolving codebase where every feature shipped matters and where AI-assisted development is not a convenience but a core part of how we build.
+
+THE ROLE
+
+We are looking for a skilled contract developer to accelerate feature development on the AI platform using Claude Code as their primary AI coding assistant. You will work alongside our core team to scope, build, and ship new capabilities using Claude Code to drive velocity while maintaining code quality, architectural integrity, and security best practices.
+
+Responsibilities
+
+• Use Claude Code to implement new features and functions within the platform
+• Translate product requirements and design specs into clean, production-ready code
+• Review and refine AI-generated code to ensure correctness, performance, and maintainability
+• Leverage AI to write and update automated tests for all new functionality
+• Participate in async code reviews and provide constructive feedback
+• Ensure new features, APIs, and architectural decisions are documented as they are built
+• Proactively identify technical debt or gaps and surface them to the team
+
+Requirements
+
+• 3+ years of professional software development experience
+• Experience shipping features on fast-moving platforms
+• Demonstrated experience working with Claude Code
+• Understanding of prompt engineering and context window management
+• Prior experience building on top of the Anthropic API or integrating LLMs into production applications
+• Familiarity with agentic workflow patterns and tool-use APIs
+• Strong proficiency in TypeScript and React
+• Solid understanding of REST APIs, async patterns, and modern web architecture
+• Ability to work independently, manage your own time, and hit milestones
+• Required English Level: Intermediate. Ability to read, write, and communicate
+• Required location: Brazil
+
+This is a contract role, with hourly rate starting of $25-30 USD. Final rate is based on candidate experience and skill level.
+
+About Campspot
+
+Campspot is a motivated team of outdoor enthusiasts and software professionals with decades of experience in the campground and outdoor industry. We’re looking to grow with people who embody our culture of learning, collaboration, and innovation. Today our portfolio includes two distinct but synergistic products:
+
+• Campspot Management Software is the leading provider of reservation management software and tools for campgrounds and RV parks. It revolutionized the industry through its proprietary technology, allowing park owners to increase revenue through its inventory optimization tool and site-lock capabilities.
+• The Campspot Marketplace (campspot.com and Campspot mobile app) is an online marketplace where travelers can find accommodations for their camping trips. Campspot’s inventory is 100% bookable and includes robust filters to help travelers customize their travel experience.
+
+SKILLS & KEYWORDS:
+--------------------------------------------------------------------------------
+• TypeScript
+• React
+• REST APIs
+• AI
+
+================================================================================
+Archived via LinkedIn Job Data Fetcher | Job ID: 4426974318
+================================================================================
