@@ -231,6 +231,39 @@ test("SnowHeap-style headers and closing Join-as line form a valid zero-provider
   assert.equal(calls, 0);
 });
 
+test("SnowHeap-style unbulleted Tasks and Requirements remain deterministic", async () => {
+  const directory = await tempDir();
+  const input = path.join(directory, "snowheap-prose.txt");
+  const output = path.join(directory, "snowheap-prose.json");
+  await fs.writeFile(input, [
+    "Company: SnowHeap",
+    "Tasks",
+    "Design, develop, and maintain fullstack software solutions leveraging advanced data analytics.",
+    "",
+    "Collaborate with cross-functional teams to translate business needs into scalable systems.",
+    "Requirements",
+    "Bachelor’s degree in Computer Science, Software Engineering, or a related field.",
+    "",
+    "5+ years of professional experience building scalable fullstack applications.",
+    "",
+    "Deep understanding of software engineering principles and architecture best practices.",
+    "",
+    "Hands-on experience with databases, RESTful APIs, and cloud platforms.",
+    "",
+    "Bonus: Experience with microservices architecture and Docker/Kubernetes.",
+    "",
+    "Join SnowHeap LLC as a Senior Fullstack Software Engineer and help shape the future.",
+  ].join("\n"));
+  const result = await runJobParser({ input, output, semanticProviderName: "none" });
+  assert.equal(result.job.company, "SnowHeap");
+  assert.equal(result.job.title, "Senior Fullstack Software Engineer");
+  assert.equal(result.job.responsibilities.length, 2);
+  assert.equal(result.job.requirements.required.length, 4);
+  assert.deepEqual(result.job.requirements.preferred, [
+    "Bonus: Experience with microservices architecture and Docker/Kubernetes.",
+  ]);
+});
+
 test("ambiguous wording remains a usable structural parse when enrichment is unavailable", async () => {
   const directory = await tempDir();
   const input = path.join(root, "test/fixtures/jobs/raw/ambiguous.txt");
