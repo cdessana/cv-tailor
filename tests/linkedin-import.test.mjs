@@ -28,7 +28,7 @@ test("imports all supported LinkedIn sections conservatively", () => {
   assert.equal(report.records.find((r) => r.section === "work").candidate.startDate, "2020-03");
   assert.equal(report.records.find((r) => r.section === "work").candidate.endDate, undefined);
   assert.equal(report.records.find((r) => r.section === "recommendations").mappingStatus, "supporting_material");
-  assert.equal(report.records.some((r) => r.field === "profiles"), false, "the downloaded LinkedIn URL is not a resume field to review");
+  assert.deepEqual(report.records.find((r) => r.field === "profiles").candidate, { network: "LinkedIn", url: "https://linkedin.com/in/ada" });
   assert.ok(report.records.every((r) => r.id.startsWith("linkedin-")));
 });
 
@@ -37,6 +37,81 @@ test("preserves date precision and flags existing profile data for review", () =
   const report = importLinkedIn(profile, { basics: { summary: "Existing", label: "Different" } });
   assert.equal(report.records.find((r) => r.field === "summary").reviewStatus, "conflict");
   assert.equal(report.records.find((r) => r.field === "label").reviewStatus, "conflict");
+});
+
+test("LinkedIn profile URLs are reviewable, stable, and preserve unrelated profiles", () => {
+  const base = { basics: { profiles: [{ network: "GitHub", url: "https://github.com/ada" }] } };
+  const first = importLinkedIn(profile, base);
+  const second = importLinkedIn(profile, base);
+  const record = first.records.find((item) => item.field === "profiles");
+  assert.equal(record.classification, "new");
+  assert.equal(record.id, second.records.find((item) => item.field === "profiles").id);
+  const applied = applyLinkedInImport(base, first, first.records.filter((item) => item.mappingStatus === "mapped").map((item) => ({ id: item.id, status: "approved" })));
+  assert.deepEqual(applied.resume.basics.profiles, [
+    { network: "GitHub", url: "https://github.com/ada" },
+    { network: "LinkedIn", url: "https://linkedin.com/in/ada" },
+  ]);
+
+  const duplicate = importLinkedIn(profile, { basics: { profiles: [{ network: "LinkedIn", url: "https://linkedin.com/in/ada" }] } }).records.find((item) => item.field === "profiles");
+  assert.equal(duplicate.classification, "exact_duplicate");
+  const conflict = importLinkedIn(profile, { basics: { profiles: [{ network: "LinkedIn", url: "https://linkedin.com/in/different" }] } }).records.find((item) => item.field === "profiles");
+  assert.equal(conflict.classification, "conflict");
+  assert.ok(conflict.existing);
+});
+
+test("section-specific matching distinguishes exact duplicates, possible duplicates, and conflicts", () => {
+  const source = {
+    education: [{ school: "Example U", degree: "BSc", fieldOfStudy: "CS", startDate: "2018", endDate: "2022" }],
+    certifications: [{ name: "Cloud", issuingOrganization: "Vendor", issueDate: "2022" }],
+    publications: [{ title: "Paper", publisher: "New Journal", publicationDate: "2024" }],
+    projects: [{ name: "Import Tool", description: "New description", startDate: "2024" }],
+    languages: [{ language: "English", proficiency: "Native" }],
+  };
+  const base = {
+    education: [{ institution: "Example U", studyType: "BSc", area: "CS", startDate: "2018", endDate: "2021" }],
+    certificates: [{ name: "Cloud", issuer: "Vendor", date: "2021" }],
+    publications: [{ name: "Paper", publisher: "Old Journal", releaseDate: "2023" }],
+    projects: [{ name: "Import Tool", description: "Old description", startDate: "2023" }],
+    languages: [{ language: "English", fluency: "Professional" }],
+  };
+  const records = importLinkedIn(source, base).records;
+  for (const section of ["education", "certificates", "languages"]) {
+    const record = records.find((item) => item.section === section);
+    assert.equal(record.classification, "conflict", section);
+    assert.ok(record.existing);
+    assert.ok(record.matchReason);
+  }
+  for (const section of ["publications", "projects"]) {
+    const record = records.find((item) => item.section === section);
+    assert.equal(record.classification, "possible_duplicate", section);
+    assert.ok(record.existing);
+    assert.ok(record.matchReason);
+  }
+  const exact = importLinkedIn({ languages: [{ language: "English", proficiency: "Native" }] }, { languages: [{ language: "English", fluency: "Native" }] }).records[0];
+  assert.equal(exact.classification, "exact_duplicate");
+
+  const exactRecords = importLinkedIn({
+    education: [{ school: "Example U", degree: "BSc", fieldOfStudy: "CS", startDate: "2018", endDate: "2022" }],
+    certifications: [{ name: "Cloud", issuingOrganization: "Vendor", issueDate: "2022", credentialUrl: "https://example.test/cloud" }],
+    publications: [{ title: "Paper", publisher: "Journal", publicationDate: "2024", url: "https://example.test/paper" }],
+  }, {
+    education: [{ institution: "Example U", studyType: "BSc", area: "CS", startDate: "2018", endDate: "2022" }],
+    certificates: [{ name: "Cloud", issuer: "Vendor", date: "2022", url: "https://example.test/cloud" }],
+    publications: [{ name: "Paper", publisher: "Journal", releaseDate: "2024", url: "https://example.test/paper" }],
+  }).records;
+  for (const record of exactRecords) assert.equal(record.classification, "exact_duplicate", record.section);
+});
+
+test("unsupported dates stay reviewable and possible/conflicting records cannot be promoted", () => {
+  const source = { education: [{ school: "Example U", degree: "BSc", fieldOfStudy: "CS", startDate: "Spring 2021" }] };
+  const report = importLinkedIn(source, { education: [{ institution: "Example U", studyType: "BSc", area: "CS", startDate: "2021" }] });
+  const record = report.records[0];
+  assert.equal(record.candidate.startDate, undefined);
+  assert.deepEqual(record.dateReview, [{ field: "startDate", sourceDate: "Spring 2021", dateStatus: "review_required" }]);
+  assert.equal(record.classification, "possible_duplicate");
+  assert.equal(report.status, "review_required");
+  const result = applyLinkedInImport({ education: [] }, report, [{ id: record.id, status: "approved" }]);
+  assert.equal(result.error, "LINKEDIN_REVIEW_REQUIRED");
 });
 
 test("only approved mapped records update the resume and recommendations never do", () => {
@@ -79,7 +154,7 @@ test("a new workspace gets default paths and can import before base.json exists"
   try {
     await fs.rm(fixture.config.paths.baseResume);
     const report = await createLinkedInImport({ profile: { name: "New Candidate" } }, { config: fixture.config });
-    const decisions = report.records.filter((record) => record.mappingStatus === "mapped").map((record) => ({ id: record.id, status: "approved" }));
+    const decisions = report.records.filter((record) => record.mappingStatus === "mapped").map((record) => ({ id: record.id, status: ["conflict", "possible_duplicate"].includes(record.classification) ? "keep_existing" : "approved" }));
     await promoteLinkedInImport(decisions, { config: fixture.config });
     assert.equal(JSON.parse(await fs.readFile(fixture.config.paths.baseResume, "utf8")).basics.name, "New Candidate");
   } finally { await fixture.close(); }
@@ -102,23 +177,25 @@ test("service atomically applies approved entries and rejects validation failure
   const fixture = await fixtureConfig();
   try {
     const report = await createLinkedInImport(profile, { config: fixture.config });
-    const decisions = report.records.filter((record) => record.mappingStatus === "mapped").map((record) => ({ id: record.id, status: "approved" }));
+    const decisions = report.records.filter((record) => record.mappingStatus === "mapped").map((record) => ({ id: record.id, status: ["conflict", "possible_duplicate"].includes(record.classification) ? "keep_existing" : "approved" }));
     const result = await promoteLinkedInImport(decisions, { config: fixture.config });
     assert.equal(result.resume.certificates[0].name, "Cloud Certificate");
     assert.equal(result.resume.recommendations, undefined);
     assert.equal(await linkedInImportStatus({ config: fixture.config }), null, "applied imports must not reappear as pending review after refresh");
     const [audit] = await linkedInImportHistory({ config: fixture.config });
     assert.equal(audit.itemsFound, report.summary.itemsFound);
-    assert.equal(audit.applied, decisions.length);
-    assert.equal(audit.skipped, 0);
+    assert.equal(audit.applied, decisions.filter((decision) => decision.status === "approved").length);
+    assert.equal(audit.skipped, decisions.filter((decision) => decision.status === "keep_existing").length);
     assert.match(audit.appliedAt, /^\d{4}-\d{2}-\d{2}T/u);
 
-    const beforeInvalid = await fs.readFile(fixture.config.paths.baseResume, "utf8");
-    const invalid = { profile: { name: "Ada", email: "not an email" } };
-    const invalidReport = await createLinkedInImport(invalid, { config: fixture.config });
-    const invalidDecisions = invalidReport.records.filter((record) => record.mappingStatus === "mapped").map((record) => ({ id: record.id, status: "approved" }));
-    await assert.rejects(() => promoteLinkedInImport(invalidDecisions, { config: fixture.config }), (error) => error.code === "LINKEDIN_RESUME_INVALID");
-    assert.equal(await fs.readFile(fixture.config.paths.baseResume, "utf8"), beforeInvalid);
+    const validationFixture = await fixtureConfig({ basics: {} });
+    try {
+      const beforeInvalid = await fs.readFile(validationFixture.config.paths.baseResume, "utf8");
+      const invalidReport = await createLinkedInImport({ profile: { name: "Ada", email: "not an email" } }, { config: validationFixture.config });
+      const invalidDecisions = invalidReport.records.filter((record) => record.mappingStatus === "mapped").map((record) => ({ id: record.id, status: "approved" }));
+      await assert.rejects(() => promoteLinkedInImport(invalidDecisions, { config: validationFixture.config }), (error) => error.code === "LINKEDIN_RESUME_INVALID");
+      assert.equal(await fs.readFile(validationFixture.config.paths.baseResume, "utf8"), beforeInvalid);
+    } finally { await validationFixture.close(); }
   } finally { await fixture.close(); }
 });
 
