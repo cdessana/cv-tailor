@@ -12,7 +12,7 @@ test("a new parse clears the prior workspace before its request and always relea
   assert.ok(handler.indexOf("setJobParseInFlight(true)") < handler.indexOf('fetch("/api/jobs/parse"'));
   assert.match(handler, /finally \{[\s\S]*?setJobParseInFlight\(false\)/u);
   assert.match(handler, /signal: parseAbortController\.signal/u);
-  assert.ok(handler.indexOf("loadJobIntoReview(data.job, data.outputPath)") > handler.indexOf("if (!res.ok)"));
+  assert.ok(handler.indexOf("loadJobIntoReview(data.job, data.outputPath") > handler.indexOf("if (!res.ok)"));
 });
 
 test("workspace reset clears live output and aborts active parse and pipeline requests", () => {
@@ -37,5 +37,14 @@ test("local provider copy and successful parse behavior retain non-fatal parser 
   assert.doesNotMatch(app, /Parser fails safely if unresolved ambiguous items require semantic inference/u);
   assert.doesNotMatch(html, /Parser fails safely if unresolved items require semantic inference/u);
   const handler = between('$("#btn-parse-job")?.addEventListener', '    // Reset workspace');
-  assert.doesNotMatch(handler, /warnings.*return|return.*warnings/us);
+  assert.match(handler, /loadJobIntoReview\(data\.job, data\.outputPath, data\.parser, data\.warnings, data\.diagnostics\)/u);
+});
+
+test("job review renders backend parser diagnostics without assigning unresolved source semantics", () => {
+  assert.match(app, /loadJobIntoReview\(data\.job, data\.outputPath, data\.parser, data\.warnings, data\.diagnostics\)/u);
+  const diagnostics = between("function renderParserDiagnostics", "  function renderRequirementsColumns");
+  for (const token of ["parser.mode", "diagnostics.unresolved", "item.sourceSection", "item.signal", "item.reason", "item.sourceText"]) assert.ok(diagnostics.includes(token), `missing ${token}`);
+  assert.doesNotMatch(diagnostics, /classification\s*=|classification:/u);
+  const reset = between("function resetWorkspaceState", "  // -------------------------------------------------------------\n  // Stage 2");
+  assert.ok(reset.includes("state.currentParser = null"));
 });

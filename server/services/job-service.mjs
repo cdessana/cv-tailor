@@ -70,6 +70,9 @@ export async function parseJobDescription({
       outputPath: path.relative(process.cwd(), finalOutputPath),
       filename: path.basename(finalOutputPath),
       semanticProvider: result.semanticProvider,
+      warnings: result.warnings,
+      diagnostics: result.diagnostics,
+      parser: result.parser,
     };
   } finally {
     // Clean up temporary input file

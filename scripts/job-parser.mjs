@@ -16,6 +16,7 @@ import {
 } from "../lib/job-parser/providers/index.mjs";
 import { validateEvidence } from "../lib/job-parser/validate-evidence.mjs";
 import { consolidateExtraction } from "../lib/job-parser/consolidate-extraction.mjs";
+import { buildParserStatus } from "../lib/job-parser/status.mjs";
 import {
   asSemanticStageError,
   isSemanticProviderError,
@@ -238,6 +239,7 @@ export async function runJobParser({
     sourceSection: heading?.text ?? null,
     signal: signal ?? null,
     reason,
+    sourceText: unit.originalText ?? null,
   }));
   let semanticFailure;
   let providerInfo = semanticProvider
@@ -413,6 +415,8 @@ export async function runJobParser({
   }
   recordEvent("stage.completed", { stage: "mapping" });
   const warnings = [...(mapped.warnings ?? []), ...semanticWarnings];
+  const diagnostics = { unresolved: unresolvedDiagnostics };
+  const parser = buildParserStatus({ semanticProvider: providerInfo, warnings, diagnostics });
   if (warnings.length) {
     reportWarnings(warnings);
   }
@@ -433,9 +437,8 @@ export async function runJobParser({
         coverage: extraction.coverage?.length ?? 0,
       },
       warnings,
-      diagnostics: {
-        unresolved: unresolvedDiagnostics,
-      },
+      diagnostics,
+      parser,
       observability: {
         ...observability,
         completedAt: new Date().toISOString(),
@@ -459,7 +462,8 @@ export async function runJobParser({
     job: mapped.job,
     semanticProvider: providerInfo,
     warnings,
-    diagnostics: { unresolved: unresolvedDiagnostics },
+    diagnostics,
+    parser,
   };
 }
 

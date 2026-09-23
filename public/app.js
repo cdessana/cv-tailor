@@ -10,6 +10,7 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
     currentView: "home",
     currentJob: null,
     currentJobPath: null,
+    currentParser: null,
     currentAnalysis: null,
     currentRun: null,
     jobParseInFlight: false,
@@ -483,7 +484,7 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
           return;
         }
 
-        loadJobIntoReview(data.job, data.outputPath);
+        loadJobIntoReview(data.job, data.outputPath, data.parser, data.warnings, data.diagnostics);
         await fetchSavedJobs();
       } catch (err) {
         if (err.name !== "AbortError") showParserAlert(`Network error while parsing: ${err.message}`, "error");
@@ -550,7 +551,7 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
 
   function clearWorkspaceOutputs() {
     ["#stage-job-review", "#stage-job-analysis", "#stage-pipeline-exec", "#stage-preview-artifacts", "#raw-json-container", "#alternative-requirements-section", "#final-check-audit-card", "#btn-jump-preview"].forEach((selector) => $(selector)?.classList.add("hidden"));
-    ["#analysis-items-container", "#final-check-summary-text", "#final-check-issues-list", "#diff-base-content", "#diff-tailored-content"].forEach((selector) => {
+    ["#analysis-items-container", "#final-check-summary-text", "#final-check-issues-list", "#diff-base-content", "#diff-tailored-content", "#parser-diagnostics-content"].forEach((selector) => {
       const element = $(selector);
       if (element) element.innerHTML = "";
     });
@@ -587,6 +588,7 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
     clearWorkspaceOutputs();
     state.currentJob = null;
     state.currentJobPath = null;
+    state.currentParser = null;
     state.currentAnalysis = null;
     state.currentRun = null;
     if (!preserveInput) {
@@ -603,9 +605,10 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
   // -------------------------------------------------------------
   // Stage 2: Job Review & Editing
   // -------------------------------------------------------------
-  function loadJobIntoReview(job, jobPath) {
+  function loadJobIntoReview(job, jobPath, parser = null, warnings = [], diagnostics = {}) {
     state.currentJob = job;
     state.currentJobPath = jobPath;
+    state.currentParser = { parser, warnings, diagnostics };
 
     if ($("#review-job-company")) $("#review-job-company").value = job.company || "";
     if ($("#review-job-title")) $("#review-job-title").value = job.title || "";
@@ -618,12 +621,45 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
     }
 
     renderRequirementsColumns();
+    renderParserDiagnostics();
 
     $("#stage-job-review")?.classList.remove("hidden");
     $("#stage-job-review")?.scrollIntoView({ behavior: "smooth", block: "start" });
     updateStepIndicators(2);
 
     if (window.lucide) lucide.createIcons();
+  }
+
+  function parserModeCopy(parser = {}) {
+    switch (parser.mode) {
+      case "semantic_enrichment_used": return "Parsed with semantic enrichment.";
+      case "semantic_enrichment_failed_with_fallback": return "Parsed deterministically; semantic enrichment was unavailable and deterministic results were retained.";
+      case "semantic_enrichment_disabled": return "Parsed deterministically; semantic enrichment is disabled.";
+      default: return "Parsed deterministically.";
+    }
+  }
+
+  function renderParserDiagnostics() {
+    const section = $("#parser-diagnostics"), container = $("#parser-diagnostics-content");
+    if (!section || !container) return;
+    const { parser = {}, warnings = [], diagnostics = {} } = state.currentParser ?? {};
+    const unresolved = diagnostics.unresolved ?? [], reviewCount = parser.reviewItemCount ?? unresolved.length;
+    const fallback = parser.mode === "semantic_enrichment_failed_with_fallback";
+    const disabled = parser.mode === "semantic_enrichment_disabled";
+    const visibleWarnings = warnings.filter((warning) => !(fallback && warning.code === "semantic_enrichment_failed") && !(disabled && warning.code === "semantic_enrichment_unavailable"));
+    const metadataWarnings = visibleWarnings.filter((warning) => warning.code === "ambiguous_metadata");
+    const warningCards = visibleWarnings.filter((warning) => warning.code !== "ambiguous_metadata").map((warning) => `<div class="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">${escapeHtml(warning.message || "This parser result needs review.")}</div>`).join("");
+    const metadataCards = metadataWarnings.map((warning) => {
+      const alternatives = [...new Set((warning.candidates ?? []).map((candidate) => candidate.value).filter((value) => value && value !== warning.selected?.value))];
+      return `<div class="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 space-y-1.5"><p class="font-semibold">Human review required for ambiguous metadata.</p><p>Selected: <span class="font-medium">${escapeHtml(warning.selected?.value || "Unknown")}</span></p>${alternatives.length ? `<p>Other source-backed candidate(s): ${escapeHtml(alternatives.join(", "))}</p>` : ""}</div>`;
+    }).join("");
+    const unresolvedCards = unresolved.map((item) => `<article class="rounded-md border border-slate-200 bg-white p-3 text-xs space-y-1.5"><p class="font-semibold text-slate-900">Source content requires review</p>${item.sourceSection ? `<p class="text-slate-600"><span class="font-medium">Section:</span> ${escapeHtml(item.sourceSection)}</p>` : ""}${item.signal ? `<p class="text-slate-600"><span class="font-medium">Signal:</span> ${escapeHtml(item.signal)}</p>` : ""}${item.reason ? `<p class="text-slate-600"><span class="font-medium">Reason:</span> ${escapeHtml(item.reason)}</p>` : ""}${item.sourceText ? `<blockquote class="border-l-2 border-slate-300 pl-2 text-slate-700 whitespace-pre-wrap select-text">${escapeHtml(item.sourceText)}</blockquote>` : ""}</article>`).join("");
+    const semanticNotice = fallback
+      ? '<div class="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Semantic enrichment could not be completed. The deterministic parse was retained.</div>'
+      : disabled && warnings.some((warning) => warning.code === "semantic_enrichment_unavailable")
+        ? '<div class="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Some source content could not be classified safely because semantic enrichment is disabled. Review the items below.</div>' : "";
+    section.classList.remove("hidden");
+    container.innerHTML = `<div class="rounded-lg border ${warnings.length || reviewCount ? "border-amber-200 bg-amber-50/40" : "border-emerald-200 bg-emerald-50/40"} p-3.5 space-y-3"><div><p class="text-xs font-bold text-slate-900">${escapeHtml(parserModeCopy(parser))}</p><p class="text-[11px] text-slate-600 mt-0.5">${reviewCount ? `${reviewCount} item${reviewCount === 1 ? "" : "s"} require review.` : "No review items."}</p></div>${semanticNotice}${warningCards}${metadataCards}${unresolvedCards}</div>`;
   }
 
   function renderRequirementsColumns() {

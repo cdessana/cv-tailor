@@ -177,6 +177,8 @@ test("unresolved semantic decisions retain a structurally usable job with diagno
   assert.deepEqual(result.job.requirements.required, ["Java"]);
   assert.ok(result.warnings.some(({ code }) => code === "semantic_unit_unresolved"));
   assert.equal(result.diagnostics.unresolved.length, 1);
+  assert.equal(result.diagnostics.unresolved[0].sourceText, "Good knowledge of Unix, SQL and scripting languages");
+  assert.equal(result.parser.status, "success_with_review");
 });
 
 test("lossless explicit alternatives parse without semantic enrichment", async () => {
