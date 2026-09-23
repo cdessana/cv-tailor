@@ -158,8 +158,9 @@ for(const failure of ["http","malformed","evidence","conflict"]){
     }
     return response(value);
    }});
-   // We now expect any Batch index because it's caught in the merge/assemble or during sub-batching.
-   await assert.rejects(runJobParser({input:file,output,semanticProvider:provider}),/Batch [123]\/3/);
+   // The planner may use a different number of batches as extraction evolves;
+   // this test only requires the failing batch to be identified.
+   await assert.rejects(runJobParser({input:file,output,semanticProvider:provider}),/Batch \d+\/\d+/);
    assert.ok(calls >= 2);
    await assert.rejects(fs.stat(output),{code:"ENOENT"});
    if(failure!=="http")assert.ok(JSON.parse(raw.at(-1)).batches.length >= 2);

@@ -476,7 +476,11 @@ test("long or punctuated colon-terminated prose stays content", () => {
   );
   assert.equal(result.sections.length, 1);
   assert.equal(result.sections[0].units[0].type, "paragraph");
-  assert.equal(result.sections[0].units[1].text, "Build APIs");
+  assert.deepEqual(result.sections[0].units.map((unit) => unit.text), [
+    "We expect you to be able to do the following:",
+    "Experience with Node.js:",
+    "Build APIs",
+  ]);
 });
 
 test("recognizes a known heading with presentation full-stop punctuation", () => {
