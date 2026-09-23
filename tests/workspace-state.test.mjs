@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import test from "node:test";
 
 const app = await fs.readFile(new URL("../public/app.js", import.meta.url), "utf8");
+const html = await fs.readFile(new URL("../public/index.html", import.meta.url), "utf8");
 const between = (start, end) => app.slice(app.indexOf(start), app.indexOf(end, app.indexOf(start)));
 
 test("a new parse clears the prior workspace before its request and always releases parse state", () => {
@@ -32,7 +33,9 @@ test("history loading is disabled for the full duration of a parse", () => {
 
 test("local provider copy and successful parse behavior retain non-fatal parser warnings", () => {
   assert.match(app, /ambiguous content may be left for review instead of being inferred/u);
+  assert.match(html, /ambiguous content may be left for review instead of being inferred/u);
   assert.doesNotMatch(app, /Parser fails safely if unresolved ambiguous items require semantic inference/u);
+  assert.doesNotMatch(html, /Parser fails safely if unresolved items require semantic inference/u);
   const handler = between('$("#btn-parse-job")?.addEventListener', '    // Reset workspace');
   assert.doesNotMatch(handler, /warnings.*return|return.*warnings/us);
 });
