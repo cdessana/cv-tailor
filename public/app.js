@@ -12,6 +12,7 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
     currentJobPath: null,
     currentAnalysis: null,
     currentRun: null,
+    jobParseInFlight: false,
     currentTheme: "jsonresume-theme-stackoverflow",
     activeEvidenceFilter: "all",
     activeEvidenceSkill: "",
@@ -25,6 +26,8 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
     config: null,
     evidenceSummary: null,
   };
+  let jobParseAbortController = null;
+  let pipelineAbortController = null;
 
   // DOM Elements Helper
   const $ = (selector) => document.querySelector(selector);
@@ -379,7 +382,7 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
       if (!notice) return;
 
       if (prov === "none") {
-        notice.innerHTML = `<strong>Local mode:</strong> No job data leaves this machine. Parser fails safely if unresolved ambiguous items require semantic inference.`;
+        notice.innerHTML = `<strong>Local mode:</strong> No job data leaves this machine. Deterministic parsing is used, and ambiguous content may be left for review instead of being inferred.`;
       } else if (prov === "gemini") {
         notice.innerHTML = `<strong>Cloud Gemini mode:</strong> Job text is semantically parsed using Gemini models server-side. Requires configured API key.`;
       } else if (prov === "ollama") {
@@ -390,10 +393,12 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
     // Open File Button (Option to load a local .json or .txt file)
     const fileLoader = $("#input-file-loader");
     $("#btn-open-file")?.addEventListener("click", () => {
+      if (state.jobParseInFlight) return;
       fileLoader?.click();
     });
 
     fileLoader?.addEventListener("change", (e) => {
+      if (state.jobParseInFlight) return;
       const file = e.target.files[0];
       if (!file) return;
 
@@ -425,6 +430,7 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
 
     // Select Existing Job from Dropdown
     $("#select-existing-job")?.addEventListener("change", async (e) => {
+      if (state.jobParseInFlight) return;
       const filename = e.target.value;
       if (!filename) return;
 
@@ -447,11 +453,10 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
         return;
       }
 
-      hideParserAlert();
-      const btn = $("#btn-parse-job");
-      const btnText = $("#btn-parse-text");
-      btn.disabled = true;
-      btnText.textContent = "Parsing Job Description...";
+      resetWorkspaceState({ preserveInput: true, preserveProvider: true, preserveTargetCompany: true });
+      setJobParseInFlight(true);
+      const parseAbortController = new AbortController();
+      jobParseAbortController = parseAbortController;
 
       try {
         const res = await fetch("/api/jobs/parse", {
@@ -462,14 +467,14 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
             semanticProviderName: $("#select-semantic-provider").value,
             customFilename: $("#input-target-company").value.trim() || undefined,
           }),
+          signal: parseAbortController.signal,
         });
 
         const data = await res.json();
         if (!res.ok) {
           if (data.needsSemanticProvider) {
             showParserAlert(
-              `<strong>Deterministic Parser Limit:</strong> Unresolved job requirements detected. The deterministic parser stopped safely to prevent hallucinations.<br>
-              <span class="mt-1 block">To continue, select <em>Gemini</em> or <em>Ollama</em> in the provider dropdown above, or curate the job manually.</span>`,
+              `<strong>Additional parsing support is needed:</strong> Select <em>Gemini</em> or <em>Ollama</em> and try again, or curate the job manually.`,
               "warning"
             );
           } else {
@@ -481,33 +486,18 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
         loadJobIntoReview(data.job, data.outputPath);
         await fetchSavedJobs();
       } catch (err) {
-        showParserAlert(`Network error while parsing: ${err.message}`, "error");
+        if (err.name !== "AbortError") showParserAlert(`Network error while parsing: ${err.message}`, "error");
       } finally {
-        btn.disabled = false;
-        btnText.textContent = "Parse Job Description";
+        if (jobParseAbortController === parseAbortController) {
+          jobParseAbortController = null;
+          setJobParseInFlight(false);
+        }
       }
     });
 
     // Reset workspace
     $("#btn-reset-workspace")?.addEventListener("click", () => {
-      if (rawTextarea) {
-        rawTextarea.value = "";
-        charCount.textContent = "0 characters";
-      }
-      const selectExisting = $("#select-existing-job");
-      if (selectExisting) selectExisting.value = "";
-      const targetCompany = $("#input-target-company");
-      if (targetCompany) targetCompany.value = "";
-      hideParserAlert();
-      $("#stage-job-review")?.classList.add("hidden");
-      $("#stage-job-analysis")?.classList.add("hidden");
-      $("#stage-pipeline-exec")?.classList.add("hidden");
-      $("#stage-preview-artifacts")?.classList.add("hidden");
-      state.currentJob = null;
-      state.currentJobPath = null;
-      state.currentAnalysis = null;
-      state.currentRun = null;
-      updateStepIndicators(1);
+      resetWorkspaceState({ preserveProvider: true });
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
 
@@ -537,6 +527,77 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
 
   function hideParserAlert() {
     $("#parser-alert")?.classList.add("hidden");
+  }
+
+  function setJobParseInFlight(isRunning) {
+    state.jobParseInFlight = isRunning;
+    const parseButton = $("#btn-parse-job");
+    if (parseButton) parseButton.disabled = isRunning;
+    const parseLabel = $("#btn-parse-text");
+    if (parseLabel) parseLabel.textContent = isRunning ? "Parsing Job Description..." : "Parse Job Description";
+
+    ["#btn-open-file", "#select-existing-job"].forEach((selector) => {
+      const control = $(selector);
+      if (control) control.disabled = isRunning;
+    });
+    $$(".btn-load-run-to-workspace").forEach((button) => {
+      button.disabled = isRunning;
+      button.setAttribute("aria-disabled", String(isRunning));
+      button.classList.toggle("opacity-50", isRunning);
+      button.classList.toggle("cursor-not-allowed", isRunning);
+    });
+  }
+
+  function clearWorkspaceOutputs() {
+    ["#stage-job-review", "#stage-job-analysis", "#stage-pipeline-exec", "#stage-preview-artifacts", "#raw-json-container", "#alternative-requirements-section", "#final-check-audit-card", "#btn-jump-preview"].forEach((selector) => $(selector)?.classList.add("hidden"));
+    ["#analysis-items-container", "#final-check-summary-text", "#final-check-issues-list", "#diff-base-content", "#diff-tailored-content"].forEach((selector) => {
+      const element = $(selector);
+      if (element) element.innerHTML = "";
+    });
+    const rawJson = $("#raw-job-json-textarea");
+    if (rawJson) rawJson.value = "";
+    ["#review-job-company", "#review-job-title", "#review-job-type", "#review-job-remote"].forEach((selector) => {
+      const input = $(selector);
+      if (input) input.value = "";
+    });
+    ["required", "preferred", "competencies", "alternatives"].forEach((kind) => {
+      const count = $(`#count-req-${kind}`);
+      if (count) count.textContent = "0";
+      const list = $(`#list-req-${kind}`);
+      if (list) list.innerHTML = "";
+    });
+    const terminal = $("#pipeline-log-terminal");
+    if (terminal) terminal.innerHTML = '<div class="text-slate-500">[idle] Waiting for pipeline execution...</div>';
+    const preview = $("#resume-preview-frame");
+    if (preview) preview.src = "about:blank";
+    if ($("#preview-url-label")) $("#preview-url-label").textContent = "output/resume.html";
+  }
+
+  function resetWorkspaceState({ preserveInput = false, preserveProvider = true, preserveTargetCompany = false } = {}) {
+    if (jobParseAbortController) {
+      jobParseAbortController.abort();
+      jobParseAbortController = null;
+    }
+    setJobParseInFlight(false);
+    if (pipelineAbortController) {
+      pipelineAbortController.abort();
+      pipelineAbortController = null;
+    }
+    hideParserAlert();
+    clearWorkspaceOutputs();
+    state.currentJob = null;
+    state.currentJobPath = null;
+    state.currentAnalysis = null;
+    state.currentRun = null;
+    if (!preserveInput) {
+      const raw = $("#job-raw-text");
+      if (raw) raw.value = "";
+      if ($("#char-count")) $("#char-count").textContent = "0 characters";
+      if ($("#select-existing-job")) $("#select-existing-job").value = "";
+    }
+    if (!preserveProvider && $("#select-semantic-provider")) $("#select-semantic-provider").value = "none";
+    if (!preserveTargetCompany && $("#input-target-company")) $("#input-target-company").value = "";
+    updateStepIndicators(1);
   }
 
   // -------------------------------------------------------------
@@ -1071,7 +1132,9 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
     appendTerminalLog(`[config] Theme: ${theme} | Rewrite: ${skipRewrite ? "Disabled" : "Enabled"}`);
 
     // Call pipeline with Server-Sent Events (SSE)
+    const pipelineController = new AbortController();
     try {
+      pipelineAbortController = pipelineController;
       const response = await fetch("/api/pipeline/run", {
         method: "POST",
         headers: {
@@ -1083,6 +1146,7 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
           theme,
           skipRewrite,
         }),
+        signal: pipelineController.signal,
       });
 
       const reader = response.body.getReader();
@@ -1103,7 +1167,9 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
         }
       }
     } catch (err) {
-      appendTerminalLog(`[pipeline_error] Pipeline execution error: ${err.message}`);
+      if (err.name !== "AbortError") appendTerminalLog(`[pipeline_error] Pipeline execution error: ${err.message}`);
+    } finally {
+      if (pipelineAbortController === pipelineController) pipelineAbortController = null;
     }
   }
 
@@ -2285,7 +2351,7 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
           </div>
 
           <div class="flex flex-wrap items-center gap-2 shrink-0">
-            <button class="btn-load-run-to-workspace px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-1 shadow-xs" data-slug="${escapeHtml(run.companySlug)}" data-company="${escapeHtml(run.company)}">
+            <button class="btn-load-run-to-workspace px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold flex items-center gap-1 shadow-xs ${state.jobParseInFlight ? "opacity-50 cursor-not-allowed" : ""}" data-slug="${escapeHtml(run.companySlug)}" data-company="${escapeHtml(run.company)}" ${state.jobParseInFlight ? "disabled aria-disabled=\"true\"" : ""}>
               <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
               <span>Load in Workspace</span>
             </button>
@@ -2306,6 +2372,7 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
       // Wire up Load in Workspace buttons
       container.querySelectorAll(".btn-load-run-to-workspace").forEach((btn) => {
         btn.addEventListener("click", (e) => {
+          if (state.jobParseInFlight) return;
           const slug = e.currentTarget.getAttribute("data-slug");
           const company = e.currentTarget.getAttribute("data-company");
           state.currentRun = { companySlug: slug, company };
@@ -2316,6 +2383,7 @@ import { evidenceBuilderApi } from "./evidence-builder-api.js";
       });
 
       if (window.lucide) lucide.createIcons();
+      setJobParseInFlight(state.jobParseInFlight);
     } catch (err) {
       container.innerHTML = `<div class="text-xs text-rose-600 p-4 text-center">Error loading runs: ${err.message}</div>`;
     }
